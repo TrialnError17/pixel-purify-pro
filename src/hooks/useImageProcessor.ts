@@ -554,7 +554,7 @@ export const useImageProcessor = () => {
   }, []);
 
   // Download single image
-  const downloadImage = useCallback((image: ImageItem, effectSettings?: { download?: { trimTransparentPixels?: boolean } }) => {
+  const downloadImage = useCallback((image: ImageItem, effectSettings?: { download?: { trimTransparentPixels?: boolean }; background?: { enabled?: boolean; color?: string; saveWithBackground?: boolean } }) => {
     if (!image.processedData) {
       toast({
         title: "No Processed Data",
@@ -564,7 +564,29 @@ export const useImageProcessor = () => {
       return;
     }
 
-    let imageDataToDownload = image.processedData;
+    let imageDataToDownload = new ImageData(
+      new Uint8ClampedArray(image.processedData.data),
+      image.processedData.width,
+      image.processedData.height
+    );
+    
+    // Apply background only to download if saveWithBackground is enabled
+    if (effectSettings?.background?.enabled && effectSettings?.background?.saveWithBackground && effectSettings?.background?.color) {
+      const hex = effectSettings.background.color.replace('#', '');
+      const bgR = parseInt(hex.substr(0, 2), 16);
+      const bgG = parseInt(hex.substr(2, 2), 16);
+      const bgB = parseInt(hex.substr(4, 2), 16);
+      const data = imageDataToDownload.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) {
+          data[i] = bgR;
+          data[i + 1] = bgG;
+          data[i + 2] = bgB;
+          data[i + 3] = 255;
+        }
+      }
+    }
     
     // Apply trimming if enabled
     if (effectSettings?.download?.trimTransparentPixels) {
@@ -599,7 +621,7 @@ export const useImageProcessor = () => {
   }, [toast, trimTransparentPixels]);
 
   // Download all processed images as ZIP
-  const downloadAllImages = useCallback(async (images: ImageItem[], effectSettings?: { download?: { trimTransparentPixels?: boolean } }) => {
+  const downloadAllImages = useCallback(async (images: ImageItem[], effectSettings?: { download?: { trimTransparentPixels?: boolean }; background?: { enabled?: boolean; color?: string; saveWithBackground?: boolean } }) => {
     const { default: JSZip } = await import('jszip');
     
     const processedImages = images.filter(img => img.status === 'completed' && img.processedData);
@@ -618,7 +640,29 @@ export const useImageProcessor = () => {
     for (const image of processedImages) {
       if (!image.processedData) continue;
       
-      let imageDataToDownload = image.processedData;
+      let imageDataToDownload = new ImageData(
+        new Uint8ClampedArray(image.processedData.data),
+        image.processedData.width,
+        image.processedData.height
+      );
+      
+      // Apply background only to download if saveWithBackground is enabled
+      if (effectSettings?.background?.enabled && effectSettings?.background?.saveWithBackground && effectSettings?.background?.color) {
+        const hex = effectSettings.background.color.replace('#', '');
+        const bgR = parseInt(hex.substr(0, 2), 16);
+        const bgG = parseInt(hex.substr(2, 2), 16);
+        const bgB = parseInt(hex.substr(4, 2), 16);
+        const data = imageDataToDownload.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] === 0) {
+            data[i] = bgR;
+            data[i + 1] = bgG;
+            data[i + 2] = bgB;
+            data[i + 3] = 255;
+          }
+        }
+      }
       
       // Apply trimming if enabled
       if (effectSettings?.download?.trimTransparentPixels) {

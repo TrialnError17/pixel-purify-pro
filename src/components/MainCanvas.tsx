@@ -273,8 +273,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Apply background color if enabled and saveWithBackground is true
-    if (effects.background.enabled && effects.background.saveWithBackground) {
+    // Apply background color for preview if enabled (regardless of saveWithBackground setting)
+    if (effects.background.enabled) {
       const hex = effects.background.color.replace('#', '');
       const bgR = parseInt(hex.substr(0, 2), 16);
       const bgG = parseInt(hex.substr(2, 2), 16);
