@@ -152,11 +152,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                   <span className="text-sm font-medium">
                     Processing {processingProgress.current}/{processingProgress.total}
                   </span>
-                  {processingProgress.currentImage && (
-                    <span className="text-xs text-muted-foreground max-w-[150px] truncate">
-                      {processingProgress.currentImage}
-                    </span>
-                  )}
                 </div>
               )}
             </div>
@@ -172,11 +167,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                     <span className="text-sm font-medium">
                       Processing {processingProgress.current}/{processingProgress.total}
                     </span>
-                    {processingProgress.currentImage && (
-                      <span className="text-xs text-muted-foreground">
-                        {processingProgress.currentImage}
-                      </span>
-                    )}
                   </div>
                 </div>
               )}

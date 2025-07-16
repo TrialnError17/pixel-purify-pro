@@ -213,10 +213,9 @@ const Index = () => {
         isProcessing={isProcessing}
         processingProgress={
           isProcessing 
-            ? {
+              ? {
                 current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                total: images.length,
-                currentImage: images.find(img => img.status === 'processing')?.name
+                total: images.length
               }
             : undefined
         }
@@ -297,10 +296,9 @@ const Index = () => {
         onSelectImage={setSelectedImageId}
         processingProgress={
           isProcessing 
-            ? {
+              ? {
                 current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                total: images.filter(img => img.status !== 'error').length,
-                currentImage: images.find(img => img.status === 'processing')?.name
+                total: images.filter(img => img.status !== 'error').length
               }
             : undefined
         }
