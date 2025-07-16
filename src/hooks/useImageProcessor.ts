@@ -697,13 +697,17 @@ export const useImageProcessor = () => {
   const trimTransparentPixels = useCallback((imageData: ImageData): ImageData => {
     const { data, width, height } = imageData;
     
+    console.log('Trimming function called with dimensions:', width, 'x', height);
+    
     // Find bounds of non-transparent pixels
     let minX = width, minY = height, maxX = -1, maxY = -1;
+    let totalNonTransparent = 0;
     
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const alpha = data[(y * width + x) * 4 + 3];
         if (alpha > 0) {
+          totalNonTransparent++;
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
           maxX = Math.max(maxX, x);
@@ -712,8 +716,12 @@ export const useImageProcessor = () => {
       }
     }
     
+    console.log('Found', totalNonTransparent, 'non-transparent pixels');
+    console.log('Bounds: minX:', minX, 'minY:', minY, 'maxX:', maxX, 'maxY:', maxY);
+    
     // If no non-transparent pixels found, return 1x1 transparent image
     if (maxX === -1) {
+      console.log('No non-transparent pixels found, returning 1x1 image');
       const trimmedData = new Uint8ClampedArray(4);
       return new ImageData(trimmedData, 1, 1);
     }
@@ -751,7 +759,7 @@ export const useImageProcessor = () => {
     }
 
     console.log('Downloading image:', image.name, 'Processed data size:', image.processedData.data.length);
-    console.log('Download effect settings:', effectSettings);
+    console.log('Download effect settings:', JSON.stringify(effectSettings, null, 2));
 
     let imageDataToDownload = new ImageData(
       new Uint8ClampedArray(image.processedData.data),
@@ -759,10 +767,26 @@ export const useImageProcessor = () => {
       image.processedData.height
     );
     
+    console.log('Original processed data dimensions:', imageDataToDownload.width, 'x', imageDataToDownload.height);
+    
+    // Count non-transparent pixels before applying effects
+    let nonTransparentCount = 0;
+    for (let i = 0; i < imageDataToDownload.data.length; i += 4) {
+      if (imageDataToDownload.data[i + 3] > 0) nonTransparentCount++;
+    }
+    console.log('Non-transparent pixels before download effects:', nonTransparentCount);
+    
     // Apply download effects if provided
     if (effectSettings) {
       imageDataToDownload = applyDownloadEffects(imageDataToDownload, effectSettings);
       console.log('Applied download effects');
+      
+      // Count non-transparent pixels after applying effects
+      let nonTransparentCountAfter = 0;
+      for (let i = 0; i < imageDataToDownload.data.length; i += 4) {
+        if (imageDataToDownload.data[i + 3] > 0) nonTransparentCountAfter++;
+      }
+      console.log('Non-transparent pixels after download effects:', nonTransparentCountAfter);
     }
     
     // Apply trimming if enabled
