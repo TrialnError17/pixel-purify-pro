@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { EffectSettings } from '@/pages/Index';
 import { Palette, Stamp, Paintbrush } from 'lucide-react';
@@ -147,13 +147,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   ⚡ Intensity
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <Slider
+                  <SliderWithInput
                     value={[settings.inkStamp.threshold]}
                     onValueChange={([threshold]) => updateInkStamp({ threshold })}
                     min={1}
                     max={100}
                     step={1}
-                    className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
                 </div>
                 <div className="flex justify-between text-xs mt-1">

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ColorRemovalSettings, PickedColor } from '@/pages/Index';
@@ -141,7 +141,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       </div>
                       <div>
                         <Label className="text-xs text-accent-green mb-1 block">Threshold: {pickedColor.threshold}</Label>
-                        <Slider
+                        <SliderWithInput
                           value={[pickedColor.threshold]}
                           onValueChange={([threshold]) => {
                             const newPickedColors = settings.pickedColors.map(c => 
@@ -152,7 +152,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                           min={1}
                           max={100}
                           step={1}
-                          className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
                         />
                       </div>
                     </div>
@@ -169,13 +169,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
                 <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <Slider
+                  <SliderWithInput
                     value={[settings.threshold]}
                     onValueChange={([threshold]) => updateSettings({ threshold })}
                     min={1}
                     max={100}
                     step={1}
-                    className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
                 </div>
                 <div className="flex justify-between text-xs">
@@ -209,13 +209,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
                 <div className="p-3 bg-gradient-to-r from-accent-indigo/5 to-accent-purple/5 rounded-lg border border-accent-indigo/20">
-                  <Slider
+                  <SliderWithInput
                     value={[settings.minRegionSize]}
                     onValueChange={([minRegionSize]) => updateSettings({ minRegionSize })}
                     min={1}
                     max={4000}
                     step={10}
-                    className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-indigo [&_[role=slider]]:to-accent-purple [&_[role=slider]]:border-accent-indigo"
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-indigo [&_[role=slider]]:to-accent-purple [&_[role=slider]]:border-accent-indigo"
                   />
                 </div>
                 <div className="flex justify-between text-xs">
@@ -234,13 +234,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
                 <div className="p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
-                  <Slider
+                  <SliderWithInput
                     value={[settings.featherRadius]}
                     onValueChange={([featherRadius]) => updateSettings({ featherRadius })}
                     min={0}
                     max={10}
                     step={0.5}
-                    className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
                   />
                 </div>
                 <div className="flex justify-between text-xs">
