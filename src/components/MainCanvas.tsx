@@ -493,6 +493,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Contiguous removal tool - removes only connected pixels of clicked color
       console.log('Contiguous tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
       
+      // Mark that we have manual edits FIRST to prevent auto-processing from overriding
+      setHasManualEdits(true);
+      
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
       const r = originalImageData.data[index];
@@ -525,13 +528,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       
       // Remove contiguous color at clicked position using independent contiguous threshold
-      console.log('Before removeContiguousColorIndependent, hasManualEdits:', hasManualEdits);
+      console.log('Before removeContiguousColorIndependent, hasManualEdits will be set to true');
       removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
-      
-      // Mark that we have manual edits to prevent auto-processing from overwriting
-      setHasManualEdits(true);
-      console.log('Set hasManualEdits to true');
       
       // Store the manually edited result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
