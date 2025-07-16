@@ -455,12 +455,44 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setIsDragging(false);
   }, []);
 
-  const handleZoom = useCallback((direction: 'in' | 'out') => {
+  const handleZoom = useCallback((direction: 'in' | 'out', centerX?: number, centerY?: number) => {
+    if (!containerRef.current || !canvasRef.current) return;
+    
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    
     setZoom(prev => {
       const factor = direction === 'in' ? 1.2 : 0.8;
-      return Math.max(0.1, Math.min(5, prev * factor));
+      const newZoom = Math.max(0.1, Math.min(5, prev * factor));
+      
+      // If center coordinates are provided (from wheel event), adjust pan to keep that point centered
+      if (centerX !== undefined && centerY !== undefined) {
+        const containerRect = container.getBoundingClientRect();
+        
+        // Calculate mouse position relative to canvas
+        const mouseCanvasX = (centerX - containerRect.left - centerOffset.x - pan.x) / prev;
+        const mouseCanvasY = (centerY - containerRect.top - centerOffset.y - pan.y) / prev;
+        
+        // Calculate new pan to keep the mouse position centered
+        const newPanX = pan.x - (mouseCanvasX * (newZoom - prev));
+        const newPanY = pan.y - (mouseCanvasY * (newZoom - prev));
+        
+        setPan({ x: newPanX, y: newPanY });
+      }
+      
+      return newZoom;
     });
-  }, []);
+  }, [centerOffset, pan]);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    
+    // Determine zoom direction based on wheel delta
+    const direction = e.deltaY < 0 ? 'in' : 'out';
+    
+    // Use mouse position as zoom center
+    handleZoom(direction, e.clientX, e.clientY);
+  }, [handleZoom]);
 
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || !canvasRef.current || !image) return;
@@ -700,6 +732,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--grid-lines)) 1px, transparent 0)`,
           backgroundSize: '20px 20px'
         }}
+        onWheel={handleWheel}
       >
         {image ? (
           <canvas
