@@ -64,9 +64,12 @@ export const useImageProcessor = () => {
     const targetG = data[1];
     const targetB = data[2];
 
-    // Convert threshold (0-100) to LAB distance threshold
-    const threshold = settings.threshold * 1.5; // Adjust scaling as needed
-
+    // Convert threshold (0-100) to LAB distance threshold - made less aggressive
+    const threshold = settings.threshold * 0.8; // Reduced from 1.5 to 0.8
+    
+    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, 'threshold:', threshold);
+    
+    let pixelsRemoved = 0;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
@@ -76,8 +79,11 @@ export const useImageProcessor = () => {
       
       if (distance <= threshold) {
         data[i + 3] = 0; // Make transparent
+        pixelsRemoved++;
       }
     }
+    
+    console.log('Auto color removal complete - pixels removed:', pixelsRemoved, 'out of', data.length / 4);
 
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
@@ -94,7 +100,7 @@ export const useImageProcessor = () => {
     const targetG = parseInt(hex.substr(2, 2), 16);
     const targetB = parseInt(hex.substr(4, 2), 16);
 
-    const threshold = settings.threshold * 1.5;
+    const threshold = settings.threshold * 0.8;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -120,7 +126,7 @@ export const useImageProcessor = () => {
 
     const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
       const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold * 1.5;
+      return distance <= settings.threshold * 0.8;
     };
 
     const floodFillFromBorder = (startX: number, startY: number) => {
