@@ -522,9 +522,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         });
       }
       
-      // Add color to picked colors for reference
-      onColorPicked(hex);
-      
       // Remove contiguous color at clicked position using independent contiguous threshold
       removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       
