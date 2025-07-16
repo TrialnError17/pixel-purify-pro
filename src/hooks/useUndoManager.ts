@@ -20,9 +20,10 @@ export const useUndoManager = () => {
       timestamp: Date.now()
     };
 
+    console.log('Adding undo action:', undoAction.description, 'Stack size:', undoStack.length + 1);
     setUndoStack(prev => [...prev, undoAction]);
     setRedoStack([]); // Clear redo stack when new action is added
-  }, []);
+  }, [undoStack]);
 
   const undo = useCallback(() => {
     if (undoStack.length === 0) return false;
@@ -75,6 +76,11 @@ export const useUndoManager = () => {
     return undoStack.length > 0 ? undoStack[undoStack.length - 1] : null;
   }, [undoStack]);
 
+  const canUndo = undoStack.length > 0;
+  const canRedo = redoStack.length > 0;
+  
+  console.log('Undo manager state - canUndo:', canUndo, 'undoStack.length:', undoStack.length);
+
   return {
     undoStack,
     redoStack,
@@ -83,7 +89,7 @@ export const useUndoManager = () => {
     redo,
     clearHistory,
     getLastAction,
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0
+    canUndo,
+    canRedo
   };
 };
