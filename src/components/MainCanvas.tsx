@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Target
+  Target,
+  Undo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -566,6 +567,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             title="Next image"
           >
             <ChevronRight className="w-4 h-4" />
+          </Button>
+          
+          <div className="w-px h-6 bg-border mx-2" />
+          
+          {/* Undo */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            className="flex items-center gap-2"
+            title="Undo last manual edit"
+          >
+            <Undo className="w-4 h-4" />
+            Undo
           </Button>
           
           <div className="w-px h-6 bg-border mx-2" />
