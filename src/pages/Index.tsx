@@ -85,7 +85,7 @@ const Index = () => {
       threshold: 50
     },
     download: {
-      trimTransparentPixels: false
+      trimTransparentPixels: true
     }
   });
 
