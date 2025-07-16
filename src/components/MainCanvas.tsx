@@ -172,6 +172,105 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           }
         }
       }
+
+      // Apply minimum region size filtering
+      if (settings.minRegionSize > 0) {
+        const alphaData = new Uint8ClampedArray(width * height);
+        
+        // Extract alpha channel
+        for (let i = 0; i < data.length; i += 4) {
+          alphaData[i / 4] = data[i + 3];
+        }
+        
+        // Find and remove small transparent regions
+        const visited = new Array(width * height).fill(false);
+        
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const index = y * width + x;
+            
+            if (!visited[index] && alphaData[index] === 0) {
+              // Found a transparent pixel, flood fill to measure region size
+              const regionPixels: number[] = [];
+              const stack = [index];
+              
+              while (stack.length > 0) {
+                const currentIndex = stack.pop()!;
+                if (visited[currentIndex]) continue;
+                
+                const currentX = currentIndex % width;
+                const currentY = Math.floor(currentIndex / width);
+                
+                if (currentX < 0 || currentY < 0 || currentX >= width || currentY >= height) continue;
+                if (alphaData[currentIndex] !== 0) continue;
+                
+                visited[currentIndex] = true;
+                regionPixels.push(currentIndex);
+                
+                // Add neighbors
+                if (currentX > 0) stack.push(currentIndex - 1);
+                if (currentX < width - 1) stack.push(currentIndex + 1);
+                if (currentY > 0) stack.push(currentIndex - width);
+                if (currentY < height - 1) stack.push(currentIndex + width);
+              }
+              
+              // If region is smaller than minimum size, restore it
+              if (regionPixels.length < settings.minRegionSize) {
+                for (const pixelIndex of regionPixels) {
+                  data[pixelIndex * 4 + 3] = 255; // Make opaque
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Apply feather radius (edge softening)
+      if (settings.featherRadius > 0) {
+        const radius = Math.ceil(settings.featherRadius);
+        const originalAlpha = new Uint8ClampedArray(width * height);
+        
+        // Extract original alpha channel
+        for (let i = 0; i < data.length; i += 4) {
+          originalAlpha[i / 4] = data[i + 3];
+        }
+        
+        // Apply gaussian-like blur to alpha channel
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const centerIndex = y * width + x;
+            
+            if (originalAlpha[centerIndex] === 0) continue; // Skip transparent pixels
+            
+            let totalWeight = 0;
+            let weightedAlpha = 0;
+            
+            // Sample in radius around pixel
+            for (let dy = -radius; dy <= radius; dy++) {
+              for (let dx = -radius; dx <= radius; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                  const distance = Math.sqrt(dx * dx + dy * dy);
+                  if (distance <= settings.featherRadius) {
+                    const weight = Math.exp(-(distance * distance) / (2 * settings.featherRadius * settings.featherRadius));
+                    const neighborIndex = ny * width + nx;
+                    
+                    totalWeight += weight;
+                    weightedAlpha += originalAlpha[neighborIndex] * weight;
+                  }
+                }
+              }
+            }
+            
+            if (totalWeight > 0) {
+              const newAlpha = Math.round(weightedAlpha / totalWeight);
+              data[centerIndex * 4 + 3] = newAlpha;
+            }
+          }
+        }
+      }
     }
 
     // Apply background color if enabled and saveWithBackground is true
