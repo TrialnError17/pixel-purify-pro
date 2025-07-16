@@ -33,6 +33,11 @@ interface ImageQueueProps {
   onCancelProcessing?: () => void;
   isProcessing?: boolean;
   forceFullscreen?: boolean;
+  processingProgress?: {
+    current: number;
+    total: number;
+    currentImage?: string;
+  };
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -47,7 +52,8 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onClearAll,
   onCancelProcessing,
   isProcessing = false,
-  forceFullscreen = false
+  forceFullscreen = false,
+  processingProgress
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
 
@@ -129,24 +135,49 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
         <div className="flex items-center gap-4">
           {!isFullscreen && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggleVisible}
-              className="flex items-center gap-2"
-            >
-              {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              Image Queue ({images.length})
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleVisible}
+                className="flex items-center gap-2"
+              >
+                {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                Image Queue ({images.length})
+              </Button>
+              
+              {isProcessing && processingProgress && (
+                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">
+                    Processing {processingProgress.current}/{processingProgress.total}
+                  </span>
+                  {processingProgress.currentImage && (
+                    <span className="text-xs text-muted-foreground max-w-[150px] truncate">
+                      {processingProgress.currentImage}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           
           {isFullscreen && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div className="text-lg font-semibold">Image Queue ({images.length})</div>
-              {isProcessing && (
-                <div className="flex items-center gap-2 text-accent-cyan">
+              {isProcessing && processingProgress && (
+                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Processing...</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">
+                      Processing {processingProgress.current}/{processingProgress.total}
+                    </span>
+                    {processingProgress.currentImage && (
+                      <span className="text-xs text-muted-foreground">
+                        {processingProgress.currentImage}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

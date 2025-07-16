@@ -574,11 +574,7 @@ export const useImageProcessor = () => {
       const image = pendingImages[i];
       
       try {
-        // Show progress toast
-        toast({
-          title: `Processing ${i + 1}/${pendingImages.length}`,
-          description: `Processing ${image.name}...`
-        });
+        // Processing notification now handled in queue header
 
         // Process the image
         await processImage(image, colorSettings, effectSettings, setImages);
@@ -607,18 +603,8 @@ export const useImageProcessor = () => {
             return;
           }
           
-          // Download the processed image
-          toast({
-            title: `Downloading ${i + 1}/${pendingImages.length}`,
-            description: `Downloading ${image.name}...`
-          });
-          
+          // Download the processed image - notification handled in queue header
           downloadImage(processedImage, effectSettings);
-          
-          toast({
-            title: `Downloaded ${i + 1}/${pendingImages.length}`,
-            description: `${image.name} processed and downloaded successfully`
-          });
         } else {
           throw new Error('Processing failed');
         }

@@ -298,6 +298,15 @@ const Index = () => {
         visible={queueVisible}
         onToggleVisible={() => setQueueVisible(!queueVisible)}
         onSelectImage={setSelectedImageId}
+        processingProgress={
+          isProcessing 
+            ? {
+                current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
+                total: images.filter(img => img.status !== 'error').length,
+                currentImage: images.find(img => img.status === 'processing')?.name
+              }
+            : undefined
+        }
         onRemoveImage={(id) => {
           const removedImage = images.find(img => img.id === id);
           const prevImages = [...images];
