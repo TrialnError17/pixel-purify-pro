@@ -9,7 +9,8 @@ import {
   ZoomIn, 
   ZoomOut, 
   RotateCcw,
-  Maximize
+  Maximize,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +41,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
+  const [hasManualEdits, setHasManualEdits] = useState(false);
 
   // Color processing functions
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -179,6 +181,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setOriginalImageData(imageData);
       
+      // Reset manual edits when new image is loaded
+      setHasManualEdits(false);
+      setUndoStack([]);
+      
       // Update image with original data if not already set
       if (!image.originalData) {
         const updatedImage = { ...image, originalData: imageData };
@@ -204,9 +210,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image, onImageUpdate]);
 
-  // Process and display image when settings change
+  // Process and display image when settings change (but not if there are manual edits)
   useEffect(() => {
-    if (!originalImageData || !canvasRef.current) return;
+    if (!originalImageData || !canvasRef.current || hasManualEdits) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -218,7 +224,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Display processed image
     ctx.putImageData(processedData, 0, 0);
     
-  }, [originalImageData, colorSettings, effectSettings, processImageData]);
+  }, [originalImageData, colorSettings, effectSettings, processImageData, hasManualEdits]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData) return;
@@ -248,13 +254,18 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
       
-      // Remove contiguous color at clicked position
+      // Remove contiguous color at clicked position (additive to existing processing)
       removeContiguousColor(ctx, x, y, colorSettings);
       
-      // Update image data
+      // Mark that we have manual edits to prevent auto-processing from overwriting
+      setHasManualEdits(true);
+      
+      // Store the manually edited result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const updatedImage = { ...image, processedData: newImageData };
-      onImageUpdate(updatedImage);
+      if (image) {
+        const updatedImage = { ...image, processedData: newImageData };
+        onImageUpdate(updatedImage);
+      }
     }
   }, [image, originalImageData, tool, zoom, pan, colorSettings, onImageUpdate]);
 
@@ -296,10 +307,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Make pixel transparent
       data[pixelIndex + 3] = 0;
       
-      // Add neighbors to stack
-      if (settings.contiguous) {
-        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-      }
+      // Add neighbors to stack (always contiguous for interactive tool)
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
     ctx.putImageData(imageData, 0, 0);
@@ -362,6 +371,27 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setZoom(scale);
     setPan({ x: 0, y: 0 });
   }, []);
+
+  const handleReset = useCallback(() => {
+    if (!originalImageData || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Clear manual edits and reprocess with automatic settings
+    setHasManualEdits(false);
+    setUndoStack([]);
+    
+    // Reprocess the original image with current settings
+    const processedData = processImageData(originalImageData, colorSettings, effectSettings);
+    ctx.putImageData(processedData, 0, 0);
+    
+    if (image) {
+      const updatedImage = { ...image, processedData };
+      onImageUpdate(updatedImage);
+    }
+  }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
   return (
     <div className="flex-1 flex flex-col bg-canvas-bg">
@@ -437,6 +467,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             disabled={undoStack.length === 0}
           >
             <RotateCcw className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            disabled={!hasManualEdits}
+            title="Reset to automatic processing"
+          >
+            <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
       </div>
