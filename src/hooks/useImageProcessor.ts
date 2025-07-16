@@ -357,67 +357,26 @@ export const useImageProcessor = () => {
       const stampR = parseInt(hex.substr(0, 2), 16);
       const stampG = parseInt(hex.substr(2, 2), 16);
       const stampB = parseInt(hex.substr(4, 2), 16);
-      const intensity = settings.inkStamp.threshold / 100;
+      const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
 
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) {
+        if (data[i + 3] > 0) { // Only process non-transparent pixels
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
           
-          // Convert to luminance for threshold effect
+          // Convert to luminance (perceived brightness)
           const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
           
-          // Apply sepia tone conversion
-          const sepiaR = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
-          const sepiaG = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
-          const sepiaB = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
-          
-          // Apply contrast and brightness adjustments for vintage look
-          const contrast = 1.2;
-          const brightness = -20;
-          let finalR = ((sepiaR - 128) * contrast) + 128 + brightness;
-          let finalG = ((sepiaG - 128) * contrast) + 128 + brightness;
-          let finalB = ((sepiaB - 128) * contrast) + 128 + brightness;
-          
-          // Add paper texture simulation using pseudo-random noise
-          const x = (i / 4) % width;
-          const y = Math.floor((i / 4) / width);
-          const noise = (Math.sin(x * 0.1) * Math.cos(y * 0.1) * 127 + 127) / 255;
-          const textureStrength = 0.1;
-          
-          finalR += (noise - 0.5) * textureStrength * 255;
-          finalG += (noise - 0.5) * textureStrength * 255;
-          finalB += (noise - 0.5) * textureStrength * 255;
-          
-          // Clamp values
-          finalR = Math.max(0, Math.min(255, finalR));
-          finalG = Math.max(0, Math.min(255, finalG));
-          finalB = Math.max(0, Math.min(255, finalB));
-          
-          // Color threshold effect - convert to stamp color for dark areas
-          const threshold = (100 - intensity * 100) / 100; // Invert threshold for intuitive control
-          if (luminance < threshold * 255) {
+          if (luminance < threshold) {
             // Dark areas become stamp color
-            const stampBlend = Math.max(0.7, intensity); // Minimum 70% stamp color
-            data[i] = Math.round(finalR * (1 - stampBlend) + stampR * stampBlend);
-            data[i + 1] = Math.round(finalG * (1 - stampBlend) + stampG * stampBlend);
-            data[i + 2] = Math.round(finalB * (1 - stampBlend) + stampB * stampBlend);
+            data[i] = stampR;
+            data[i + 1] = stampG;
+            data[i + 2] = stampB;
+            data[i + 3] = 255; // Fully opaque
           } else {
-            // Light areas get vintage treatment but fade out
-            const fadeOut = Math.min(1, (luminance - threshold * 255) / (255 - threshold * 255));
-            const alpha = data[i + 3] * (1 - fadeOut * 0.8); // Fade transparent areas
-            data[i] = Math.round(finalR);
-            data[i + 1] = Math.round(finalG);
-            data[i + 2] = Math.round(finalB);
-            data[i + 3] = Math.max(0, Math.min(255, alpha));
-          }
-          
-          // Add edge distortion for authentic stamp appearance
-          const edgeDistance = Math.min(x, y, width - x - 1, height - y - 1);
-          if (edgeDistance < 5) {
-            const edgeFade = edgeDistance / 5;
-            data[i + 3] = Math.round(data[i + 3] * edgeFade);
+            // Light areas become transparent
+            data[i + 3] = 0;
           }
         }
       }
