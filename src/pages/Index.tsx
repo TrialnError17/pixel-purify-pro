@@ -52,6 +52,10 @@ export interface EffectSettings {
   };
 }
 
+export interface ContiguousToolSettings {
+  threshold: number;
+}
+
 const Index = () => {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
@@ -69,6 +73,10 @@ const Index = () => {
     contiguous: true,
     minRegionSize: 100,
     pickedColors: []
+  });
+
+  const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
+    threshold: 30
   });
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
@@ -222,6 +230,7 @@ const Index = () => {
       <div className="flex flex-1 min-h-0">
         <LeftSidebar 
           settings={colorSettings}
+          contiguousSettings={contiguousSettings}
           onSettingsChange={(newSettings) => {
             const prevSettings = { ...colorSettings };
             setColorSettings(newSettings);
@@ -233,6 +242,17 @@ const Index = () => {
               undo: () => setColorSettings(prevSettings)
             });
           }}
+          onContiguousSettingsChange={(newContiguousSettings) => {
+            const prevContiguousSettings = { ...contiguousSettings };
+            setContiguousSettings(newContiguousSettings);
+            
+            // Add undo action for contiguous settings changes
+            addUndoAction({
+              type: 'settings',
+              description: 'Change contiguous tool settings',
+              undo: () => setContiguousSettings(prevContiguousSettings)
+            });
+          }}
         />
         
         <MainCanvas 
@@ -240,6 +260,7 @@ const Index = () => {
           tool={currentTool}
           onToolChange={setCurrentTool}
           colorSettings={colorSettings}
+          contiguousSettings={contiguousSettings}
           effectSettings={effectSettings}
           onImageUpdate={(updatedImage) => {
             setImages(prev => prev.map(img => 

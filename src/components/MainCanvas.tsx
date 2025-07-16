@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
+import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
 import { 
   Move, 
   Pipette, 
@@ -24,6 +24,7 @@ interface MainCanvasProps {
   tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous';
   onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous') => void;
   colorSettings: ColorRemovalSettings;
+  contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
@@ -42,6 +43,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   tool,
   onToolChange,
   colorSettings,
+  contiguousSettings,
   effectSettings,
   onImageUpdate,
   onColorPicked,
@@ -523,11 +525,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Add color to picked colors for reference
       onColorPicked(hex);
       
-      // Remove contiguous color at clicked position (using current threshold)
-      removeContiguousColor(ctx, x, y, { 
-        ...colorSettings, 
-        threshold: colorSettings.threshold || 30 // Use current threshold or default
-      });
+      // Remove contiguous color at clicked position using independent contiguous threshold
+      removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       
       // Mark that we have manual edits to prevent auto-processing from overwriting
       setHasManualEdits(true);
@@ -580,6 +579,52 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       data[pixelIndex + 3] = 0;
       
       // Add neighbors to stack (always contiguous for interactive tool)
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+  // Independent contiguous removal function for the contiguous tool
+  const removeContiguousColorIndependent = (ctx: CanvasRenderingContext2D, startX: number, startY: number, threshold: number) => {
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+    
+    // Get target color
+    const index = (startY * width + startX) * 4;
+    const targetR = data[index];
+    const targetG = data[index + 1];
+    const targetB = data[index + 2];
+    
+    // Flood fill algorithm to remove contiguous pixels
+    const visited = new Set<string>();
+    const stack = [[startX, startY]];
+    
+    const isColorSimilar = (r: number, g: number, b: number) => {
+      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      return distance <= threshold * 2.55; // Convert threshold to 0-255 scale
+    };
+    
+    while (stack.length > 0) {
+      const [x, y] = stack.pop()!;
+      const key = `${x},${y}`;
+      
+      if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+      visited.add(key);
+      
+      const pixelIndex = (y * width + x) * 4;
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      
+      if (!isColorSimilar(r, g, b)) continue;
+      
+      // Make pixel transparent
+      data[pixelIndex + 3] = 0;
+      
+      // Add neighbors to stack
       stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
