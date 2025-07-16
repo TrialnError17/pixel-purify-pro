@@ -130,6 +130,19 @@ const Index = () => {
   }, [handleFilesSelected]);
 
   const selectedImage = images.find(img => img.id === selectedImageId);
+  const selectedImageIndex = images.findIndex(img => img.id === selectedImageId);
+
+  const handlePreviousImage = useCallback(() => {
+    if (selectedImageIndex > 0) {
+      setSelectedImageId(images[selectedImageIndex - 1].id);
+    }
+  }, [images, selectedImageIndex]);
+
+  const handleNextImage = useCallback(() => {
+    if (selectedImageIndex < images.length - 1) {
+      setSelectedImageId(images[selectedImageIndex + 1].id);
+    }
+  }, [images, selectedImageIndex]);
 
   return (
     <div 
@@ -166,6 +179,12 @@ const Index = () => {
           onColorPicked={(color) => {
             setColorSettings(prev => ({ ...prev, targetColor: color, mode: 'manual' }));
           }}
+          onPreviousImage={handlePreviousImage}
+          onNextImage={handleNextImage}
+          canGoPrevious={selectedImageIndex > 0}
+          canGoNext={selectedImageIndex < images.length - 1}
+          currentImageIndex={selectedImageIndex + 1}
+          totalImages={images.length}
         />
         
         <RightSidebar 

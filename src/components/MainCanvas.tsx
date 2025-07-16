@@ -10,7 +10,9 @@ import {
   ZoomOut, 
   RotateCcw,
   Maximize,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +24,12 @@ interface MainCanvasProps {
   effectSettings: EffectSettings;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
+  onPreviousImage: () => void;
+  onNextImage: () => void;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  currentImageIndex: number;
+  totalImages: number;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -31,12 +39,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   colorSettings,
   effectSettings,
   onImageUpdate,
-  onColorPicked
+  onColorPicked,
+  onPreviousImage,
+  onNextImage,
+  canGoPrevious,
+  canGoNext,
+  currentImageIndex,
+  totalImages
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
@@ -191,15 +206,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         onImageUpdate(updatedImage);
       }
       
-      // Fit to container
+      // Calculate center offset for the image
       if (containerRef.current) {
         const container = containerRef.current;
         const containerRect = container.getBoundingClientRect();
         const scaleX = (containerRect.width - 40) / canvas.width;
         const scaleY = (containerRect.height - 40) / canvas.height;
         const scale = Math.min(scaleX, scaleY, 1);
+        
+        // Calculate center position
+        const centerX = (containerRect.width - canvas.width * scale) / 2;
+        const centerY = (containerRect.height - canvas.height * scale) / 2;
+        
         setZoom(scale);
         setPan({ x: 0, y: 0 });
+        setCenterOffset({ x: centerX, y: centerY });
       }
     };
     
@@ -234,8 +255,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left - pan.x) / zoom);
-    const y = Math.floor((e.clientY - rect.top - pan.y) / zoom);
+    const x = Math.floor((e.clientX - rect.left - centerOffset.x - pan.x) / zoom);
+    const y = Math.floor((e.clientY - rect.top - centerOffset.y - pan.y) / zoom);
     
     if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
 
@@ -267,7 +288,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         onImageUpdate(updatedImage);
       }
     }
-  }, [image, originalImageData, tool, zoom, pan, colorSettings, onImageUpdate]);
+  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, onColorPicked, onImageUpdate]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -368,8 +389,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const scaleY = (containerRect.height - 40) / canvas.height;
     const scale = Math.min(scaleX, scaleY, 1);
     
+    // Calculate center position
+    const centerX = (containerRect.width - canvas.width * scale) / 2;
+    const centerY = (containerRect.height - canvas.height * scale) / 2;
+    
     setZoom(scale);
     setPan({ x: 0, y: 0 });
+    setCenterOffset({ x: centerX, y: centerY });
   }, []);
 
   const handleReset = useCallback(() => {
@@ -398,6 +424,34 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       {/* Toolbar */}
       <div className="h-12 bg-gradient-header border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
+          {/* Navigation */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onPreviousImage}
+            disabled={!canGoPrevious}
+            title="Previous image"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          
+          <span className="text-sm text-muted-foreground px-2">
+            {currentImageIndex} / {totalImages}
+          </span>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onNextImage}
+            disabled={!canGoNext}
+            title="Next image"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          
+          <div className="w-px h-6 bg-border mx-2" />
+          
+          {/* Tools */}
           <Button
             variant={tool === 'pan' ? 'default' : 'ghost'}
             size="sm"
@@ -500,7 +554,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               tool === 'remove' && 'cursor-pointer'
             )}
             style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
               transformOrigin: '0 0',
               imageRendering: zoom > 2 ? 'pixelated' : 'auto'
             }}
