@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -15,7 +16,6 @@ import {
   Clock,
   Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface ImageQueueProps {
   images: ImageItem[];
