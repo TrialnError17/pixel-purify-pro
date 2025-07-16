@@ -169,12 +169,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Display processed image
     ctx.putImageData(processedData, 0, 0);
     
-    // Update image with processed data
-    if (image) {
-      const updatedImage = { ...image, processedData };
-      onImageUpdate(updatedImage);
-    }
-  }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, processImageData]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData) return;
