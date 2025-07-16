@@ -52,29 +52,23 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
         {settings.enabled && (
           <>
-            <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-cyan/10 border-accent-blue/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-cyan bg-clip-text text-transparent">
-                  🎮 Mode Selection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <RadioGroup
-                  value={settings.mode}
-                  onValueChange={(mode: 'auto' | 'manual') => updateSettings({ mode })}
-                  className="space-y-3"
-                >
-                  <div className="flex items-center space-x-2 p-2 rounded-lg hover:bg-accent-blue/5 transition-colors">
-                    <RadioGroupItem value="auto" id="auto" className="border-accent-blue text-accent-blue" />
-                    <Label htmlFor="auto" className="text-sm font-medium cursor-pointer">🤖 Auto (top-left color)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-2 rounded-lg hover:bg-accent-cyan/5 transition-colors">
-                    <RadioGroupItem value="manual" id="manual" className="border-accent-cyan text-accent-cyan" />
-                    <Label htmlFor="manual" className="text-sm font-medium cursor-pointer">🎨 Manual (pick color)</Label>
-                  </div>
-                </RadioGroup>
-              </CardContent>
-            </Card>
+            <div className="py-1">
+              <Label className="text-xs font-medium text-muted-foreground mb-1 block">Mode Selection</Label>
+              <RadioGroup
+                value={settings.mode}
+                onValueChange={(mode: 'auto' | 'manual') => updateSettings({ mode })}
+                className="space-y-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="auto" id="auto" />
+                  <Label htmlFor="auto" className="text-xs cursor-pointer">Auto (top-left color)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="manual" id="manual" />
+                  <Label htmlFor="manual" className="text-xs cursor-pointer">Manual (pick color)</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
             {settings.mode === 'manual' && (
               <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
