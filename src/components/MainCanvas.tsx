@@ -274,28 +274,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     setIsProcessing(true);
 
-    // Get current canvas state to preserve any existing edits
-    const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(originalImageData, colorSettings, effectSettings).then((processedData) => {
-      // Only apply if we're still on the same canvas and avoid flashing
-      if (canvasRef.current === canvas) {
-        // Only update if the processed data is significantly different to avoid unnecessary redraws
-        const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        let shouldUpdate = false;
-        
-        // Quick check if data changed
-        for (let i = 0; i < Math.min(processedData.data.length, currentData.data.length); i += 400) {
-          if (Math.abs(processedData.data[i] - currentData.data[i]) > 5) {
-            shouldUpdate = true;
-            break;
-          }
-        }
-        
-        if (shouldUpdate) {
-          ctx.putImageData(processedData, 0, 0);
-        }
+      // Only apply if we're still on the same canvas and no manual edits occurred during processing
+      if (canvasRef.current === canvas && !hasManualEdits) {
+        ctx.putImageData(processedData, 0, 0);
         setIsProcessing(false);
       }
     });
