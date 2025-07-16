@@ -13,14 +13,15 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Download
+  Download,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'eyedropper' | 'remove';
-  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove') => void;
+  tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous';
+  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous') => void;
   colorSettings: ColorRemovalSettings;
   effectSettings: EffectSettings;
   onImageUpdate: (image: ImageItem) => void;
@@ -349,6 +350,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const updatedImage = { ...image, processedData: newImageData };
         onImageUpdate(updatedImage);
       }
+    } else if (tool === 'contiguous') {
+      // Contiguous selection tool - adds color to picked colors for removal
+      // Get color at clicked position from original image
+      const index = (y * originalImageData.width + x) * 4;
+      const r = originalImageData.data[index];
+      const g = originalImageData.data[index + 1];
+      const b = originalImageData.data[index + 2];
+      const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+      
+      // Add contiguous region to picked colors
+      onColorPicked(hex);
     }
   }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, onColorPicked, onImageUpdate]);
 
@@ -588,6 +600,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <MousePointer className="w-4 h-4" />
             Remove
           </Button>
+          
+          <Button
+            variant={tool === 'contiguous' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onToolChange('contiguous')}
+            className="flex items-center gap-2"
+          >
+            <Target className="w-4 h-4" />
+            Contiguous
+          </Button>
         </div>
         
         <div className="flex items-center gap-2">
@@ -670,7 +692,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               "absolute cursor-crosshair border border-canvas-border",
               tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
               tool === 'eyedropper' && 'cursor-crosshair',
-              tool === 'remove' && 'cursor-pointer'
+              tool === 'remove' && 'cursor-pointer',
+              tool === 'contiguous' && 'cursor-crosshair'
             )}
             style={{
               transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
