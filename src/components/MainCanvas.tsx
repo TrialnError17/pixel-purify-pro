@@ -12,7 +12,8 @@ import {
   Maximize,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ interface MainCanvasProps {
   canGoNext: boolean;
   currentImageIndex: number;
   totalImages: number;
+  onDownloadImage: (image: ImageItem) => void;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -45,7 +47,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   canGoPrevious,
   canGoNext,
   currentImageIndex,
-  totalImages
+  totalImages,
+  onDownloadImage
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -582,6 +585,22 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Download Button */}
+      {image && (
+        <div className="flex justify-center p-2 bg-muted/50 border-b border-border">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => onDownloadImage(image)}
+            disabled={!image || image.status !== 'completed'}
+            className="flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download PNG
+          </Button>
+        </div>
+      )}
 
       {/* Canvas Area */}
       <div 

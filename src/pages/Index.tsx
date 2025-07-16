@@ -210,6 +210,7 @@ const Index = () => {
           canGoNext={selectedImageIndex < images.length - 1}
           currentImageIndex={selectedImageIndex + 1}
           totalImages={images.length}
+          onDownloadImage={downloadImage}
         />
         
         <RightSidebar 
