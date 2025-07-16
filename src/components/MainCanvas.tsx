@@ -275,23 +275,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Apply background color for preview if enabled (regardless of saveWithBackground setting)
     if (effects.background.enabled) {
-      console.log('Applying background color:', effects.background.color);
       const hex = effects.background.color.replace('#', '');
       const bgR = parseInt(hex.substr(0, 2), 16);
       const bgG = parseInt(hex.substr(2, 2), 16);
       const bgB = parseInt(hex.substr(4, 2), 16);
 
-      let transparentPixelsFound = 0;
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) {
           data[i] = bgR;
           data[i + 1] = bgG;
           data[i + 2] = bgB;
           data[i + 3] = 255;
-          transparentPixelsFound++;
         }
       }
-      console.log('Background applied to', transparentPixelsFound, 'transparent pixels');
     }
 
     // Apply ink stamp effect
