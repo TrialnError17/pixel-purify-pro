@@ -133,4 +133,22 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Better visibility for switch components in off state */
+  button[data-state="unchecked"] {
+    background-color: hsl(var(--muted)) !important;
+    border: 2px solid hsl(var(--border)) !important;
+    opacity: 0.8;
+  }
+  
+  button[data-state="unchecked"]:hover {
+    background-color: hsl(var(--accent)) !important;
+    opacity: 1;
+  }
+  
+  /* Switch thumb visibility improvements */
+  span[data-state="unchecked"] {
+    background-color: hsl(var(--muted-foreground)) !important;
+    border: 1px solid hsl(var(--foreground)) !important;
+  }
 }
