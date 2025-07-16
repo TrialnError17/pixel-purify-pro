@@ -128,10 +128,7 @@ const Index = () => {
       setSelectedImageId(newImages[0].id);
     }
     
-    toast({
-      title: "Images Added",
-      description: `Added ${newImages.length} image(s) to the queue`
-    });
+    // Removed images added toast
   }, [images, selectedImageId, toast, addUndoAction]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -340,10 +337,7 @@ const Index = () => {
             undo: () => {
               setImages(prevImages);
               setIsProcessing(false);
-              toast({
-                title: "Batch Processing Undone",
-                description: "Reverted all processed images to their previous state"
-              });
+              // Removed undo toast
             }
           });
           
@@ -362,10 +356,7 @@ const Index = () => {
             undo: () => {
               setImages(prevImages);
               setIsProcessing(false);
-              toast({
-                title: "Processing Undone",
-                description: `Reverted ${image.name} to its previous state`
-              });
+              // Removed undo toast
             }
           });
           
@@ -377,10 +368,7 @@ const Index = () => {
         onCancelProcessing={() => {
           cancelProcessing();
           setIsProcessing(false);
-          toast({
-            title: "Processing Cancelled",
-            description: "All processing has been stopped"
-          });
+          // Removed cancel toast
         }}
         isProcessing={isProcessing}
         forceFullscreen={isProcessing}

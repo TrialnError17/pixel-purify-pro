@@ -568,10 +568,7 @@ export const useImageProcessor = () => {
         } : img
       ));
 
-      toast({
-        title: "Processing Complete",
-        description: `${image.name} has been processed successfully`
-      });
+      // Removed success toast notification
 
     } catch (error) {
       console.error('Processing error:', error);
@@ -612,10 +609,7 @@ export const useImageProcessor = () => {
       return;
     }
 
-    toast({
-      title: "Batch Processing Started",
-      description: `Processing and downloading ${pendingImages.length} images one by one...`
-    });
+    // Removed batch processing start toast
 
     // Process and download images sequentially
     for (let i = 0; i < pendingImages.length; i++) {
@@ -682,10 +676,7 @@ export const useImageProcessor = () => {
     }
 
     if (!cancelTokenRef.current.cancelled) {
-      toast({
-        title: "Batch Processing Complete",
-        description: `Successfully processed and downloaded ${pendingImages.length} images`
-      });
+      // Removed batch processing complete toast
     }
   }, [processImage, toast]);
 
@@ -831,10 +822,7 @@ export const useImageProcessor = () => {
       URL.revokeObjectURL(url);
     }, 'image/png', 1.0); // Add quality parameter
 
-    toast({
-      title: "Download Started",
-      description: `Downloading ${image.name}${effectSettings?.download?.trimTransparentPixels ? ' (trimmed)' : ''}`
-    });
+    // Removed download started toast
   }, [toast, trimTransparentPixels, applyDownloadEffects]);
 
 
