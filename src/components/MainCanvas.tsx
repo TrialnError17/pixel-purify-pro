@@ -249,7 +249,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return () => {
       URL.revokeObjectURL(img.src);
     };
-  }, [image, onImageUpdate]);
+  }, [image]);
 
   // Debounced processing to prevent flashing
   const debouncedProcessImageData = useMemo(() => {
