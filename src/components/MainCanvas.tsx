@@ -74,73 +74,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Only process if color removal is enabled
     if (settings.enabled) {
-      let targetR, targetG, targetB;
-
       if (settings.mode === 'auto') {
         // Use top-left corner color
-        targetR = data[0];
-        targetG = data[1];
-        targetB = data[2];
-      } else {
-        // Use manual color
-        const hex = settings.targetColor.replace('#', '');
-        targetR = parseInt(hex.substr(0, 2), 16);
-        targetG = parseInt(hex.substr(2, 2), 16);
-        targetB = parseInt(hex.substr(4, 2), 16);
-      }
+        const targetR = data[0];
+        const targetG = data[1];
+        const targetB = data[2];
+        const threshold = settings.threshold * 2.55;
 
-      // Convert threshold (0-100) to color distance threshold
-      const threshold = settings.threshold * 2.55; // Scale to 0-255 range
-
-      if (settings.contiguous) {
-        // Contiguous removal - use flood fill from borders
-        const visited = new Set<string>();
-        
-        const isColorSimilar = (r: number, g: number, b: number) => {
-          const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-          return distance <= threshold;
-        };
-
-        const floodFill = (startX: number, startY: number) => {
-          const stack = [[startX, startY]];
-          
-          while (stack.length > 0) {
-            const [x, y] = stack.pop()!;
-            const key = `${x},${y}`;
-            
-            if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-            visited.add(key);
-            
-            const index = (y * width + x) * 4;
-            const r = data[index];
-            const g = data[index + 1];
-            const b = data[index + 2];
-            const a = data[index + 3];
-            
-            if (a === 0 || !isColorSimilar(r, g, b)) continue;
-            
-            // Make pixel transparent
-            data[index + 3] = 0;
-            
-            // Add neighbors to stack
-            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-          }
-        };
-
-        // Start flood fill from all border pixels
-        // Top and bottom borders
-        for (let x = 0; x < width; x++) {
-          floodFill(x, 0); // Top border
-          floodFill(x, height - 1); // Bottom border
-        }
-        // Left and right borders  
-        for (let y = 0; y < height; y++) {
-          floodFill(0, y); // Left border
-          floodFill(width - 1, y); // Right border
-        }
-        
-      } else {
-        // Non-contiguous removal - remove all similar colors
+        // Simple non-contiguous removal for auto mode
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
@@ -150,6 +91,47 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           if (distance <= threshold) {
             data[i + 3] = 0; // Make transparent
+          }
+        }
+      } else {
+        // Manual mode - handle both single target color and picked colors
+        let colorsToRemove = [];
+        
+        // Add the main target color
+        const hex = settings.targetColor.replace('#', '');
+        colorsToRemove.push({
+          r: parseInt(hex.substr(0, 2), 16),
+          g: parseInt(hex.substr(2, 2), 16),
+          b: parseInt(hex.substr(4, 2), 16),
+          threshold: settings.threshold
+        });
+        
+        // Add all picked colors with their individual thresholds
+        settings.pickedColors.forEach(pickedColor => {
+          const pickedHex = pickedColor.color.replace('#', '');
+          colorsToRemove.push({
+            r: parseInt(pickedHex.substr(0, 2), 16),
+            g: parseInt(pickedHex.substr(2, 2), 16),
+            b: parseInt(pickedHex.substr(4, 2), 16),
+            threshold: pickedColor.threshold
+          });
+        });
+
+        // Process each pixel against all target colors
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Check against each target color
+          for (const targetColor of colorsToRemove) {
+            const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
+            const threshold = targetColor.threshold * 2.55; // Scale to 0-255 range
+            
+            if (distance <= threshold) {
+              data[i + 3] = 0; // Make transparent
+              break; // No need to check other colors once removed
+            }
           }
         }
       }
@@ -292,8 +274,25 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const b = originalImageData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
-      // Update target color and switch to manual mode
+      // Add to picked colors and immediately remove this color
       onColorPicked(hex);
+      
+      // Save current state for undo
+      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Immediately remove this color with default threshold of 30
+      removePickedColor(ctx, r, g, b, 30);
+      
+      // Mark that we have manual edits
+      setHasManualEdits(true);
+      
+      // Store the result
+      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (image) {
+        const updatedImage = { ...image, processedData: newImageData };
+        onImageUpdate(updatedImage);
+      }
     } else if (tool === 'remove') {
       // Save current state for undo
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -354,6 +353,31 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Add neighbors to stack (always contiguous for interactive tool)
       stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+  const removePickedColor = (ctx: CanvasRenderingContext2D, targetR: number, targetG: number, targetB: number, threshold: number) => {
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+
+    // Convert threshold to proper scale
+    const thresholdScaled = threshold * 2.55;
+
+    // Remove all similar colors globally (non-contiguous for eyedropper)
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      
+      if (distance <= thresholdScaled) {
+        data[i + 3] = 0; // Make transparent
+      }
     }
     
     ctx.putImageData(imageData, 0, 0);

@@ -19,6 +19,12 @@ export interface ImageItem {
   error?: string;
 }
 
+export interface PickedColor {
+  id: string;
+  color: string;
+  threshold: number;
+}
+
 export interface ColorRemovalSettings {
   enabled: boolean;
   mode: 'auto' | 'manual';
@@ -27,6 +33,7 @@ export interface ColorRemovalSettings {
   contiguous: boolean;
   minRegionSize: number;
   featherRadius: number;
+  pickedColors: PickedColor[];
 }
 
 export interface EffectSettings {
@@ -57,7 +64,8 @@ const Index = () => {
     threshold: 30,
     contiguous: true,
     minRegionSize: 100,
-    featherRadius: 2
+    featherRadius: 2,
+    pickedColors: []
   });
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
@@ -183,7 +191,18 @@ const Index = () => {
             ));
           }}
           onColorPicked={(color) => {
-            setColorSettings(prev => ({ ...prev, targetColor: color, mode: 'manual' }));
+            // Add color to picked colors list with default threshold of 30
+            const newPickedColor: PickedColor = {
+              id: crypto.randomUUID(),
+              color,
+              threshold: 30
+            };
+            setColorSettings(prev => ({ 
+              ...prev, 
+              targetColor: color, 
+              mode: 'manual',
+              pickedColors: [...prev.pickedColors, newPickedColor]
+            }));
           }}
           onPreviousImage={handlePreviousImage}
           onNextImage={handleNextImage}

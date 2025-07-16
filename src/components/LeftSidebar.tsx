@@ -5,8 +5,8 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ColorRemovalSettings } from '@/pages/Index';
-import { Palette, Settings } from 'lucide-react';
+import { ColorRemovalSettings, PickedColor } from '@/pages/Index';
+import { Palette, Settings, X, Trash2 } from 'lucide-react';
 
 interface LeftSidebarProps {
   settings: ColorRemovalSettings;
@@ -98,6 +98,71 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       {settings.targetColor.toUpperCase()}
                     </span>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Picked Colors List */}
+            {settings.mode === 'manual' && settings.pickedColors.length > 0 && (
+              <Card className="bg-gradient-to-br from-accent-lime/10 to-accent-green/10 border-accent-lime/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center justify-between">
+                    <span className="bg-gradient-to-r from-accent-lime to-accent-green bg-clip-text text-transparent font-semibold flex items-center gap-2">
+                      🎨 Picked Colors ({settings.pickedColors.length})
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSettings({ pickedColors: [] })}
+                      className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-3">
+                  {settings.pickedColors.map((pickedColor, index) => (
+                    <div key={pickedColor.id} className="p-3 bg-gradient-to-r from-accent-lime/5 to-accent-green/5 rounded-lg border border-accent-lime/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-6 h-6 rounded border-2 border-accent-lime shadow-lg"
+                            style={{ backgroundColor: pickedColor.color }}
+                          />
+                          <span className="text-xs font-mono font-bold text-accent-green bg-accent-green/10 px-2 py-1 rounded">
+                            {pickedColor.color.toUpperCase()}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newPickedColors = settings.pickedColors.filter(c => c.id !== pickedColor.id);
+                            updateSettings({ pickedColors: newPickedColors });
+                          }}
+                          className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-accent-green mb-1 block">Threshold: {pickedColor.threshold}</Label>
+                        <Slider
+                          value={[pickedColor.threshold]}
+                          onValueChange={([threshold]) => {
+                            const newPickedColors = settings.pickedColors.map(c => 
+                              c.id === pickedColor.id ? { ...c, threshold } : c
+                            );
+                            updateSettings({ pickedColors: newPickedColors });
+                          }}
+                          min={1}
+                          max={100}
+                          step={1}
+                          className="w-full [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}
