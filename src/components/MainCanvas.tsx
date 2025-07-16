@@ -34,6 +34,7 @@ interface MainCanvasProps {
   currentImageIndex: number;
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
+  addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -50,7 +51,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   canGoNext,
   currentImageIndex,
   totalImages,
-  onDownloadImage
+  onDownloadImage,
+  addUndoAction
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -440,9 +442,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Add to picked colors and immediately remove this color
       onColorPicked(hex);
       
-      // Save current state for undo
+      // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Add global undo action
+      if (addUndoAction && image) {
+        addUndoAction({
+          type: 'canvas_edit',
+          description: `Pick color ${hex}`,
+          undo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(currentImageData, 0, 0);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                onImageUpdate(updatedImage);
+              }
+            }
+          }
+        });
+      }
       
       // Immediately remove this color with default threshold of 30
       removePickedColor(ctx, r, g, b, 30);
@@ -458,9 +480,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     } else if (tool === 'remove') {
       // Interactive removal tool should always work, regardless of color removal settings
-      // Save current state for undo
+      // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Add global undo action
+      if (addUndoAction && image) {
+        addUndoAction({
+          type: 'canvas_edit',
+          description: 'Manual color removal',
+          undo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(currentImageData, 0, 0);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                onImageUpdate(updatedImage);
+              }
+            }
+          }
+        });
+      }
       
       // Remove contiguous color at clicked position (using manual threshold)
       removeContiguousColor(ctx, x, y, { 

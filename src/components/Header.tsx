@@ -1,19 +1,27 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, ImagePlus, Download, Package } from 'lucide-react';
+import { FolderPlus, ImagePlus, Download, Undo, Redo, Package } from 'lucide-react';
 
 interface HeaderProps {
   onAddImages: () => void;
   onAddFolder: () => void;
   onDownloadPNG: () => void;
   canDownload: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onAddImages,
   onAddFolder,
   onDownloadPNG,
-  canDownload
+  canDownload,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false
 }) => {
   return (
     <header className="h-14 bg-gradient-header border-b border-border flex items-center justify-between px-4 shadow-panel">
@@ -61,6 +69,40 @@ export const Header: React.FC<HeaderProps> = ({
           <Download className="w-4 h-4" />
           PNG
         </Button>
+        
+        {(onUndo || onRedo) && (
+          <>
+            <div className="w-px h-6 bg-border mx-2" />
+            
+            {onUndo && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onUndo}
+                disabled={!canUndo}
+                className="flex items-center gap-2"
+                title="Undo last action"
+              >
+                <Undo className="w-4 h-4" />
+                Undo
+              </Button>
+            )}
+            
+            {onRedo && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRedo}
+                disabled={!canRedo}
+                className="flex items-center gap-2"
+                title="Redo last undone action"
+              >
+                <Redo className="w-4 h-4" />
+                Redo
+              </Button>
+            )}
+          </>
+        )}
       </div>
     </header>
   );
