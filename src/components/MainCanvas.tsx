@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
@@ -57,6 +57,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const [hasManualEdits, setHasManualEdits] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Color processing functions
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -231,6 +232,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image, onImageUpdate]);
 
+  // Debounced processing to prevent flashing
+  const debouncedProcessImageData = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    return (imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
+      return new Promise<ImageData>((resolve) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          const result = processImageData(imageData, colorSettings, effectSettings);
+          resolve(result);
+        }, 50); // 50ms debounce
+      });
+    };
+  }, [processImageData]);
+
   // Process and display image when settings change (but not if there are manual edits)
   useEffect(() => {
     if (!originalImageData || !canvasRef.current || hasManualEdits) return;
@@ -239,13 +255,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Process the original image data with current settings
-    const processedData = processImageData(originalImageData, colorSettings, effectSettings);
-    
-    // Display processed image
-    ctx.putImageData(processedData, 0, 0);
-    
-  }, [originalImageData, colorSettings, effectSettings, processImageData, hasManualEdits]);
+    setIsProcessing(true);
+
+    // Use debounced processing to prevent rapid updates
+    debouncedProcessImageData(originalImageData, colorSettings, effectSettings).then((processedData) => {
+      // Only apply if we're still on the same canvas
+      if (canvasRef.current === canvas) {
+        ctx.putImageData(processedData, 0, 0);
+        setIsProcessing(false);
+      }
+    });
+
+    return () => {
+      setIsProcessing(false);
+    };
+  }, [originalImageData, colorSettings, effectSettings, debouncedProcessImageData, hasManualEdits]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData) return;
