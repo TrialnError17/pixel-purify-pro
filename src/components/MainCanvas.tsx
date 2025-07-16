@@ -291,15 +291,26 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, [originalImageData, colorSettings, effectSettings, debouncedProcessImageData, hasManualEdits]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (!canvasRef.current || !image || !originalImageData) return;
+    if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left - centerOffset.x - pan.x) / zoom);
-    const y = Math.floor((e.clientY - rect.top - centerOffset.y - pan.y) / zoom);
+    // Get container bounds for proper coordinate calculation
+    const containerRect = containerRef.current.getBoundingClientRect();
+    
+    // Calculate mouse position relative to the actual canvas pixels
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+    
+    // Convert from container coordinates to canvas pixel coordinates
+    const canvasX = (mouseX - centerOffset.x - pan.x) / zoom;
+    const canvasY = (mouseY - centerOffset.y - pan.y) / zoom;
+    
+    // Round to pixel boundaries and ensure within canvas bounds
+    const x = Math.floor(canvasX);
+    const y = Math.floor(canvasY);
     
     if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
 
