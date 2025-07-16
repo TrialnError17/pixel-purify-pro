@@ -6,52 +6,14 @@ export const useImageProcessor = () => {
   const { toast } = useToast();
   const cancelTokenRef = useRef({ cancelled: false });
 
-  // CIEDE2000 color distance calculation (simplified version)
+  // Simple RGB color distance calculation (more reliable than LAB)
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
-    // Convert RGB to LAB color space (simplified)
-    const lab1 = rgbToLab(r1, g1, b1);
-    const lab2 = rgbToLab(r2, g2, b2);
-    
-    // Simplified CIEDE2000 distance calculation
-    const deltaL = lab2.l - lab1.l;
-    const deltaA = lab2.a - lab1.a;
-    const deltaB = lab2.b - lab1.b;
-    
-    return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
   }, []);
 
-  // Convert RGB to LAB color space (simplified)
-  const rgbToLab = (r: number, g: number, b: number) => {
-    // Convert RGB to XYZ first (simplified)
-    let rNorm = r / 255;
-    let gNorm = g / 255;
-    let bNorm = b / 255;
-
-    // Apply gamma correction
-    rNorm = rNorm > 0.04045 ? Math.pow((rNorm + 0.055) / 1.055, 2.4) : rNorm / 12.92;
-    gNorm = gNorm > 0.04045 ? Math.pow((gNorm + 0.055) / 1.055, 2.4) : gNorm / 12.92;
-    bNorm = bNorm > 0.04045 ? Math.pow((bNorm + 0.055) / 1.055, 2.4) : bNorm / 12.92;
-
-    // Observer. = 2°, Illuminant = D65
-    const x = rNorm * 0.4124 + gNorm * 0.3576 + bNorm * 0.1805;
-    const y = rNorm * 0.2126 + gNorm * 0.7152 + bNorm * 0.0722;
-    const z = rNorm * 0.0193 + gNorm * 0.1192 + bNorm * 0.9505;
-
-    // Convert XYZ to LAB
-    const xn = 95.047;  // Reference white D65
-    const yn = 100.000;
-    const zn = 108.883;
-
-    const fx = x / xn > 0.008856 ? Math.pow(x / xn, 1/3) : (7.787 * x / xn) + (16/116);
-    const fy = y / yn > 0.008856 ? Math.pow(y / yn, 1/3) : (7.787 * y / yn) + (16/116);
-    const fz = z / zn > 0.008856 ? Math.pow(z / zn, 1/3) : (7.787 * z / zn) + (16/116);
-
-    const l = (116 * fy) - 16;
-    const a = 500 * (fx - fy);
-    const b_lab = 200 * (fy - fz);
-
-    return { l, a, b: b_lab };
-  };
 
   // Auto color removal - removes top-left corner color and similar colors
   const autoColorRemoval = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
@@ -64,8 +26,8 @@ export const useImageProcessor = () => {
     const targetG = data[1];
     const targetB = data[2];
 
-    // Convert threshold (0-100) to LAB distance threshold - made less aggressive
-    const threshold = settings.threshold * 0.8; // Reduced from 1.5 to 0.8
+    // Convert threshold (0-100) to RGB distance threshold (much more conservative)
+    const threshold = settings.threshold * 2.55; // Scale to 0-255 range
     
     console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, 'threshold:', threshold);
     
@@ -100,7 +62,7 @@ export const useImageProcessor = () => {
     const targetG = parseInt(hex.substr(2, 2), 16);
     const targetB = parseInt(hex.substr(4, 2), 16);
 
-    const threshold = settings.threshold * 0.8;
+    const threshold = settings.threshold * 2.55;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -126,7 +88,7 @@ export const useImageProcessor = () => {
 
     const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
       const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold * 0.8;
+      return distance <= settings.threshold * 2.55;
     };
 
     const floodFillFromBorder = (startX: number, startY: number) => {
