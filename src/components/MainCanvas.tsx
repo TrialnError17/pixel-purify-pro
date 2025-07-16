@@ -273,22 +273,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Apply background color for preview if enabled (regardless of saveWithBackground setting)
-    if (effects.background.enabled) {
-      const hex = effects.background.color.replace('#', '');
-      const bgR = parseInt(hex.substr(0, 2), 16);
-      const bgG = parseInt(hex.substr(2, 2), 16);
-      const bgB = parseInt(hex.substr(4, 2), 16);
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) {
-          data[i] = bgR;
-          data[i + 1] = bgG;
-          data[i + 2] = bgB;
-          data[i + 3] = 255;
-        }
-      }
-    }
+    // Note: Background is now handled as a backdrop layer, not pixel filling
 
     // Apply ink stamp effect
     if (effects.inkStamp.enabled) {
@@ -876,26 +861,43 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         onWheel={handleWheel}
       >
         {image ? (
-          <canvas
-            ref={canvasRef}
-            className={cn(
-              "absolute cursor-crosshair border border-canvas-border",
-              tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
-              tool === 'eyedropper' && 'cursor-crosshair',
-              tool === 'remove' && 'cursor-pointer',
-              tool === 'contiguous' && 'cursor-crosshair'
+          <>
+            {/* Background backdrop layer */}
+            {effectSettings.background.enabled && (
+              <div
+                className="absolute"
+                style={{
+                  transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
+                  transformOrigin: '0 0',
+                  width: originalImageData?.width || 0,
+                  height: originalImageData?.height || 0,
+                  backgroundColor: effectSettings.background.color,
+                }}
+              />
             )}
-            style={{
-              transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
-              transformOrigin: '0 0',
-              imageRendering: zoom > 2 ? 'pixelated' : 'auto'
-            }}
-            onClick={handleCanvasClick}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          />
+            
+            {/* Main image canvas */}
+            <canvas
+              ref={canvasRef}
+              className={cn(
+                "absolute cursor-crosshair border border-canvas-border",
+                tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
+                tool === 'eyedropper' && 'cursor-crosshair',
+                tool === 'remove' && 'cursor-pointer',
+                tool === 'contiguous' && 'cursor-crosshair'
+              )}
+              style={{
+                transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
+                transformOrigin: '0 0',
+                imageRendering: zoom > 2 ? 'pixelated' : 'auto'
+              }}
+              onClick={handleCanvasClick}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            />
+          </>
         ) : (
           <Card className="absolute inset-4 flex items-center justify-center border-dashed border-2 border-border/50">
             <div className="text-center">
