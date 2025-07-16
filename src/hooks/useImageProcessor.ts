@@ -328,20 +328,76 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, []);
 
-  // Apply effects
-  const applyEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
+  // Apply effects for display only (non-destructive background)
+  const applyDisplayEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
 
-    // Parse background color
-    const hex = settings.background.color.replace('#', '');
-    const bgR = parseInt(hex.substr(0, 2), 16);
-    const bgG = parseInt(hex.substr(2, 2), 16);
-    const bgB = parseInt(hex.substr(4, 2), 16);
+    // Apply background color for preview only (regardless of saveWithBackground setting)
+    if (settings.background.enabled) {
+      const hex = settings.background.color.replace('#', '');
+      const bgR = parseInt(hex.substr(0, 2), 16);
+      const bgG = parseInt(hex.substr(2, 2), 16);
+      const bgB = parseInt(hex.substr(4, 2), 16);
 
-    // Apply background color to transparent areas
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) {
+          data[i] = bgR;
+          data[i + 1] = bgG;
+          data[i + 2] = bgB;
+          data[i + 3] = 255;
+        }
+      }
+    }
+
+    // Apply ink stamp effect
+    if (settings.inkStamp.enabled) {
+      const hex = settings.inkStamp.color.replace('#', '');
+      const stampR = parseInt(hex.substr(0, 2), 16);
+      const stampG = parseInt(hex.substr(2, 2), 16);
+      const stampB = parseInt(hex.substr(4, 2), 16);
+      const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
+
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] > 0) { // Only process non-transparent pixels
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          // Convert to luminance (perceived brightness)
+          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+          
+          if (luminance < threshold) {
+            // Dark areas become stamp color
+            data[i] = stampR;
+            data[i + 1] = stampG;
+            data[i + 2] = stampB;
+            data[i + 3] = 255; // Fully opaque
+          } else {
+            // Light areas become transparent
+            data[i + 3] = 0;
+          }
+        }
+      }
+    }
+
+    return new ImageData(data, width, height);
+  }, []);
+
+  // Apply effects for download (only applies background if saveWithBackground is true)
+  const applyDownloadEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+
+    // Only apply background for download if explicitly requested
     if (settings.background.enabled && settings.background.saveWithBackground) {
+      const hex = settings.background.color.replace('#', '');
+      const bgR = parseInt(hex.substr(0, 2), 16);
+      const bgG = parseInt(hex.substr(2, 2), 16);
+      const bgB = parseInt(hex.substr(4, 2), 16);
+
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) {
           data[i] = bgR;
@@ -491,7 +547,7 @@ export const useImageProcessor = () => {
         }
       }
 
-      // Step 4: Apply effects
+      // Step 4: Store clean processed data (without background/effects applied)
       setImages(prev => prev.map(img => 
         img.id === image.id ? { ...img, progress: 90 } : img
       ));
@@ -499,7 +555,8 @@ export const useImageProcessor = () => {
       // Add delay to make progress visible
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      processedData = applyEffects(processedData, effectSettings);
+      // Store the clean processed data (color removal only, no effects)
+      // Effects will be applied separately for display and download
 
       // Complete
       setImages(prev => prev.map(img => 
@@ -533,7 +590,7 @@ export const useImageProcessor = () => {
         variant: "destructive"
       });
     }
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, applyEffects, toast]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, applyDisplayEffects, toast]);
 
   // Process and download all images one by one sequentially
   const processAllImages = useCallback(async (
@@ -683,7 +740,7 @@ export const useImageProcessor = () => {
   }, []);
 
   // Download single image
-  const downloadImage = useCallback((image: ImageItem, effectSettings?: { download?: { trimTransparentPixels?: boolean }; background?: { enabled?: boolean; color?: string; saveWithBackground?: boolean } }) => {
+  const downloadImage = useCallback((image: ImageItem, effectSettings?: EffectSettings) => {
     if (!image.processedData) {
       toast({
         title: "No Processed Data",
@@ -694,6 +751,7 @@ export const useImageProcessor = () => {
     }
 
     console.log('Downloading image:', image.name, 'Processed data size:', image.processedData.data.length);
+    console.log('Download effect settings:', effectSettings);
 
     let imageDataToDownload = new ImageData(
       new Uint8ClampedArray(image.processedData.data),
@@ -701,24 +759,10 @@ export const useImageProcessor = () => {
       image.processedData.height
     );
     
-    // Apply background only to download if saveWithBackground is enabled
-    if (effectSettings?.background?.enabled && effectSettings?.background?.saveWithBackground && effectSettings?.background?.color) {
-      const hex = effectSettings.background.color.replace('#', '');
-      const bgR = parseInt(hex.substr(0, 2), 16);
-      const bgG = parseInt(hex.substr(2, 2), 16);
-      const bgB = parseInt(hex.substr(4, 2), 16);
-      const data = imageDataToDownload.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) {
-          data[i] = bgR;
-          data[i + 1] = bgG;
-          data[i + 2] = bgB;
-          data[i + 3] = 255;
-        }
-      }
-      
-      console.log('Applied background color for download:', effectSettings.background.color);
+    // Apply download effects if provided
+    if (effectSettings) {
+      imageDataToDownload = applyDownloadEffects(imageDataToDownload, effectSettings);
+      console.log('Applied download effects');
     }
     
     // Apply trimming if enabled
@@ -767,7 +811,7 @@ export const useImageProcessor = () => {
       title: "Download Started",
       description: `Downloading ${image.name}${effectSettings?.download?.trimTransparentPixels ? ' (trimmed)' : ''}`
     });
-  }, [toast, trimTransparentPixels]);
+  }, [toast, trimTransparentPixels, applyDownloadEffects]);
 
 
   return {
