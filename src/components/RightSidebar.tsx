@@ -166,56 +166,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           )}
         </Card>
 
-        {/* Quick Actions */}
-        <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-cyan/10 border-accent-indigo/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-indigo to-accent-cyan bg-clip-text text-transparent font-semibold">
-              ⚡ Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full justify-start hover:bg-gradient-to-r hover:from-slate-500 hover:to-gray-500 hover:text-white"
-              onClick={() => updateBackground({ color: '#ffffff', enabled: true })}
-            >
-              ⚪ White Background
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-full justify-start hover:bg-gradient-to-r hover:from-gray-700 hover:to-black hover:text-white"
-              onClick={() => updateBackground({ color: '#000000', enabled: true })}
-            >
-              ⚫ Black Background
-            </Button>
-            <Button
-              variant="success"
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => updateBackground({ color: '#00ff00', enabled: true })}
-            >
-              🟢 Green Screen
-            </Button>
-            <Button
-              variant="warning"
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => updateBackground({ color: '#ff6b6b', enabled: true })}
-            >
-              🔴 Red Background
-            </Button>
-            <Button
-              variant="rainbow"
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => updateBackground({ color: '#ff69b4', enabled: true })}
-            >
-              🌈 Hot Pink
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
