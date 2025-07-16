@@ -392,13 +392,50 @@ export const useImageProcessor = () => {
     effectSettings: EffectSettings,
     setImages: React.Dispatch<React.SetStateAction<ImageItem[]>>
   ) => {
-    if (!image.originalData) {
-      toast({
-        title: "Error",
-        description: "Original image data not found",
-        variant: "destructive"
-      });
-      return;
+    let originalData = image.originalData;
+    
+    // If original data is not available, load it from the file
+    if (!originalData) {
+      try {
+        const img = new Image();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          throw new Error('Could not get canvas context');
+        }
+
+        // Load image from file
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Failed to load image'));
+          img.src = URL.createObjectURL(image.file);
+        });
+
+        // Set canvas size and draw image
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+        
+        // Get image data
+        originalData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Clean up
+        URL.revokeObjectURL(img.src);
+        
+        // Update the image with original data for future use
+        setImages(prev => prev.map(img => 
+          img.id === image.id ? { ...img, originalData } : img
+        ));
+        
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load original image data",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     try {
@@ -408,9 +445,9 @@ export const useImageProcessor = () => {
       ));
 
       let processedData = new ImageData(
-        new Uint8ClampedArray(image.originalData.data),
-        image.originalData.width,
-        image.originalData.height
+        new Uint8ClampedArray(originalData.data),
+        originalData.width,
+        originalData.height
       );
 
       // Step 1: Color removal
