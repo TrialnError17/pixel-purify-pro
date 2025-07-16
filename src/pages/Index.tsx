@@ -58,6 +58,7 @@ const Index = () => {
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(false);
   const [currentTool, setCurrentTool] = useState<'pan' | 'eyedropper' | 'remove' | 'contiguous'>('pan');
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -212,6 +213,16 @@ const Index = () => {
         onRedo={redo}
         canUndo={canUndo}
         canRedo={canRedo}
+        isProcessing={isProcessing}
+        processingProgress={
+          isProcessing 
+            ? {
+                current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
+                total: images.length,
+                currentImage: images.find(img => img.status === 'processing')?.name
+              }
+            : undefined
+        }
       />
       
       <div className="flex flex-1 min-h-0">
@@ -319,6 +330,7 @@ const Index = () => {
             description: 'Process all images',
             undo: () => {
               setImages(prevImages);
+              setIsProcessing(false);
               toast({
                 title: "Batch Processing Undone",
                 description: "Reverted all processed images to their previous state"
@@ -326,7 +338,10 @@ const Index = () => {
             }
           });
           
-          processAllImages(images, colorSettings, effectSettings, setImages);
+          setIsProcessing(true);
+          processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
+            setIsProcessing(false);
+          });
         }}
         onProcessImage={(image) => {
           const prevImages = [...images];
@@ -337,6 +352,7 @@ const Index = () => {
             description: `Process ${image.name}`,
             undo: () => {
               setImages(prevImages);
+              setIsProcessing(false);
               toast({
                 title: "Processing Undone",
                 description: `Reverted ${image.name} to its previous state`
@@ -344,8 +360,12 @@ const Index = () => {
             }
           });
           
-          processImage(image, colorSettings, effectSettings, setImages);
+          setIsProcessing(true);
+          processImage(image, colorSettings, effectSettings, setImages).finally(() => {
+            setIsProcessing(false);
+          });
         }}
+        isProcessing={isProcessing}
         onClearAll={handleClearAll}
       />
       
