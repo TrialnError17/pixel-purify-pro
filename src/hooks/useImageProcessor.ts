@@ -633,10 +633,8 @@ export const useImageProcessor = () => {
     });
   }, [toast, trimTransparentPixels]);
 
-  // Download all processed images as ZIP
+  // Download all images one by one sequentially (no ZIP)
   const downloadAllImages = useCallback(async (images: ImageItem[], effectSettings?: { download?: { trimTransparentPixels?: boolean }; background?: { enabled?: boolean; color?: string; saveWithBackground?: boolean } }) => {
-    const { default: JSZip } = await import('jszip');
-    
     const processedImages = images.filter(img => img.status === 'completed' && img.processedData);
     
     if (processedImages.length === 0) {
@@ -648,72 +646,100 @@ export const useImageProcessor = () => {
       return;
     }
 
-    const zip = new JSZip();
+    toast({
+      title: "Sequential Download Started",
+      description: `Downloading ${processedImages.length} images one by one`
+    });
 
-    for (const image of processedImages) {
+    for (let i = 0; i < processedImages.length; i++) {
+      const image = processedImages[i];
+      
       if (!image.processedData) continue;
       
-      let imageDataToDownload = new ImageData(
-        new Uint8ClampedArray(image.processedData.data),
-        image.processedData.width,
-        image.processedData.height
-      );
-      
-      // Apply background only to download if saveWithBackground is enabled
-      if (effectSettings?.background?.enabled && effectSettings?.background?.saveWithBackground && effectSettings?.background?.color) {
-        const hex = effectSettings.background.color.replace('#', '');
-        const bgR = parseInt(hex.substr(0, 2), 16);
-        const bgG = parseInt(hex.substr(2, 2), 16);
-        const bgB = parseInt(hex.substr(4, 2), 16);
-        const data = imageDataToDownload.data;
+      try {
+        // Show progress toast
+        toast({
+          title: `Downloading ${i + 1}/${processedImages.length}`,
+          description: `Processing ${image.name}...`
+        });
 
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3] === 0) {
-            data[i] = bgR;
-            data[i + 1] = bgG;
-            data[i + 2] = bgB;
-            data[i + 3] = 255;
+        let imageDataToDownload = new ImageData(
+          new Uint8ClampedArray(image.processedData.data),
+          image.processedData.width,
+          image.processedData.height
+        );
+        
+        // Apply background only to download if saveWithBackground is enabled
+        if (effectSettings?.background?.enabled && effectSettings?.background?.saveWithBackground && effectSettings?.background?.color) {
+          const hex = effectSettings.background.color.replace('#', '');
+          const bgR = parseInt(hex.substr(0, 2), 16);
+          const bgG = parseInt(hex.substr(2, 2), 16);
+          const bgB = parseInt(hex.substr(4, 2), 16);
+          const data = imageDataToDownload.data;
+
+          for (let j = 0; j < data.length; j += 4) {
+            if (data[j + 3] === 0) {
+              data[j] = bgR;
+              data[j + 1] = bgG;
+              data[j + 2] = bgB;
+              data[j + 3] = 255;
+            }
           }
         }
-      }
-      
-      // Apply trimming if enabled
-      if (effectSettings?.download?.trimTransparentPixels) {
-        imageDataToDownload = trimTransparentPixels(imageDataToDownload);
-      }
-      
-      const canvas = document.createElement('canvas');
-      canvas.width = imageDataToDownload.width;
-      canvas.height = imageDataToDownload.height;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) continue;
+        
+        // Apply trimming if enabled
+        if (effectSettings?.download?.trimTransparentPixels) {
+          imageDataToDownload = trimTransparentPixels(imageDataToDownload);
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = imageDataToDownload.width;
+        canvas.height = imageDataToDownload.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) continue;
 
-      ctx.putImageData(imageDataToDownload, 0, 0);
-      
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/png');
-      });
-      
-      if (blob) {
-        const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '_processed';
-        const filename = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
-        zip.file(filename, blob);
+        ctx.putImageData(imageDataToDownload, 0, 0);
+        
+        // Convert to blob and download
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob(resolve, 'image/png');
+        });
+        
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '_processed';
+          a.href = url;
+          a.download = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+          
+          toast({
+            title: `Downloaded ${i + 1}/${processedImages.length}`,
+            description: `${image.name} downloaded successfully`
+          });
+        }
+        
+        // Add delay between downloads to avoid browser issues
+        if (i < processedImages.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
+        }
+        
+      } catch (error) {
+        console.error(`Error downloading ${image.name}:`, error);
+        toast({
+          title: "Download Error",
+          description: `Failed to download ${image.name}`,
+          variant: "destructive"
+        });
       }
     }
 
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '';
-    a.download = `processed_images${suffix}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-
+    // Final completion toast
     toast({
-      title: "ZIP Download Started",
-      description: `Downloading ${processedImages.length} processed images${effectSettings?.download?.trimTransparentPixels ? ' (trimmed)' : ''}`
+      title: "All Downloads Complete",
+      description: `Successfully downloaded ${processedImages.length} images`
     });
   }, [toast, trimTransparentPixels]);
 
