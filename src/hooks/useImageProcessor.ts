@@ -455,6 +455,9 @@ export const useImageProcessor = () => {
       setImages(prev => prev.map(img => 
         img.id === image.id ? { ...img, progress: 25 } : img
       ));
+      
+      // Add delay to make progress visible
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       if (colorSettings.enabled) {
         if (colorSettings.mode === 'auto') {
@@ -467,6 +470,9 @@ export const useImageProcessor = () => {
         setImages(prev => prev.map(img => 
           img.id === image.id ? { ...img, progress: 50 } : img
         ));
+        
+        // Add delay to make progress visible
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         if (colorSettings.contiguous) {
           processedData = borderFloodFill(processedData, colorSettings);
@@ -476,6 +482,9 @@ export const useImageProcessor = () => {
         setImages(prev => prev.map(img => 
           img.id === image.id ? { ...img, progress: 75 } : img
         ));
+        
+        // Add delay to make progress visible
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         if (colorSettings.minRegionSize > 0 || colorSettings.featherRadius > 0) {
           processedData = cleanupRegions(processedData, colorSettings);
@@ -486,6 +495,9 @@ export const useImageProcessor = () => {
       setImages(prev => prev.map(img => 
         img.id === image.id ? { ...img, progress: 90 } : img
       ));
+      
+      // Add delay to make progress visible
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       processedData = applyEffects(processedData, effectSettings);
 
