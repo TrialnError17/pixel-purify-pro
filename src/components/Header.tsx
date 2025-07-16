@@ -45,15 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
             <Loader2 className="w-4 h-4 animate-spin text-accent-cyan" />
             <div className="text-sm">
               {processingProgress ? (
-                <div className="space-y-1">
-                  <div className="font-medium text-accent-cyan">
-                    Processing {processingProgress.current}/{processingProgress.total}
-                  </div>
-                  {processingProgress.currentImage && (
-                    <div className="text-xs text-muted-foreground truncate max-w-40">
-                      {processingProgress.currentImage}
-                    </div>
-                  )}
+                <div className="font-medium text-accent-cyan">
+                  Processing {processingProgress.current}/{processingProgress.total}
                 </div>
               ) : (
                 <span className="font-medium text-accent-cyan">Processing...</span>
