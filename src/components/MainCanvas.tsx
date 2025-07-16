@@ -20,6 +20,7 @@ interface MainCanvasProps {
   colorSettings: ColorRemovalSettings;
   effectSettings: EffectSettings;
   onImageUpdate: (image: ImageItem) => void;
+  onColorPicked: (color: string) => void;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -28,7 +29,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   onToolChange,
   colorSettings,
   effectSettings,
-  onImageUpdate
+  onImageUpdate,
+  onColorPicked
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,8 +39,76 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
+  const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
 
-  // Load and display image
+  // Color processing functions
+  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  }, []);
+
+  const processImageData = useCallback((imageData: ImageData, settings: ColorRemovalSettings, effects: EffectSettings): ImageData => {
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+
+    // Only process if color removal is enabled
+    if (settings.enabled) {
+      let targetR, targetG, targetB;
+
+      if (settings.mode === 'auto') {
+        // Use top-left corner color
+        targetR = data[0];
+        targetG = data[1];
+        targetB = data[2];
+      } else {
+        // Use manual color
+        const hex = settings.targetColor.replace('#', '');
+        targetR = parseInt(hex.substr(0, 2), 16);
+        targetG = parseInt(hex.substr(2, 2), 16);
+        targetB = parseInt(hex.substr(4, 2), 16);
+      }
+
+      // Process each pixel
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+        
+        // Convert threshold (0-100) to color distance threshold
+        const threshold = settings.threshold * 2.55; // Scale to 0-255 range
+        
+        if (distance <= threshold) {
+          data[i + 3] = 0; // Make transparent
+        }
+      }
+    }
+
+    // Apply background color if enabled
+    if (effects.saveBackground) {
+      const hex = effects.backgroundColor.replace('#', '');
+      const bgR = parseInt(hex.substr(0, 2), 16);
+      const bgG = parseInt(hex.substr(2, 2), 16);
+      const bgB = parseInt(hex.substr(4, 2), 16);
+
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) {
+          data[i] = bgR;
+          data[i + 1] = bgG;
+          data[i + 2] = bgB;
+          data[i + 3] = 255;
+        }
+      }
+    }
+
+    return new ImageData(data, width, height);
+  }, [calculateColorDistance]);
+
+  // Load original image and store image data
   useEffect(() => {
     if (!image || !canvasRef.current) return;
 
@@ -58,6 +128,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Store original image data
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setOriginalImageData(imageData);
+      
+      // Update image with original data if not already set
       if (!image.originalData) {
         const updatedImage = { ...image, originalData: imageData };
         onImageUpdate(updatedImage);
@@ -82,8 +155,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image, onImageUpdate]);
 
+  // Process and display image when settings change
+  useEffect(() => {
+    if (!originalImageData || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Process the original image data with current settings
+    const processedData = processImageData(originalImageData, colorSettings, effectSettings);
+    
+    // Display processed image
+    ctx.putImageData(processedData, 0, 0);
+    
+    // Update image with processed data
+    if (image) {
+      const updatedImage = { ...image, processedData };
+      onImageUpdate(updatedImage);
+    }
+  }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (!canvasRef.current || !image) return;
+    if (!canvasRef.current || !image || !originalImageData) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -96,13 +190,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
 
     if (tool === 'eyedropper') {
-      // Get color at clicked position
-      const imageData = ctx.getImageData(x, y, 1, 1);
-      const [r, g, b] = imageData.data;
+      // Get color at clicked position from original image
+      const index = (y * originalImageData.width + x) * 4;
+      const r = originalImageData.data[index];
+      const g = originalImageData.data[index + 1];
+      const b = originalImageData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
-      // This would update the color settings - for now just log
-      console.log('Picked color:', hex);
+      // Update target color and switch to manual mode
+      onColorPicked(hex);
     } else if (tool === 'remove') {
       // Save current state for undo
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -116,7 +212,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const updatedImage = { ...image, processedData: newImageData };
       onImageUpdate(updatedImage);
     }
-  }, [image, tool, zoom, pan, colorSettings, onImageUpdate]);
+  }, [image, originalImageData, tool, zoom, pan, colorSettings, onImageUpdate]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -135,11 +231,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const stack = [[startX, startY]];
     
     const isColorSimilar = (r: number, g: number, b: number) => {
-      const dr = Math.abs(r - targetR);
-      const dg = Math.abs(g - targetG);
-      const db = Math.abs(b - targetB);
-      const distance = Math.sqrt(dr * dr + dg * dg + db * db);
-      return distance <= settings.threshold * 2.55; // Convert 0-100 to 0-255 range
+      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      return distance <= settings.threshold * 2.55;
     };
     
     while (stack.length > 0) {

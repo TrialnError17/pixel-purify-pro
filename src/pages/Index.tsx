@@ -163,6 +163,9 @@ const Index = () => {
               img.id === updatedImage.id ? updatedImage : img
             ));
           }}
+          onColorPicked={(color) => {
+            setColorSettings(prev => ({ ...prev, targetColor: color, mode: 'manual' }));
+          }}
         />
         
         <RightSidebar 
