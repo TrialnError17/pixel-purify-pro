@@ -206,13 +206,13 @@ export const useImageProcessor = () => {
     const height = imageData.height;
 
     // Parse background color
-    const hex = settings.backgroundColor.replace('#', '');
+    const hex = settings.background.color.replace('#', '');
     const bgR = parseInt(hex.substr(0, 2), 16);
     const bgG = parseInt(hex.substr(2, 2), 16);
     const bgB = parseInt(hex.substr(4, 2), 16);
 
     // Apply background color to transparent areas
-    if (settings.saveBackground) {
+    if (settings.background.enabled && settings.background.saveWithBackground) {
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) {
           data[i] = bgR;

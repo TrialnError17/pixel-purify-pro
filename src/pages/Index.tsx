@@ -30,8 +30,11 @@ export interface ColorRemovalSettings {
 }
 
 export interface EffectSettings {
-  backgroundColor: string;
-  saveBackground: boolean;
+  background: {
+    enabled: boolean;
+    color: string;
+    saveWithBackground: boolean;
+  };
   inkStamp: {
     enabled: boolean;
     color: string;
@@ -58,8 +61,11 @@ const Index = () => {
   });
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
-    backgroundColor: '#ffffff',
-    saveBackground: false,
+    background: {
+      enabled: false,
+      color: '#ffffff',
+      saveWithBackground: false
+    },
     inkStamp: {
       enabled: false,
       color: '#000000',

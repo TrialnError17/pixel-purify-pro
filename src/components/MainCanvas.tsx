@@ -154,9 +154,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Apply background color if enabled
-    if (effects.saveBackground) {
-      const hex = effects.backgroundColor.replace('#', '');
+    // Apply background color if enabled and saveWithBackground is true
+    if (effects.background.enabled && effects.background.saveWithBackground) {
+      const hex = effects.background.color.replace('#', '');
       const bgR = parseInt(hex.substr(0, 2), 16);
       const bgG = parseInt(hex.substr(2, 2), 16);
       const bgB = parseInt(hex.substr(4, 2), 16);
