@@ -1,9 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
 
 export const useImageProcessor = () => {
   const { toast } = useToast();
+  const cancelTokenRef = useRef({ cancelled: false });
 
   // CIEDE2000 color distance calculation (simplified version)
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -529,6 +530,9 @@ export const useImageProcessor = () => {
     effectSettings: EffectSettings,
     setImages: React.Dispatch<React.SetStateAction<ImageItem[]>>
   ) => {
+    // Reset cancel token
+    cancelTokenRef.current.cancelled = false;
+    
     const pendingImages = images.filter(img => img.status === 'pending');
     
     if (pendingImages.length === 0) {
@@ -546,6 +550,15 @@ export const useImageProcessor = () => {
 
     // Process and download images sequentially
     for (let i = 0; i < pendingImages.length; i++) {
+      // Check if cancelled
+      if (cancelTokenRef.current.cancelled) {
+        toast({
+          title: "Processing Cancelled",
+          description: "Batch processing was cancelled by user"
+        });
+        return;
+      }
+      
       const image = pendingImages[i];
       
       try {
@@ -557,6 +570,11 @@ export const useImageProcessor = () => {
 
         // Process the image
         await processImage(image, colorSettings, effectSettings, setImages);
+        
+        // Check if cancelled after processing
+        if (cancelTokenRef.current.cancelled) {
+          return;
+        }
         
         // Wait a moment to ensure processing is complete
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -572,6 +590,11 @@ export const useImageProcessor = () => {
         const processedImage = updatedImages.find(img => img.id === image.id);
         
         if (processedImage && processedImage.status === 'completed' && processedImage.processedData) {
+          // Check if cancelled before downloading
+          if (cancelTokenRef.current.cancelled) {
+            return;
+          }
+          
           // Download the processed image
           toast({
             title: `Downloading ${i + 1}/${pendingImages.length}`,
@@ -589,7 +612,7 @@ export const useImageProcessor = () => {
         }
         
         // Add delay between downloads to avoid browser issues
-        if (i < pendingImages.length - 1) {
+        if (i < pendingImages.length - 1 && !cancelTokenRef.current.cancelled) {
           await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
         }
         
@@ -603,11 +626,17 @@ export const useImageProcessor = () => {
       }
     }
 
-    toast({
-      title: "Batch Processing Complete",
-      description: `Successfully processed and downloaded ${pendingImages.length} images`
-    });
+    if (!cancelTokenRef.current.cancelled) {
+      toast({
+        title: "Batch Processing Complete",
+        description: `Successfully processed and downloaded ${pendingImages.length} images`
+      });
+    }
   }, [processImage, toast]);
+
+  const cancelProcessing = useCallback(() => {
+    cancelTokenRef.current.cancelled = true;
+  }, []);
 
   // Helper function to trim transparent pixels
   const trimTransparentPixels = useCallback((imageData: ImageData): ImageData => {
@@ -666,6 +695,8 @@ export const useImageProcessor = () => {
       return;
     }
 
+    console.log('Downloading image:', image.name, 'Processed data size:', image.processedData.data.length);
+
     let imageDataToDownload = new ImageData(
       new Uint8ClampedArray(image.processedData.data),
       image.processedData.width,
@@ -688,24 +719,42 @@ export const useImageProcessor = () => {
           data[i + 3] = 255;
         }
       }
+      
+      console.log('Applied background color for download:', effectSettings.background.color);
     }
     
     // Apply trimming if enabled
     if (effectSettings?.download?.trimTransparentPixels) {
       imageDataToDownload = trimTransparentPixels(imageDataToDownload);
+      console.log('Applied trimming, new dimensions:', imageDataToDownload.width, 'x', imageDataToDownload.height);
     }
-
+    
     const canvas = document.createElement('canvas');
     canvas.width = imageDataToDownload.width;
     canvas.height = imageDataToDownload.height;
     const ctx = canvas.getContext('2d');
     
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('Could not get canvas context for download');
+      return;
+    }
+
+    // Clear canvas with transparent background
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.putImageData(imageDataToDownload, 0, 0);
     
+    // Debug: check canvas content
+    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+    console.log('ImageData dimensions:', imageDataToDownload.width, 'x', imageDataToDownload.height);
+    
     canvas.toBlob((blob) => {
-      if (!blob) return;
+      if (!blob) {
+        console.error('Failed to create blob from canvas');
+        return;
+      }
+      
+      console.log('Blob created successfully, size:', blob.size);
       
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -714,7 +763,7 @@ export const useImageProcessor = () => {
       a.download = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
       a.click();
       URL.revokeObjectURL(url);
-    }, 'image/png');
+    }, 'image/png', 1.0); // Add quality parameter
 
     toast({
       title: "Download Started",
@@ -726,6 +775,7 @@ export const useImageProcessor = () => {
   return {
     processImage,
     processAllImages,
-    downloadImage
+    downloadImage,
+    cancelProcessing
   };
 };

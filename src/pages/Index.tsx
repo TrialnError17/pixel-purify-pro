@@ -89,7 +89,7 @@ const Index = () => {
     }
   });
 
-  const { processImage, processAllImages, downloadImage } = useImageProcessor();
+  const { processImage, processAllImages, downloadImage, cancelProcessing } = useImageProcessor();
   const { addUndoAction, undo, redo, canUndo, canRedo, clearHistory } = useUndoManager();
 
   const handleFilesSelected = useCallback((files: FileList) => {
@@ -365,7 +365,16 @@ const Index = () => {
             setIsProcessing(false);
           });
         }}
+        onCancelProcessing={() => {
+          cancelProcessing();
+          setIsProcessing(false);
+          toast({
+            title: "Processing Cancelled",
+            description: "All processing has been stopped"
+          });
+        }}
         isProcessing={isProcessing}
+        forceFullscreen={isProcessing}
         onClearAll={handleClearAll}
       />
       

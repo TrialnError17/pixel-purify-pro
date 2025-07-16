@@ -30,7 +30,9 @@ interface ImageQueueProps {
   onProcessAll: () => void;
   onProcessImage: (image: ImageItem) => void;
   onClearAll: () => void;
+  onCancelProcessing?: () => void;
   isProcessing?: boolean;
+  forceFullscreen?: boolean;
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -43,9 +45,21 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onProcessAll,
   onProcessImage,
   onClearAll,
-  isProcessing = false
+  onCancelProcessing,
+  isProcessing = false,
+  forceFullscreen = false
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  // Auto-switch to fullscreen when processing starts
+  React.useEffect(() => {
+    if (forceFullscreen && isProcessing) {
+      setIsFullscreen(true);
+    } else if (!isProcessing && forceFullscreen) {
+      // Keep fullscreen until processing is completely done
+      setIsFullscreen(false);
+    }
+  }, [forceFullscreen, isProcessing]);
   
   // Handle escape key to exit fullscreen
   React.useEffect(() => {
@@ -157,11 +171,24 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {isFullscreen && isProcessing && onCancelProcessing && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onCancelProcessing}
+              className="flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Cancel Processing
+            </Button>
+          )}
+          
           {/* Fullscreen Toggle */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsFullscreen(!isFullscreen)}
+            disabled={forceFullscreen && isProcessing}
             className="flex items-center gap-2"
             title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
           >
