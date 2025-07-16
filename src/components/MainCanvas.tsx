@@ -506,6 +506,26 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
   }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
+  const handleDownload = useCallback(() => {
+    if (!image || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Get current canvas data
+    const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // Create a temporary image object with current canvas data
+    const imageWithCurrentData = {
+      ...image,
+      processedData: currentImageData,
+      status: 'completed' as const
+    };
+    
+    onDownloadImage(imageWithCurrentData);
+  }, [image, onDownloadImage]);
+
   return (
     <div className="flex-1 flex flex-col bg-canvas-bg">
       {/* Toolbar */}
@@ -624,8 +644,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onDownloadImage(image)}
-              disabled={!image || image.status !== 'completed'}
+              onClick={handleDownload}
+              disabled={!image}
               title="Download PNG"
             >
               <Download className="w-4 h-4" />
