@@ -227,7 +227,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
 
-
     // Apply background color for preview only (regardless of saveWithBackground setting)
     if (effects.background.enabled) {
       const hex = effects.background.color.replace('#', '');
@@ -274,6 +273,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           }
         }
       }
+    }
     }
 
     return new ImageData(data, width, height);
