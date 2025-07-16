@@ -522,7 +522,7 @@ export const useImageProcessor = () => {
     }
   }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, applyEffects, toast]);
 
-  // Process all images
+  // Process and download all images one by one sequentially
   const processAllImages = useCallback(async (
     images: ImageItem[],
     colorSettings: ColorRemovalSettings,
@@ -541,19 +541,71 @@ export const useImageProcessor = () => {
 
     toast({
       title: "Batch Processing Started",
-      description: `Processing ${pendingImages.length} images...`
+      description: `Processing and downloading ${pendingImages.length} images one by one...`
     });
 
-    // Process images sequentially to avoid overwhelming the browser
-    for (const image of pendingImages) {
-      await processImage(image, colorSettings, effectSettings, setImages);
-      // Small delay to prevent UI blocking
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // Process and download images sequentially
+    for (let i = 0; i < pendingImages.length; i++) {
+      const image = pendingImages[i];
+      
+      try {
+        // Show progress toast
+        toast({
+          title: `Processing ${i + 1}/${pendingImages.length}`,
+          description: `Processing ${image.name}...`
+        });
+
+        // Process the image
+        await processImage(image, colorSettings, effectSettings, setImages);
+        
+        // Wait a moment to ensure processing is complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Get the updated image with processed data
+        const updatedImages = await new Promise<ImageItem[]>((resolve) => {
+          setImages(prev => {
+            resolve(prev);
+            return prev;
+          });
+        });
+        
+        const processedImage = updatedImages.find(img => img.id === image.id);
+        
+        if (processedImage && processedImage.status === 'completed' && processedImage.processedData) {
+          // Download the processed image
+          toast({
+            title: `Downloading ${i + 1}/${pendingImages.length}`,
+            description: `Downloading ${image.name}...`
+          });
+          
+          downloadImage(processedImage, effectSettings);
+          
+          toast({
+            title: `Downloaded ${i + 1}/${pendingImages.length}`,
+            description: `${image.name} processed and downloaded successfully`
+          });
+        } else {
+          throw new Error('Processing failed');
+        }
+        
+        // Add delay between downloads to avoid browser issues
+        if (i < pendingImages.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
+        }
+        
+      } catch (error) {
+        console.error(`Error processing/downloading ${image.name}:`, error);
+        toast({
+          title: "Processing Error",
+          description: `Failed to process/download ${image.name}`,
+          variant: "destructive"
+        });
+      }
     }
 
     toast({
       title: "Batch Processing Complete",
-      description: `Processed ${pendingImages.length} images`
+      description: `Successfully processed and downloaded ${pendingImages.length} images`
     });
   }, [processImage, toast]);
 
@@ -670,120 +722,10 @@ export const useImageProcessor = () => {
     });
   }, [toast, trimTransparentPixels]);
 
-  // Download all images one by one sequentially (no ZIP)
-  const downloadAllImages = useCallback(async (images: ImageItem[], effectSettings?: { download?: { trimTransparentPixels?: boolean }; background?: { enabled?: boolean; color?: string; saveWithBackground?: boolean } }) => {
-    const processedImages = images.filter(img => img.status === 'completed' && img.processedData);
-    
-    if (processedImages.length === 0) {
-      toast({
-        title: "No Processed Images",
-        description: "Process some images first before downloading",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Sequential Download Started",
-      description: `Downloading ${processedImages.length} images one by one`
-    });
-
-    for (let i = 0; i < processedImages.length; i++) {
-      const image = processedImages[i];
-      
-      if (!image.processedData) continue;
-      
-      try {
-        // Show progress toast
-        toast({
-          title: `Downloading ${i + 1}/${processedImages.length}`,
-          description: `Processing ${image.name}...`
-        });
-
-        let imageDataToDownload = new ImageData(
-          new Uint8ClampedArray(image.processedData.data),
-          image.processedData.width,
-          image.processedData.height
-        );
-        
-        // Apply background only to download if saveWithBackground is enabled
-        if (effectSettings?.background?.enabled && effectSettings?.background?.saveWithBackground && effectSettings?.background?.color) {
-          const hex = effectSettings.background.color.replace('#', '');
-          const bgR = parseInt(hex.substr(0, 2), 16);
-          const bgG = parseInt(hex.substr(2, 2), 16);
-          const bgB = parseInt(hex.substr(4, 2), 16);
-          const data = imageDataToDownload.data;
-
-          for (let j = 0; j < data.length; j += 4) {
-            if (data[j + 3] === 0) {
-              data[j] = bgR;
-              data[j + 1] = bgG;
-              data[j + 2] = bgB;
-              data[j + 3] = 255;
-            }
-          }
-        }
-        
-        // Apply trimming if enabled
-        if (effectSettings?.download?.trimTransparentPixels) {
-          imageDataToDownload = trimTransparentPixels(imageDataToDownload);
-        }
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = imageDataToDownload.width;
-        canvas.height = imageDataToDownload.height;
-        const ctx = canvas.getContext('2d');
-        
-        if (!ctx) continue;
-
-        ctx.putImageData(imageDataToDownload, 0, 0);
-        
-        // Convert to blob and download
-        const blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob(resolve, 'image/png');
-        });
-        
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '_processed';
-          a.href = url;
-          a.download = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-          
-          toast({
-            title: `Downloaded ${i + 1}/${processedImages.length}`,
-            description: `${image.name} downloaded successfully`
-          });
-        }
-        
-        // Add delay between downloads to avoid browser issues
-        if (i < processedImages.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
-        }
-        
-      } catch (error) {
-        console.error(`Error downloading ${image.name}:`, error);
-        toast({
-          title: "Download Error",
-          description: `Failed to download ${image.name}`,
-          variant: "destructive"
-        });
-      }
-    }
-
-    // Final completion toast
-    toast({
-      title: "All Downloads Complete",
-      description: `Successfully downloaded ${processedImages.length} images`
-    });
-  }, [toast, trimTransparentPixels]);
 
   return {
     processImage,
     processAllImages,
-    downloadImage,
-    downloadAllImages
+    downloadImage
   };
 };

@@ -6,18 +6,14 @@ interface HeaderProps {
   onAddImages: () => void;
   onAddFolder: () => void;
   onDownloadPNG: () => void;
-  onDownloadAll: () => void;
   canDownload: boolean;
-  canDownloadAll: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onAddImages,
   onAddFolder,
   onDownloadPNG,
-  onDownloadAll,
-  canDownload,
-  canDownloadAll
+  canDownload
 }) => {
   return (
     <header className="h-14 bg-gradient-header border-b border-border flex items-center justify-between px-4 shadow-panel">
@@ -64,17 +60,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Download className="w-4 h-4" />
           PNG
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onDownloadAll}
-          disabled={!canDownloadAll}
-          className="flex items-center gap-2"
-        >
-          <Package className="w-4 h-4" />
-          ZIP All
         </Button>
       </div>
     </header>

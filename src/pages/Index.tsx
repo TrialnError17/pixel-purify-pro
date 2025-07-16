@@ -87,7 +87,7 @@ const Index = () => {
     }
   });
 
-  const { processImage, processAllImages, downloadImage, downloadAllImages } = useImageProcessor();
+  const { processImage, processAllImages, downloadImage } = useImageProcessor();
 
   const handleFilesSelected = useCallback((files: FileList) => {
     const newImages: ImageItem[] = [];
@@ -179,9 +179,7 @@ const Index = () => {
         onAddImages={handleFileInput}
         onAddFolder={handleFolderInput}
         onDownloadPNG={() => selectedImage && downloadImage(selectedImage, effectSettings)}
-        onDownloadAll={() => downloadAllImages(images, effectSettings)}
         canDownload={selectedImage?.status === 'completed'}
-        canDownloadAll={images.some(img => img.status === 'completed')}
       />
       
       <div className="flex flex-1 min-h-0">

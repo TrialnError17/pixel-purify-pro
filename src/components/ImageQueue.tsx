@@ -121,7 +121,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
               className="flex items-center gap-2"
             >
               <PlayCircle className="w-4 h-4" />
-              Process All ({pendingCount})
+              Process & Download All ({pendingCount})
             </Button>
             
             <Button
