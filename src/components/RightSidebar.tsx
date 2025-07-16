@@ -33,7 +33,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   };
 
   return (
-    <div className="w-80 bg-gradient-panel border-l border-border flex flex-col">
+    <div className="w-96 bg-gradient-panel border-l border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-gradient-to-r from-accent-pink to-accent-orange rounded-md flex items-center justify-center">
