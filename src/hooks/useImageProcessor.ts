@@ -507,8 +507,54 @@ export const useImageProcessor = () => {
     });
   }, [processImage, toast]);
 
+  // Helper function to trim transparent pixels
+  const trimTransparentPixels = useCallback((imageData: ImageData): ImageData => {
+    const { data, width, height } = imageData;
+    
+    // Find bounds of non-transparent pixels
+    let minX = width, minY = height, maxX = -1, maxY = -1;
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const alpha = data[(y * width + x) * 4 + 3];
+        if (alpha > 0) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+    
+    // If no non-transparent pixels found, return 1x1 transparent image
+    if (maxX === -1) {
+      const trimmedData = new Uint8ClampedArray(4);
+      return new ImageData(trimmedData, 1, 1);
+    }
+    
+    // Calculate trimmed dimensions
+    const trimmedWidth = maxX - minX + 1;
+    const trimmedHeight = maxY - minY + 1;
+    const trimmedData = new Uint8ClampedArray(trimmedWidth * trimmedHeight * 4);
+    
+    // Copy trimmed region
+    for (let y = 0; y < trimmedHeight; y++) {
+      for (let x = 0; x < trimmedWidth; x++) {
+        const sourceIndex = ((minY + y) * width + (minX + x)) * 4;
+        const targetIndex = (y * trimmedWidth + x) * 4;
+        
+        trimmedData[targetIndex] = data[sourceIndex];
+        trimmedData[targetIndex + 1] = data[sourceIndex + 1];
+        trimmedData[targetIndex + 2] = data[sourceIndex + 2];
+        trimmedData[targetIndex + 3] = data[sourceIndex + 3];
+      }
+    }
+    
+    return new ImageData(trimmedData, trimmedWidth, trimmedHeight);
+  }, []);
+
   // Download single image
-  const downloadImage = useCallback((image: ImageItem) => {
+  const downloadImage = useCallback((image: ImageItem, effectSettings?: { download?: { trimTransparentPixels?: boolean } }) => {
     if (!image.processedData) {
       toast({
         title: "No Processed Data",
@@ -518,34 +564,42 @@ export const useImageProcessor = () => {
       return;
     }
 
+    let imageDataToDownload = image.processedData;
+    
+    // Apply trimming if enabled
+    if (effectSettings?.download?.trimTransparentPixels) {
+      imageDataToDownload = trimTransparentPixels(imageDataToDownload);
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = image.processedData.width;
-    canvas.height = image.processedData.height;
+    canvas.width = imageDataToDownload.width;
+    canvas.height = imageDataToDownload.height;
     const ctx = canvas.getContext('2d');
     
     if (!ctx) return;
 
-    ctx.putImageData(image.processedData, 0, 0);
+    ctx.putImageData(imageDataToDownload, 0, 0);
     
     canvas.toBlob((blob) => {
       if (!blob) return;
       
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '_processed';
       a.href = url;
-      a.download = `${image.name.replace(/\.[^/.]+$/, '')}_processed.png`;
+      a.download = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
       a.click();
       URL.revokeObjectURL(url);
     }, 'image/png');
 
     toast({
       title: "Download Started",
-      description: `Downloading ${image.name}`
+      description: `Downloading ${image.name}${effectSettings?.download?.trimTransparentPixels ? ' (trimmed)' : ''}`
     });
-  }, [toast]);
+  }, [toast, trimTransparentPixels]);
 
   // Download all processed images as ZIP
-  const downloadAllImages = useCallback(async (images: ImageItem[]) => {
+  const downloadAllImages = useCallback(async (images: ImageItem[], effectSettings?: { download?: { trimTransparentPixels?: boolean } }) => {
     const { default: JSZip } = await import('jszip');
     
     const processedImages = images.filter(img => img.status === 'completed' && img.processedData);
@@ -564,21 +618,29 @@ export const useImageProcessor = () => {
     for (const image of processedImages) {
       if (!image.processedData) continue;
       
+      let imageDataToDownload = image.processedData;
+      
+      // Apply trimming if enabled
+      if (effectSettings?.download?.trimTransparentPixels) {
+        imageDataToDownload = trimTransparentPixels(imageDataToDownload);
+      }
+      
       const canvas = document.createElement('canvas');
-      canvas.width = image.processedData.width;
-      canvas.height = image.processedData.height;
+      canvas.width = imageDataToDownload.width;
+      canvas.height = imageDataToDownload.height;
       const ctx = canvas.getContext('2d');
       
       if (!ctx) continue;
 
-      ctx.putImageData(image.processedData, 0, 0);
+      ctx.putImageData(imageDataToDownload, 0, 0);
       
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob(resolve, 'image/png');
       });
       
       if (blob) {
-        const filename = `${image.name.replace(/\.[^/.]+$/, '')}_processed.png`;
+        const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '_processed';
+        const filename = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
         zip.file(filename, blob);
       }
     }
@@ -587,15 +649,16 @@ export const useImageProcessor = () => {
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'processed_images.zip';
+    const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '';
+    a.download = `processed_images${suffix}.zip`;
     a.click();
     URL.revokeObjectURL(url);
 
     toast({
       title: "ZIP Download Started",
-      description: `Downloading ${processedImages.length} processed images`
+      description: `Downloading ${processedImages.length} processed images${effectSettings?.download?.trimTransparentPixels ? ' (trimmed)' : ''}`
     });
-  }, [toast]);
+  }, [toast, trimTransparentPixels]);
 
   return {
     processImage,

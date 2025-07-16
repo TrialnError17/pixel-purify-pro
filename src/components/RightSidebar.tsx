@@ -166,6 +166,34 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           )}
         </Card>
 
+        {/* Download Options */}
+        <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
+              📥 Download Options
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="trim-transparent" className="text-sm font-medium">
+                Trim Transparent Pixels
+              </Label>
+              <Switch
+                id="trim-transparent"
+                checked={settings.download.trimTransparentPixels}
+                onCheckedChange={(checked) => 
+                  updateSettings({ 
+                    download: { ...settings.download, trimTransparentPixels: checked } 
+                  })
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Remove empty transparent space around the image before downloading
+            </p>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );

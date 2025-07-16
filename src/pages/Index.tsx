@@ -47,6 +47,9 @@ export interface EffectSettings {
     color: string;
     threshold: number;
   };
+  download: {
+    trimTransparentPixels: boolean;
+  };
 }
 
 const Index = () => {
@@ -78,6 +81,9 @@ const Index = () => {
       enabled: false,
       color: '#000000',
       threshold: 50
+    },
+    download: {
+      trimTransparentPixels: false
     }
   });
 
@@ -167,8 +173,8 @@ const Index = () => {
       <Header 
         onAddImages={handleFileInput}
         onAddFolder={handleFolderInput}
-        onDownloadPNG={() => selectedImage && downloadImage(selectedImage)}
-        onDownloadAll={() => downloadAllImages(images)}
+        onDownloadPNG={() => selectedImage && downloadImage(selectedImage, effectSettings)}
+        onDownloadAll={() => downloadAllImages(images, effectSettings)}
         canDownload={selectedImage?.status === 'completed'}
         canDownloadAll={images.some(img => img.status === 'completed')}
       />
@@ -210,7 +216,7 @@ const Index = () => {
           canGoNext={selectedImageIndex < images.length - 1}
           currentImageIndex={selectedImageIndex + 1}
           totalImages={images.length}
-          onDownloadImage={downloadImage}
+          onDownloadImage={(image) => downloadImage(image, effectSettings)}
         />
         
         <RightSidebar 
