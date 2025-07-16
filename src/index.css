@@ -137,18 +137,33 @@
   /* Better visibility for switch components in off state */
   button[data-state="unchecked"] {
     background-color: hsl(var(--muted)) !important;
-    border: 2px solid hsl(var(--border)) !important;
-    opacity: 0.8;
+    border: 2px solid hsl(var(--accent-blue) / 0.3) !important;
+    box-shadow: 0 0 0 1px hsl(var(--accent-purple) / 0.2), 
+                inset 0 1px 2px hsl(var(--muted) / 0.1) !important;
+    opacity: 0.9;
+    transition: all 0.2s ease;
   }
   
   button[data-state="unchecked"]:hover {
-    background-color: hsl(var(--accent)) !important;
+    background-color: hsl(var(--accent) / 0.1) !important;
+    border: 2px solid hsl(var(--accent-purple) / 0.6) !important;
+    box-shadow: 0 0 8px hsl(var(--accent-purple) / 0.3),
+                0 0 0 1px hsl(var(--accent-blue) / 0.4) !important;
     opacity: 1;
+    transform: scale(1.02);
   }
   
   /* Switch thumb visibility improvements */
   span[data-state="unchecked"] {
     background-color: hsl(var(--muted-foreground)) !important;
-    border: 1px solid hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--accent-cyan) / 0.4) !important;
+    box-shadow: 0 1px 3px hsl(var(--accent-blue) / 0.2) !important;
+    transition: all 0.2s ease;
+  }
+  
+  /* Additional accent for checked state */
+  button[data-state="checked"] {
+    box-shadow: 0 0 12px hsl(var(--accent-purple) / 0.4),
+                0 0 0 1px hsl(var(--accent-blue) / 0.3) !important;
   }
 }
