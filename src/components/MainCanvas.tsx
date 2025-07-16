@@ -71,19 +71,68 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         targetB = parseInt(hex.substr(4, 2), 16);
       }
 
-      // Process each pixel
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+      // Convert threshold (0-100) to color distance threshold
+      const threshold = settings.threshold * 2.55; // Scale to 0-255 range
 
-        const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      if (settings.contiguous) {
+        // Contiguous removal - use flood fill from borders
+        const visited = new Set<string>();
         
-        // Convert threshold (0-100) to color distance threshold
-        const threshold = settings.threshold * 2.55; // Scale to 0-255 range
+        const isColorSimilar = (r: number, g: number, b: number) => {
+          const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+          return distance <= threshold;
+        };
+
+        const floodFill = (startX: number, startY: number) => {
+          const stack = [[startX, startY]];
+          
+          while (stack.length > 0) {
+            const [x, y] = stack.pop()!;
+            const key = `${x},${y}`;
+            
+            if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+            visited.add(key);
+            
+            const index = (y * width + x) * 4;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+            const a = data[index + 3];
+            
+            if (a === 0 || !isColorSimilar(r, g, b)) continue;
+            
+            // Make pixel transparent
+            data[index + 3] = 0;
+            
+            // Add neighbors to stack
+            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+          }
+        };
+
+        // Start flood fill from all border pixels
+        // Top and bottom borders
+        for (let x = 0; x < width; x++) {
+          floodFill(x, 0); // Top border
+          floodFill(x, height - 1); // Bottom border
+        }
+        // Left and right borders  
+        for (let y = 0; y < height; y++) {
+          floodFill(0, y); // Left border
+          floodFill(width - 1, y); // Right border
+        }
         
-        if (distance <= threshold) {
-          data[i + 3] = 0; // Make transparent
+      } else {
+        // Non-contiguous removal - remove all similar colors
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+          
+          if (distance <= threshold) {
+            data[i + 3] = 0; // Make transparent
+          }
         }
       }
     }
