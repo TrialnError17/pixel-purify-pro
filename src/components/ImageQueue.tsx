@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ImageItem } from '@/pages/Index';
+import { Trash2 } from 'lucide-react';
 import { 
   ChevronUp, 
   ChevronDown, 
@@ -26,6 +27,7 @@ interface ImageQueueProps {
   onRemoveImage: (id: string) => void;
   onProcessAll: () => void;
   onProcessImage: (image: ImageItem) => void;
+  onClearAll: () => void;
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -36,7 +38,8 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onSelectImage,
   onRemoveImage,
   onProcessAll,
-  onProcessImage
+  onProcessImage,
+  onClearAll
 }) => {
   const getStatusIcon = (status: ImageItem['status']) => {
     switch (status) {
@@ -119,6 +122,16 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
             >
               <PlayCircle className="w-4 h-4" />
               Process All ({pendingCount})
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClearAll}
+              className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear All
             </Button>
           </div>
         )}

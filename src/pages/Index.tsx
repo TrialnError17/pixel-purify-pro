@@ -164,6 +164,11 @@ const Index = () => {
     }
   }, [images, selectedImageIndex]);
 
+  const handleClearAll = useCallback(() => {
+    setImages([]);
+    setSelectedImageId('');
+  }, []);
+
   return (
     <div 
       className="min-h-screen bg-background text-foreground flex flex-col"
@@ -240,6 +245,7 @@ const Index = () => {
         }}
         onProcessAll={() => processAllImages(images, colorSettings, effectSettings, setImages)}
         onProcessImage={(image) => processImage(image, colorSettings, effectSettings, setImages)}
+        onClearAll={handleClearAll}
       />
       
       <input
