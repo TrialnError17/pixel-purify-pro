@@ -623,7 +623,7 @@ export const useImageProcessor = () => {
           }
           
           // Download the processed image - notification handled in queue header
-          downloadImage(processedImage, effectSettings);
+          downloadImage(processedImage, colorSettings, effectSettings);
         } else {
           throw new Error('Processing failed');
         }
@@ -707,33 +707,60 @@ export const useImageProcessor = () => {
   }, []);
 
   // Download single image
-  const downloadImage = useCallback((image: ImageItem, effectSettings?: EffectSettings) => {
-    if (!image.processedData) {
-      toast({
-        title: "No Processed Data",
-        description: "Process the image first before downloading",
-        variant: "destructive"
-      });
+  const downloadImage = useCallback((image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings) => {
+    if (!image.originalData) {
+      console.error('No original data available for download');
       return;
     }
 
-    console.log('Downloading image:', image.name, 'Processed data size:', image.processedData.data.length);
+    console.log('Downloading image:', image.name, 'Original data size:', image.originalData.data.length);
     console.log('Download effect settings:', JSON.stringify(effectSettings, null, 2));
 
-    let imageDataToDownload = new ImageData(
-      new Uint8ClampedArray(image.processedData.data),
-      image.processedData.width,
-      image.processedData.height
+    // Process fresh from original data using the current color settings
+    // This ensures download matches what the user sees in preview
+    let processedData = new ImageData(
+      new Uint8ClampedArray(image.originalData.data),
+      image.originalData.width,
+      image.originalData.height
     );
-    
-    console.log('Original processed data dimensions:', imageDataToDownload.width, 'x', imageDataToDownload.height);
-    
-    // Count non-transparent pixels before applying effects
-    let nonTransparentCount = 0;
-    for (let i = 0; i < imageDataToDownload.data.length; i += 4) {
-      if (imageDataToDownload.data[i + 3] > 0) nonTransparentCount++;
+
+    // Re-process with current settings (same logic as MainCanvas preview)
+    const data = processedData.data;
+    const width = processedData.width;
+    const height = processedData.height;
+
+    // Count initial non-transparent pixels
+    let initialCount = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 0) initialCount++;
     }
-    console.log('Non-transparent pixels before download effects:', nonTransparentCount);
+    console.log('Initial non-transparent pixels:', initialCount);
+
+    // Apply the same color removal logic as preview using current settings
+    if (colorSettings.enabled) {
+      if (colorSettings.mode === 'auto') {
+        processedData = autoColorRemoval(processedData, colorSettings);
+      } else {
+        processedData = manualColorRemoval(processedData, colorSettings);
+      }
+
+      if (colorSettings.contiguous) {
+        processedData = borderFloodFill(processedData, colorSettings);
+      }
+
+      if (colorSettings.minRegionSize > 0 || colorSettings.featherRadius > 0) {
+        processedData = cleanupRegions(processedData, colorSettings);
+      }
+    }
+    
+    // Count pixels after reprocessing
+    let finalCount = 0;
+    for (let i = 0; i < processedData.data.length; i += 4) {
+      if (processedData.data[i + 3] > 0) finalCount++;
+    }
+    console.log('Pixels after reprocessing with current settings:', finalCount);
+    
+    let imageDataToDownload = processedData;
     
     // Apply download effects if provided
     if (effectSettings) {
@@ -791,7 +818,7 @@ export const useImageProcessor = () => {
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast
-  }, [toast, trimTransparentPixels, applyDownloadEffects]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects]);
 
 
   return {

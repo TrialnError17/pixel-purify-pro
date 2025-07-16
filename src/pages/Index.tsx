@@ -204,7 +204,7 @@ const Index = () => {
       <Header 
         onAddImages={handleFileInput}
         onAddFolder={handleFolderInput}
-        onDownloadPNG={() => selectedImage && downloadImage(selectedImage, effectSettings)}
+        onDownloadPNG={() => selectedImage && downloadImage(selectedImage, colorSettings, effectSettings)}
         canDownload={selectedImage?.status === 'completed'}
         onUndo={undo}
         onRedo={redo}
@@ -268,7 +268,7 @@ const Index = () => {
           canGoNext={selectedImageIndex < images.length - 1}
           currentImageIndex={selectedImageIndex + 1}
           totalImages={images.length}
-          onDownloadImage={(image) => downloadImage(image, effectSettings)}
+          onDownloadImage={(image) => downloadImage(image, colorSettings, effectSettings)}
           addUndoAction={addUndoAction}
         />
         
