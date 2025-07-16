@@ -84,16 +84,48 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const targetB = data[2];
         const threshold = settings.threshold * 2.55;
 
-        // Simple non-contiguous removal for auto mode
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+        if (settings.contiguous) {
+          // Contiguous removal starting from top-left corner
+          const visited = new Set<string>();
+          const stack = [[0, 0]];
           
-          if (distance <= threshold) {
-            data[i + 3] = 0; // Make transparent
+          const isColorSimilar = (r: number, g: number, b: number) => {
+            const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+            return distance <= threshold;
+          };
+          
+          while (stack.length > 0) {
+            const [x, y] = stack.pop()!;
+            const key = `${x},${y}`;
+            
+            if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+            visited.add(key);
+            
+            const pixelIndex = (y * width + x) * 4;
+            const r = data[pixelIndex];
+            const g = data[pixelIndex + 1];
+            const b = data[pixelIndex + 2];
+            
+            if (!isColorSimilar(r, g, b)) continue;
+            
+            // Make pixel transparent
+            data[pixelIndex + 3] = 0;
+            
+            // Add neighbors to stack
+            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+          }
+        } else {
+          // Simple non-contiguous removal for auto mode
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+            
+            if (distance <= threshold) {
+              data[i + 3] = 0; // Make transparent
+            }
           }
         }
       } else {
@@ -120,7 +152,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           });
         });
 
-        // Process each pixel against all target colors
+        // Process each pixel against all target colors (always non-contiguous in manual mode)
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
@@ -297,12 +329,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         onImageUpdate(updatedImage);
       }
     } else if (tool === 'remove') {
+      // Interactive removal tool should always work, regardless of color removal settings
       // Save current state for undo
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
       
-      // Remove contiguous color at clicked position (additive to existing processing)
-      removeContiguousColor(ctx, x, y, colorSettings);
+      // Remove contiguous color at clicked position (using manual threshold)
+      removeContiguousColor(ctx, x, y, { 
+        ...colorSettings, 
+        threshold: colorSettings.threshold || 30 // Use current threshold or default
+      });
       
       // Mark that we have manual edits to prevent auto-processing from overwriting
       setHasManualEdits(true);
