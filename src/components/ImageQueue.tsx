@@ -41,26 +41,27 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   const getStatusIcon = (status: ImageItem['status']) => {
     switch (status) {
       case 'pending':
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
+        return <Clock className="w-4 h-4 text-accent-yellow" />;
       case 'processing':
-        return <Loader2 className="w-4 h-4 text-processing animate-spin" />;
+        return <Loader2 className="w-4 h-4 text-accent-cyan animate-spin" />;
       case 'completed':
-        return <CheckCircle className="w-4 h-4 text-success" />;
+        return <CheckCircle className="w-4 h-4 text-accent-green" />;
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-error" />;
+        return <AlertCircle className="w-4 h-4 text-accent-red" />;
     }
   };
 
   const getStatusBadge = (status: ImageItem['status']) => {
-    const variants = {
-      pending: 'secondary',
-      processing: 'outline',
-      completed: 'default',
-      error: 'destructive'
-    } as const;
+    const badgeConfig = {
+      pending: { variant: 'secondary' as const, className: 'bg-gradient-to-r from-accent-yellow/20 to-accent-orange/20 text-accent-yellow border-accent-yellow/30' },
+      processing: { variant: 'outline' as const, className: 'bg-gradient-processing text-white border-accent-cyan' },
+      completed: { variant: 'default' as const, className: 'bg-gradient-success text-white' },
+      error: { variant: 'destructive' as const, className: 'bg-gradient-error text-white' }
+    };
 
+    const config = badgeConfig[status];
     return (
-      <Badge variant={variants[status]} className="text-xs">
+      <Badge variant={config.variant} className={cn("text-xs", config.className)}>
         {status}
       </Badge>
     );

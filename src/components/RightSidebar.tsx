@@ -30,8 +30,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
     <div className="w-80 bg-gradient-panel border-l border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Paintbrush className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Effects</h2>
+          <div className="w-6 h-6 bg-gradient-to-r from-accent-pink to-accent-orange rounded-md flex items-center justify-center">
+            <Paintbrush className="w-4 h-4 text-white" />
+          </div>
+          <h2 className="text-lg font-semibold bg-gradient-to-r from-accent-pink to-accent-orange bg-clip-text text-transparent">
+            Effects
+          </h2>
         </div>
       </div>
       
@@ -126,26 +130,42 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             <Button
               variant="secondary"
               size="sm"
-              className="w-full justify-start"
+              className="w-full justify-start hover:bg-gradient-to-r hover:from-slate-500 hover:to-gray-500 hover:text-white"
               onClick={() => updateSettings({ backgroundColor: '#ffffff' })}
             >
-              White Background
+              ⚪ White Background
             </Button>
             <Button
               variant="secondary"
               size="sm"
-              className="w-full justify-start"
+              className="w-full justify-start hover:bg-gradient-to-r hover:from-gray-700 hover:to-black hover:text-white"
               onClick={() => updateSettings({ backgroundColor: '#000000' })}
             >
-              Black Background
+              ⚫ Black Background
             </Button>
             <Button
-              variant="secondary"
+              variant="success"
               size="sm"
               className="w-full justify-start"
               onClick={() => updateSettings({ backgroundColor: '#00ff00' })}
             >
-              Green Screen
+              🟢 Green Screen
+            </Button>
+            <Button
+              variant="warning"
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => updateSettings({ backgroundColor: '#ff6b6b' })}
+            >
+              🔴 Red Background
+            </Button>
+            <Button
+              variant="rainbow"
+              size="sm"
+              className="w-full justify-start"
+              onClick={() => updateSettings({ backgroundColor: '#ff69b4' })}
+            >
+              🌈 Hot Pink
             </Button>
           </CardContent>
         </Card>

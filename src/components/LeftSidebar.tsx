@@ -25,8 +25,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     <div className="w-80 bg-gradient-panel border-r border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Settings className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Color Removal</h2>
+          <div className="w-6 h-6 bg-gradient-to-r from-accent-green to-accent-cyan rounded-md flex items-center justify-center">
+            <Settings className="w-4 h-4 text-white" />
+          </div>
+          <h2 className="text-lg font-semibold bg-gradient-to-r from-accent-green to-accent-cyan bg-clip-text text-transparent">
+            Color Removal
+          </h2>
         </div>
       </div>
       
