@@ -535,7 +535,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         onImageUpdate(updatedImage);
       }
     } else if (tool === 'contiguous') {
-      // Contiguous selection tool - adds color to picked colors for removal
+      // Contiguous removal tool - removes only connected pixels of clicked color
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
       const r = originalImageData.data[index];
@@ -543,8 +543,48 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const b = originalImageData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
-      // Add contiguous region to picked colors
+      // Save current state for undo (both local canvas undo and global undo)
+      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Add global undo action
+      if (addUndoAction && image) {
+        addUndoAction({
+          type: 'canvas_edit',
+          description: `Contiguous removal of ${hex}`,
+          undo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(currentImageData, 0, 0);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                onImageUpdate(updatedImage);
+              }
+            }
+          }
+        });
+      }
+      
+      // Add color to picked colors for reference
       onColorPicked(hex);
+      
+      // Remove contiguous color at clicked position (using current threshold)
+      removeContiguousColor(ctx, x, y, { 
+        ...colorSettings, 
+        threshold: colorSettings.threshold || 30 // Use current threshold or default
+      });
+      
+      // Mark that we have manual edits to prevent auto-processing from overwriting
+      setHasManualEdits(true);
+      
+      // Store the manually edited result
+      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (image) {
+        const updatedImage = { ...image, processedData: newImageData };
+        onImageUpdate(updatedImage);
+      }
     }
   }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, onColorPicked, onImageUpdate]);
 
