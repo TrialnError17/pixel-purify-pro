@@ -33,7 +33,6 @@ export interface ColorRemovalSettings {
   threshold: number;
   contiguous: boolean;
   minRegionSize: number;
-  featherRadius: number;
   pickedColors: PickedColor[];
 }
 
@@ -69,7 +68,6 @@ const Index = () => {
     threshold: 30,
     contiguous: true,
     minRegionSize: 100,
-    featherRadius: 2,
     pickedColors: []
   });
   

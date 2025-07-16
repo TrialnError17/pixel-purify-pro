@@ -227,53 +227,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
 
-      // Apply feather radius (edge softening)
-      if (settings.featherRadius > 0) {
-        const radius = Math.ceil(settings.featherRadius);
-        const originalAlpha = new Uint8ClampedArray(width * height);
-        
-        // Extract original alpha channel
-        for (let i = 0; i < data.length; i += 4) {
-          originalAlpha[i / 4] = data[i + 3];
-        }
-        
-        // Apply gaussian-like blur to alpha channel
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const centerIndex = y * width + x;
-            
-            if (originalAlpha[centerIndex] === 0) continue; // Skip transparent pixels
-            
-            let totalWeight = 0;
-            let weightedAlpha = 0;
-            
-            // Sample in radius around pixel
-            for (let dy = -radius; dy <= radius; dy++) {
-              for (let dx = -radius; dx <= radius; dx++) {
-                const nx = x + dx;
-                const ny = y + dy;
-                
-                if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  if (distance <= settings.featherRadius) {
-                    const weight = Math.exp(-(distance * distance) / (2 * settings.featherRadius * settings.featherRadius));
-                    const neighborIndex = ny * width + nx;
-                    
-                    totalWeight += weight;
-                    weightedAlpha += originalAlpha[neighborIndex] * weight;
-                  }
-                }
-              }
-            }
-            
-            if (totalWeight > 0) {
-              const newAlpha = Math.round(weightedAlpha / totalWeight);
-              data[centerIndex * 4 + 3] = newAlpha;
-            }
-          }
-        }
-      }
-    }
 
     // Apply background color for preview only (regardless of saveWithBackground setting)
     if (effects.background.enabled) {

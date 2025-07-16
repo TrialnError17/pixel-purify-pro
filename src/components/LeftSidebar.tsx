@@ -226,30 +226,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
-                  ✨ Feather Radius
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
-                  <SliderWithInput
-                    value={[settings.featherRadius]}
-                    onValueChange={([featherRadius]) => updateSettings({ featherRadius })}
-                    min={0}
-                    max={10}
-                    step={0.5}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
-                  />
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-accent-cyan font-medium">⚡ 0px</span>
-                  <span className="font-bold text-accent-cyan bg-accent-cyan/10 px-2 py-1 rounded">{settings.featherRadius}px</span>
-                  <span className="text-accent-blue font-medium">🌟 10px</span>
-                </div>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>

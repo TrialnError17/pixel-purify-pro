@@ -233,65 +233,6 @@ export const useImageProcessor = () => {
       }
     }
 
-    // Step 2: Apply feathering (gaussian blur on alpha channel)
-    if (settings.featherRadius > 0) {
-      const radius = Math.max(1, Math.floor(settings.featherRadius));
-      const newData = new Uint8ClampedArray(data);
-      
-      // Create gaussian kernel
-      const sigma = radius / 3;
-      const kernel: number[] = [];
-      const kernelSize = radius * 2 + 1;
-      let kernelSum = 0;
-      
-      for (let i = 0; i < kernelSize; i++) {
-        const x = i - radius;
-        const value = Math.exp(-(x * x) / (2 * sigma * sigma));
-        kernel[i] = value;
-        kernelSum += value;
-      }
-      
-      // Normalize kernel
-      for (let i = 0; i < kernelSize; i++) {
-        kernel[i] /= kernelSum;
-      }
-      
-      // Apply horizontal blur on alpha channel
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          let alpha = 0;
-          
-          for (let i = 0; i < kernelSize; i++) {
-            const nx = x + i - radius;
-            if (nx >= 0 && nx < width) {
-              const index = (y * width + nx) * 4;
-              alpha += data[index + 3] * kernel[i];
-            }
-          }
-          
-          const index = (y * width + x) * 4;
-          newData[index + 3] = Math.round(Math.max(0, Math.min(255, alpha)));
-        }
-      }
-      
-      // Apply vertical blur on alpha channel
-      for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-          let alpha = 0;
-          
-          for (let i = 0; i < kernelSize; i++) {
-            const ny = y + i - radius;
-            if (ny >= 0 && ny < height) {
-              const index = (ny * width + x) * 4;
-              alpha += newData[index + 3] * kernel[i];
-            }
-          }
-          
-          const index = (y * width + x) * 4;
-          data[index + 3] = Math.round(Math.max(0, Math.min(255, alpha)));
-        }
-      }
-    }
 
     return new ImageData(data, width, height);
   }, []);
@@ -510,7 +451,7 @@ export const useImageProcessor = () => {
         // Add delay to make progress visible
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        if (colorSettings.minRegionSize > 0 || colorSettings.featherRadius > 0) {
+        if (colorSettings.minRegionSize > 0) {
           processedData = cleanupRegions(processedData, colorSettings);
         }
       }
@@ -748,7 +689,7 @@ export const useImageProcessor = () => {
         processedData = borderFloodFill(processedData, colorSettings);
       }
 
-      if (colorSettings.minRegionSize > 0 || colorSettings.featherRadius > 0) {
+      if (colorSettings.minRegionSize > 0) {
         processedData = cleanupRegions(processedData, colorSettings);
       }
     }
