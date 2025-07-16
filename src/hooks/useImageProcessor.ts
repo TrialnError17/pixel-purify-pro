@@ -165,33 +165,161 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
 
-  // Apply morphological operations
-  const applyMorphology = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
+  // Remove small regions and apply feathering
+  const cleanupRegions = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
-    const radius = Math.max(1, Math.floor(settings.featherRadius));
 
-    // Simple erosion to clean up edges
-    for (let y = radius; y < height - radius; y++) {
-      for (let x = radius; x < width - radius; x++) {
-        const centerIndex = (y * width + x) * 4;
-        if (data[centerIndex + 3] === 0) continue; // Skip transparent pixels
+    // Step 1: Remove small transparent regions (fill holes)
+    if (settings.minRegionSize > 0) {
+      const visited = new Set<string>();
+      
+      const floodFillRegion = (startX: number, startY: number, isTransparent: boolean): number => {
+        const stack = [[startX, startY]];
+        const region: [number, number][] = [];
+        
+        while (stack.length > 0) {
+          const [x, y] = stack.pop()!;
+          const key = `${x},${y}`;
+          
+          if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+          visited.add(key);
+          
+          const index = (y * width + x) * 4;
+          const pixelIsTransparent = data[index + 3] === 0;
+          
+          if (pixelIsTransparent !== isTransparent) continue;
+          
+          region.push([x, y]);
+          stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+        }
+        
+        return region.length;
+      };
 
-        let shouldErode = false;
-        for (let dy = -radius; dy <= radius; dy++) {
-          for (let dx = -radius; dx <= radius; dx++) {
-            const neighborIndex = ((y + dy) * width + (x + dx)) * 4;
-            if (data[neighborIndex + 3] === 0) {
-              shouldErode = true;
-              break;
+      // Find and remove small transparent regions
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const key = `${x},${y}`;
+          if (visited.has(key)) continue;
+          
+          const index = (y * width + x) * 4;
+          const isTransparent = data[index + 3] === 0;
+          
+          if (isTransparent) {
+            const regionSize = floodFillRegion(x, y, true);
+            
+            // If region is too small, fill it (make it opaque)
+            if (regionSize < settings.minRegionSize) {
+              // Get surrounding color to fill with
+              let fillR = 0, fillG = 0, fillB = 0, count = 0;
+              
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  const nx = x + dx;
+                  const ny = y + dy;
+                  if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
+                    const nIndex = (ny * width + nx) * 4;
+                    if (data[nIndex + 3] > 0) {
+                      fillR += data[nIndex];
+                      fillG += data[nIndex + 1];
+                      fillB += data[nIndex + 2];
+                      count++;
+                    }
+                  }
+                }
+              }
+              
+              if (count > 0) {
+                fillR = Math.round(fillR / count);
+                fillG = Math.round(fillG / count);
+                fillB = Math.round(fillB / count);
+                
+                // Fill the small region
+                const fillStack = [[x, y]];
+                const fillVisited = new Set<string>();
+                
+                while (fillStack.length > 0) {
+                  const [fx, fy] = fillStack.pop()!;
+                  const fKey = `${fx},${fy}`;
+                  
+                  if (fillVisited.has(fKey) || fx < 0 || fy < 0 || fx >= width || fy >= height) continue;
+                  fillVisited.add(fKey);
+                  
+                  const fIndex = (fy * width + fx) * 4;
+                  if (data[fIndex + 3] > 0) continue;
+                  
+                  data[fIndex] = fillR;
+                  data[fIndex + 1] = fillG;
+                  data[fIndex + 2] = fillB;
+                  data[fIndex + 3] = 255;
+                  
+                  fillStack.push([fx + 1, fy], [fx - 1, fy], [fx, fy + 1], [fx, fy - 1]);
+                }
+              }
             }
           }
-          if (shouldErode) break;
         }
+      }
+    }
 
-        if (shouldErode) {
-          data[centerIndex + 3] = 0;
+    // Step 2: Apply feathering (gaussian blur on alpha channel)
+    if (settings.featherRadius > 0) {
+      const radius = Math.max(1, Math.floor(settings.featherRadius));
+      const newData = new Uint8ClampedArray(data);
+      
+      // Create gaussian kernel
+      const sigma = radius / 3;
+      const kernel: number[] = [];
+      const kernelSize = radius * 2 + 1;
+      let kernelSum = 0;
+      
+      for (let i = 0; i < kernelSize; i++) {
+        const x = i - radius;
+        const value = Math.exp(-(x * x) / (2 * sigma * sigma));
+        kernel[i] = value;
+        kernelSum += value;
+      }
+      
+      // Normalize kernel
+      for (let i = 0; i < kernelSize; i++) {
+        kernel[i] /= kernelSum;
+      }
+      
+      // Apply horizontal blur on alpha channel
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          let alpha = 0;
+          
+          for (let i = 0; i < kernelSize; i++) {
+            const nx = x + i - radius;
+            if (nx >= 0 && nx < width) {
+              const index = (y * width + nx) * 4;
+              alpha += data[index + 3] * kernel[i];
+            }
+          }
+          
+          const index = (y * width + x) * 4;
+          newData[index + 3] = Math.round(Math.max(0, Math.min(255, alpha)));
+        }
+      }
+      
+      // Apply vertical blur on alpha channel
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          let alpha = 0;
+          
+          for (let i = 0; i < kernelSize; i++) {
+            const ny = y + i - radius;
+            if (ny >= 0 && ny < height) {
+              const index = (ny * width + x) * 4;
+              alpha += newData[index + 3] * kernel[i];
+            }
+          }
+          
+          const index = (y * width + x) * 4;
+          data[index + 3] = Math.round(Math.max(0, Math.min(255, alpha)));
         }
       }
     }
@@ -293,13 +421,13 @@ export const useImageProcessor = () => {
           processedData = borderFloodFill(processedData, colorSettings);
         }
 
-        // Step 3: Morphological operations
+        // Step 3: Cleanup regions and apply feathering
         setImages(prev => prev.map(img => 
           img.id === image.id ? { ...img, progress: 75 } : img
         ));
 
-        if (colorSettings.featherRadius > 0) {
-          processedData = applyMorphology(processedData, colorSettings);
+        if (colorSettings.minRegionSize > 0 || colorSettings.featherRadius > 0) {
+          processedData = cleanupRegions(processedData, colorSettings);
         }
       }
 
@@ -342,7 +470,7 @@ export const useImageProcessor = () => {
         variant: "destructive"
       });
     }
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, applyMorphology, applyEffects, toast]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, applyEffects, toast]);
 
   // Process all images
   const processAllImages = useCallback(async (
