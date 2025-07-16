@@ -583,24 +583,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
+          
+          {image && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDownloadImage(image)}
+              disabled={!image || image.status !== 'completed'}
+              title="Download PNG"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
-
-      {/* Download Button */}
-      {image && (
-        <div className="flex justify-center p-2 bg-muted/50 border-b border-border">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => onDownloadImage(image)}
-            disabled={!image || image.status !== 'completed'}
-            className="flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Download PNG
-          </Button>
-        </div>
-      )}
 
       {/* Canvas Area */}
       <div 
