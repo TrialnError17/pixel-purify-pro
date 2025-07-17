@@ -9,6 +9,8 @@ import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
 
+console.log('Index.tsx is loading');
+
 export interface ImageItem {
   id: string;
   file: File;
@@ -63,6 +65,7 @@ export interface ContiguousToolSettings {
 }
 
 const Index = () => {
+  console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
