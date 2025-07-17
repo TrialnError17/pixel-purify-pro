@@ -404,6 +404,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
+      console.log('Processing completed, checking conditions:', {
+        sameCanvas: canvasRef.current === canvas,
+        hasManualEdits: hasManualEditsRef.current,
+        manualMode,
+        willApply: canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode
+      });
+      
       if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
         console.log('Applying auto-processed data');
         ctx.putImageData(processedData, 0, 0);
@@ -414,6 +421,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           hasManualEdits: hasManualEditsRef.current,
           manualMode
         });
+        setIsProcessing(false);
       }
     });
 
