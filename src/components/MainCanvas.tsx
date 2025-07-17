@@ -15,7 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Wand
+  Wand,
+  Undo,
+  Redo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -466,6 +468,27 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [tool, isSpacePressed, previousTool, onToolChange]);
 
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z for undo
+      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Ctrl+Shift+Z for redo
+      else if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [undoStack, redoStack]);
+
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
     
@@ -803,11 +826,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     
-    // Determine zoom direction based on wheel delta
-    const direction = e.deltaY < 0 ? 'in' : 'out';
-    
-    // Use mouse position as zoom center
-    handleZoom(direction, e.clientX, e.clientY);
+    // Check for modifier keys
+    if (e.shiftKey) {
+      // Shift + scroll = pan up/down
+      const deltaY = e.deltaY * 0.5; // Adjust sensitivity
+      setPan(prev => ({ x: prev.x, y: prev.y - deltaY }));
+    } else if (e.ctrlKey) {
+      // Ctrl + scroll = pan left/right
+      const deltaX = e.deltaY * 0.5; // Adjust sensitivity
+      setPan(prev => ({ x: prev.x - deltaX, y: prev.y }));
+    } else {
+      // Normal scroll = zoom
+      const direction = e.deltaY < 0 ? 'in' : 'out';
+      handleZoom(direction, e.clientX, e.clientY);
+    }
   }, [handleZoom]);
 
   const handleUndo = useCallback(() => {
@@ -959,6 +991,33 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
           
           <div className="w-px h-6 bg-border mx-2" />
+          
+          {/* Undo/Redo */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            className="flex items-center gap-1"
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo className="w-4 h-4" />
+            Undo
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            className="flex items-center gap-1"
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            <Redo className="w-4 h-4" />
+            Redo
+          </Button>
+          
+          <div className="w-px h-6 bg-border mx-1" />
           
           {/* Tools */}
           <Button
