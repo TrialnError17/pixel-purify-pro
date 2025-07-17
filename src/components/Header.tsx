@@ -91,42 +91,8 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          PNG
+          Download
         </Button>
-        
-        {(onUndo || onRedo) && (
-          <>
-            <div className="w-px h-6 bg-border mx-2" />
-            
-            {onUndo && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onUndo}
-                disabled={!canUndo || isProcessing}
-                className="flex items-center gap-2"
-                title="Undo last action"
-              >
-                <Undo className="w-4 h-4" />
-                Undo
-              </Button>
-            )}
-            
-            {onRedo && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRedo}
-                disabled={!canRedo || isProcessing}
-                className="flex items-center gap-2"
-                title="Redo last undone action"
-              >
-                <Redo className="w-4 h-4" />
-                Redo
-              </Button>
-            )}
-          </>
-        )}
       </div>
     </header>
   );

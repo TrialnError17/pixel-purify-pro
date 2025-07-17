@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Download,
   Wand,
-  Undo
+  Undo,
+  Redo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -71,6 +72,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
+  const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const hasManualEditsRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
@@ -345,6 +347,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       hasManualEditsRef.current = false;
       setManualImageData(null);
       setUndoStack([]);
+      setRedoStack([]);
       
       // Update image with original data if not already set
       if (!image.originalData) {
@@ -503,6 +506,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
+      setRedoStack([]); // Clear redo stack when new action is performed
       
       // Add global undo action
       if (addUndoAction && image) {
@@ -553,6 +557,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
+      setRedoStack([]); // Clear redo stack when new action is performed
       
       // Add global undo action
       if (addUndoAction && image) {
@@ -816,7 +821,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     console.log('Local undo - restoring previous state');
     const previousState = undoStack[undoStack.length - 1];
+    const currentState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
     setUndoStack(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev, currentState]);
     
     // Restore the previous canvas state
     ctx.putImageData(previousState, 0, 0);
@@ -831,6 +839,34 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
     onImageUpdate(updatedImage);
   }, [undoStack, image, onImageUpdate]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !canvasRef.current || !image) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    console.log('Local redo - restoring next state');
+    const nextState = redoStack[redoStack.length - 1];
+    const currentState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    setRedoStack(prev => prev.slice(0, -1));
+    setUndoStack(prev => [...prev, currentState]);
+    
+    // Restore the next canvas state
+    ctx.putImageData(nextState, 0, 0);
+    
+    // Update the image with the restored state
+    const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const updatedImage = { ...image, processedData: restoredImageData };
+    
+    // Update manual image data to preserve the redo state
+    setManualImageData(restoredImageData);
+    
+    console.log('Local redo completed, redoStack length:', redoStack.length - 1);
+    onImageUpdate(updatedImage);
+  }, [redoStack, image, onImageUpdate]);
 
   const handleFitToScreen = useCallback(() => {
     if (!containerRef.current || !canvasRef.current) return;
@@ -862,6 +898,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     hasManualEditsRef.current = false;
     setManualImageData(null);
     setUndoStack([]);
+    setRedoStack([]);
     
     // Reprocess the original image with current settings
     const processedData = processImageData(originalImageData, colorSettings, effectSettings);
@@ -936,6 +973,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           >
             <Undo className="w-4 h-4" />
             Undo
+          </Button>
+          
+          {/* Redo */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            className="flex items-center gap-2"
+            title="Redo last undone edit"
+          >
+            <Redo className="w-4 h-4" />
+            Redo
           </Button>
           
           <div className="w-px h-6 bg-border mx-2" />
@@ -1031,8 +1081,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               onClick={handleDownload}
               disabled={!image}
               title="Download PNG"
+              className="flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
+              Download
             </Button>
           )}
         </div>
