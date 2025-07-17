@@ -62,6 +62,7 @@ const Index = () => {
   const [queueVisible, setQueueVisible] = useState(false);
   const [currentTool, setCurrentTool] = useState<'pan' | 'eyedropper' | 'remove' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -99,6 +100,16 @@ const Index = () => {
 
   const { processImage, processAllImages, downloadImage, cancelProcessing } = useImageProcessor();
   const { addUndoAction, undo, redo, canUndo, canRedo, clearHistory } = useUndoManager();
+
+  // Monitor single image progress
+  React.useEffect(() => {
+    if (singleImageProgress) {
+      const targetImage = images.find(img => img.id === singleImageProgress.imageId);
+      if (targetImage && targetImage.progress !== undefined && targetImage.progress !== singleImageProgress.progress) {
+        setSingleImageProgress({ imageId: singleImageProgress.imageId, progress: targetImage.progress });
+      }
+    }
+  }, [images, singleImageProgress]);
 
   const handleFilesSelected = useCallback((files: FileList) => {
     const newImages: ImageItem[] = [];
@@ -317,10 +328,9 @@ const Index = () => {
           totalImages={images.length}
           onDownloadImage={(image) => {
             const prevImages = [...images];
-            const wasQueueVisible = queueVisible;
             
-            // Show queue for progress feedback
-            setQueueVisible(true);
+            // Start single image progress tracking instead of expanding queue
+            setSingleImageProgress({ imageId: image.id, progress: 0 });
             
             // Add undo action before processing
             addUndoAction({
@@ -328,12 +338,11 @@ const Index = () => {
               description: `Download ${image.name}`,
               undo: () => {
                 setImages(prevImages);
-                setIsProcessing(false);
-                setQueueVisible(wasQueueVisible);
+                setSingleImageProgress(null);
               }
             });
             
-            setIsProcessing(true);
+            // Process image and monitor progress
             processImage(image, colorSettings, effectSettings, setImages).then(() => {
               // After processing is complete, automatically download the image
               // Find the processed image in the updated state
@@ -346,11 +355,8 @@ const Index = () => {
                 return currentImages;
               });
             }).finally(() => {
-              setIsProcessing(false);
-              // Auto-hide queue after processing if it wasn't visible before
-              if (!wasQueueVisible) {
-                setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
-              }
+              // Clear progress and hide after a short delay
+              setTimeout(() => setSingleImageProgress(null), 1500);
             });
           }}
           addUndoAction={addUndoAction}
@@ -390,6 +396,7 @@ const Index = () => {
         visible={queueVisible}
         onToggleVisible={() => setQueueVisible(!queueVisible)}
         onSelectImage={setSelectedImageId}
+        singleImageProgress={singleImageProgress}
         processingProgress={
           isProcessing 
               ? {

@@ -33,6 +33,7 @@ interface ImageQueueProps {
   onCancelProcessing?: () => void;
   isProcessing?: boolean;
   forceFullscreen?: boolean;
+  singleImageProgress?: { imageId: string; progress: number } | null;
   processingProgress?: {
     current: number;
     total: number;
@@ -53,6 +54,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onCancelProcessing,
   isProcessing = false,
   forceFullscreen = false,
+  singleImageProgress,
   processingProgress
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
@@ -248,6 +250,29 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
           )}
         </div>
       </div>
+
+      {/* Single Image Progress Bar - appears beneath header when downloading from preview */}
+      {singleImageProgress && (
+        <div className="px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-primary">
+                  Downloading image...
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {Math.round(singleImageProgress.progress)}%
+                </span>
+              </div>
+              <Progress 
+                value={singleImageProgress.progress} 
+                className="h-2 bg-background"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Queue Content */}
       {(visible || isFullscreen) && (
