@@ -62,30 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={onAddImages}
-          disabled={isProcessing}
-          className="flex items-center gap-2"
-        >
-          <ImagePlus className="w-4 h-4" />
-          Add Images
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAddFolder}
-          disabled={isProcessing}
-          className="flex items-center gap-2"
-        >
-          <FolderPlus className="w-4 h-4" />
-          Add Folder
-        </Button>
-        
-        <div className="w-px h-6 bg-border mx-2" />
-        
-        <Button
-          variant="outline"
-          size="sm"
           onClick={onDownloadPNG}
           disabled={!canDownload || isProcessing}
           className="flex items-center gap-2"

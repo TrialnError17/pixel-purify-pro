@@ -6,7 +6,7 @@ import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
-import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand } from 'lucide-react';
+import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 interface LeftSidebarProps {
@@ -19,6 +19,8 @@ interface LeftSidebarProps {
   onEffectSettingsChange: (settings: EffectSettings) => void;
   contiguousSettings: ContiguousToolSettings;
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
+  onAddImages: () => void;
+  onAddFolder: () => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -30,7 +32,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   effectSettings,
   onEffectSettingsChange,
   contiguousSettings,
-  onContiguousSettingsChange
+  onContiguousSettingsChange,
+  onAddImages,
+  onAddFolder
 }) => {
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
@@ -63,13 +67,37 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   return (
     <div className="w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
       <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-gradient-to-r from-accent-green to-accent-cyan rounded-md flex items-center justify-center">
-            <Settings className="w-4 h-4 text-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-gradient-to-r from-accent-green to-accent-cyan rounded-md flex items-center justify-center">
+              <Settings className="w-4 h-4 text-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold bg-gradient-to-r from-accent-green to-accent-cyan bg-clip-text text-transparent">
+              Tools
+            </h2>
           </div>
-          <h2 className="text-lg font-semibold bg-gradient-to-r from-accent-green to-accent-cyan bg-clip-text text-transparent">
-            Tools
-          </h2>
+          
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAddImages}
+              className="flex items-center gap-1"
+            >
+              <ImagePlus className="w-3 h-3" />
+              Images
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAddFolder}
+              className="flex items-center gap-1"
+            >
+              <FolderPlus className="w-3 h-3" />
+              Folder
+            </Button>
+          </div>
         </div>
       </div>
       
