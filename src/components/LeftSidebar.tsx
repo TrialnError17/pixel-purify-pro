@@ -61,7 +61,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <div className="w-96 bg-gradient-panel border-r border-border flex flex-col">
+    <div className="w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-gradient-to-r from-accent-green to-accent-cyan rounded-md flex items-center justify-center">
@@ -73,7 +73,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         </div>
       </div>
       
-      <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-6 overflow-y-auto min-h-0">
         {/* Background Enable Toggle */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 shadow-colorful">
           <CardHeader className="pb-3">

@@ -227,7 +227,7 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen bg-background text-foreground flex flex-col"
+      className="h-screen bg-background text-foreground flex flex-col overflow-hidden"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
@@ -279,7 +279,7 @@ const Index = () => {
         }
       />
       
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <LeftSidebar 
           settings={colorSettings}
           onSettingsChange={(newSettings) => {
