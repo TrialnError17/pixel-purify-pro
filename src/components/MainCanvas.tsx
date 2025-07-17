@@ -362,7 +362,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return () => {
       URL.revokeObjectURL(img.src);
     };
-  }, [image, hasManualEditsRef.current, manualImageData, originalImageData, onImageUpdate]);
+  }, [image, hasManualEditsRef.current, manualImageData, originalImageData]);
 
   // Debounced processing to prevent flashing
   const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
