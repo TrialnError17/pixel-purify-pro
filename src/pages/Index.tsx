@@ -76,7 +76,7 @@ const Index = () => {
   });
 
   const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
-    threshold: 30
+    threshold: 10
   });
 
   const [manualMode, setManualMode] = useState(false);
