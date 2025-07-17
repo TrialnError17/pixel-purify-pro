@@ -48,6 +48,9 @@ export interface EffectSettings {
     color: string;
     threshold: number;
   };
+  download: {
+    trimTransparentPixels: boolean;
+  };
 }
 
 export interface ContiguousToolSettings {
@@ -97,15 +100,15 @@ const Index = () => {
       enabled: false,
       color: '#000000',
       threshold: 50
+    },
+    download: {
+      trimTransparentPixels: false
     }
   });
 
-  const { processImage, processAllImages, cancelProcessing, downloadImage, processSpecks } = useImageProcessor();
-  const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager({
-    onImageStateChange: setImages,
-    onSettingsChange: setColorSettings,
-    onSelectedImageChange: setSelectedImageId,
-  });
+  const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
+  const { processSpecks } = useSpeckleTools();
+  const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
   const handleFilesSelected = useCallback((files: FileList) => {
     const newImages: ImageItem[] = Array.from(files).map(file => ({
@@ -343,28 +346,13 @@ const Index = () => {
               }}
               onPreviousImage={handlePreviousImage}
               onNextImage={handleNextImage}
-              onDownloadPNG={() => {
+              canGoPrevious={selectedImageIndex > 0}
+              canGoNext={selectedImageIndex < images.length - 1}
+              currentImageIndex={selectedImageIndex + 1}
+              totalImages={images.length}
+              onDownloadImage={() => {
                 if (selectedImage) {
-                  setSingleImageProgress({ imageId: selectedImage.id, progress: 0 });
-                  
-                  // Simulate download progress
-                  setTimeout(() => setSingleImageProgress({ imageId: selectedImage.id, progress: 50 }), 100);
-                  setTimeout(() => setSingleImageProgress({ imageId: selectedImage.id, progress: 100 }), 500);
-                  
-                  // Download directly using the current canvas data (what user sees)
-                  setTimeout(() => {
-                    // For preview downloads, disable all effects to get exactly what's shown
-                    const previewEffectSettings = {
-                      background: { enabled: false, color: '#ffffff', saveWithBackground: false },
-                      inkStamp: { enabled: false, color: '#000000', threshold: 50 },
-                      download: { trimTransparentPixels: false }
-                    };
-                    
-                    downloadImage(selectedImage, colorSettings, previewEffectSettings);
-                    
-                    // Clear progress after download
-                    setTimeout(() => setSingleImageProgress(null), 1000);
-                  }, 1000);
+                  downloadImage(selectedImage, colorSettings, effectSettings);
                 }
               }}
               addUndoAction={addUndoAction}
@@ -413,7 +401,7 @@ const Index = () => {
               
               // Add undo action
               addUndoAction({
-                type: 'image_operation',
+                type: 'canvas_edit',
                 description: `Remove ${targetImage.name}`,
                 undo: () => {
                   setImages(prevImages);
@@ -438,7 +426,7 @@ const Index = () => {
                 setIsProcessing(false);
               });
             }}
-            onProcessAndDownload={(image) => {
+            onProcessImage={(image) => {
               setIsProcessing(true);
               processImage(image, colorSettings, effectSettings, setImages).then(() => {
                 // After processing is complete, automatically download the image
