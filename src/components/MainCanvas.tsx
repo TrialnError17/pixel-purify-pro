@@ -70,6 +70,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const hasManualEditsRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previousTool, setPreviousTool] = useState<'pan' | 'eyedropper' | 'remove' | 'contiguous'>('pan');
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   // Color processing functions
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -383,6 +385,36 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     };
   }, [originalImageData, manualImageData, colorSettings, effectSettings, debouncedProcessImageData, manualMode]);
+
+  // Keyboard shortcut for spacebar (pan tool)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+        if (tool !== 'pan') {
+          setPreviousTool(tool);
+          onToolChange('pan');
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(false);
+        onToolChange(previousTool);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [tool, isSpacePressed, previousTool, onToolChange]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
