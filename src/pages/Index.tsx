@@ -319,6 +319,30 @@ const Index = () => {
             });
           }}
           speckCount={speckCount}
+          effectSettings={effectSettings}
+          onEffectSettingsChange={(newSettings) => {
+            const prevSettings = { ...effectSettings };
+            setEffectSettings(newSettings);
+            
+            // Add undo action for effect settings changes
+            addUndoAction({
+              type: 'settings',
+              description: 'Change effect settings',
+              undo: () => setEffectSettings(prevSettings)
+            });
+          }}
+          contiguousSettings={contiguousSettings}
+          onContiguousSettingsChange={(newContiguousSettings) => {
+            const prevContiguousSettings = { ...contiguousSettings };
+            setContiguousSettings(newContiguousSettings);
+            
+            // Add undo action for magic wand settings changes
+            addUndoAction({
+              type: 'settings',
+              description: 'Change magic wand tool settings',
+              undo: () => setContiguousSettings(prevContiguousSettings)
+            });
+          }}
         />
         
         <MainCanvas 
@@ -408,32 +432,7 @@ const Index = () => {
           onSpeckCountUpdate={(count) => setSpeckCount(count)}
         />
         
-        <RightSidebar 
-          settings={effectSettings}
-          contiguousSettings={contiguousSettings}
-          onContiguousSettingsChange={(newContiguousSettings) => {
-            const prevContiguousSettings = { ...contiguousSettings };
-            setContiguousSettings(newContiguousSettings);
-            
-            // Add undo action for magic wand settings changes
-            addUndoAction({
-              type: 'settings',
-              description: 'Change magic wand tool settings',
-              undo: () => setContiguousSettings(prevContiguousSettings)
-            });
-          }}
-          onSettingsChange={(newSettings) => {
-            const prevSettings = { ...effectSettings };
-            setEffectSettings(newSettings);
-            
-            // Add undo action for effect settings changes
-            addUndoAction({
-              type: 'settings',
-              description: 'Change effect settings',
-              undo: () => setEffectSettings(prevSettings)
-            });
-          }}
-        />
+        <RightSidebar />
       </div>
       
       <ImageQueue 

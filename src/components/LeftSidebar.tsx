@@ -5,8 +5,8 @@ import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ColorRemovalSettings, PickedColor } from '@/pages/Index';
-import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff } from 'lucide-react';
+import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
+import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 interface LeftSidebarProps {
@@ -15,6 +15,10 @@ interface LeftSidebarProps {
   speckleSettings: SpeckleSettings;
   onSpeckleSettingsChange: (settings: SpeckleSettings) => void;
   speckCount?: number;
+  effectSettings: EffectSettings;
+  onEffectSettingsChange: (settings: EffectSettings) => void;
+  contiguousSettings: ContiguousToolSettings;
+  onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -22,7 +26,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onSettingsChange,
   speckleSettings,
   onSpeckleSettingsChange,
-  speckCount
+  speckCount,
+  effectSettings,
+  onEffectSettingsChange,
+  contiguousSettings,
+  onContiguousSettingsChange
 }) => {
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
@@ -32,20 +40,135 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     onSpeckleSettingsChange({ ...speckleSettings, ...updates });
   };
 
+  const updateEffectSettings = (updates: Partial<EffectSettings>) => {
+    onEffectSettingsChange({ ...effectSettings, ...updates });
+  };
+
+  const updateBackground = (updates: Partial<EffectSettings['background']>) => {
+    updateEffectSettings({
+      background: { ...effectSettings.background, ...updates }
+    });
+  };
+
+  const updateInkStamp = (updates: Partial<EffectSettings['inkStamp']>) => {
+    updateEffectSettings({
+      inkStamp: { ...effectSettings.inkStamp, ...updates }
+    });
+  };
+
+  const updateContiguousSettings = (updates: Partial<ContiguousToolSettings>) => {
+    onContiguousSettingsChange({ ...contiguousSettings, ...updates });
+  };
+
   return (
     <div className="w-96 bg-gradient-panel border-r border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-gradient-to-r from-accent-green to-accent-cyan rounded-md flex items-center justify-center">
-            <Settings className="w-4 h-4 text-white" />
+            <Settings className="w-4 h-4 text-foreground" />
           </div>
           <h2 className="text-lg font-semibold bg-gradient-to-r from-accent-green to-accent-cyan bg-clip-text text-transparent">
-            Color Removal
+            Tools
           </h2>
         </div>
       </div>
       
       <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+        {/* Background Enable Toggle */}
+        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 shadow-colorful">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Switch
+                checked={effectSettings.background.enabled}
+                onCheckedChange={(enabled) => updateBackground({ enabled })}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-blue"
+              />
+              <span className="bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent font-semibold">
+                🎨 Enable Background
+              </span>
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        {effectSettings.background.enabled && (
+          <>
+            {/* Background Color Picker */}
+            <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-accent-orange" />
+                  <span className="bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent font-semibold">
+                    Background Color
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
+                  <input
+                    type="color"
+                    value={effectSettings.background.color}
+                    onChange={(e) => updateBackground({ color: e.target.value })}
+                    className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
+                  />
+                  <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
+                    {effectSettings.background.color.toUpperCase()}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Save with Background Toggle */}
+            <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Switch
+                    checked={effectSettings.background.saveWithBackground}
+                    onCheckedChange={(saveWithBackground) => updateBackground({ saveWithBackground })}
+                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
+                  />
+                  <span className="bg-gradient-to-r from-accent-green to-accent-lime bg-clip-text text-transparent font-semibold">
+                    💾 Save with Background
+                  </span>
+                </CardTitle>
+              </CardHeader>
+            </Card>
+          </>
+        )}
+
+        {/* Magic Wand Tool Settings */}
+        <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30 shadow-colorful">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Wand className="w-4 h-4 text-accent-cyan" />
+              <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
+                🎯 Magic Wand Tool
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <div className="p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
+              <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
+              <SliderWithInput
+                value={[contiguousSettings.threshold]}
+                onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
+                min={1}
+                max={100}
+                step={1}
+                sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
+              />
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-accent-cyan font-medium">🎯 Precise (1)</span>
+              <span className="font-bold text-accent-cyan bg-accent-cyan/10 px-2 py-1 rounded">{contiguousSettings.threshold}</span>
+              <span className="text-accent-blue font-medium">🌊 Loose (100)</span>
+            </div>
+            <div className="text-xs text-muted-foreground p-2 bg-accent-cyan/5 rounded border border-accent-cyan/20">
+              💡 This threshold is independent from color removal. Click with the magic wand tool to remove connected pixels.
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Color Removal Section */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30 shadow-colorful">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -55,7 +178,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-pink"
               />
               <span className="bg-gradient-to-r from-accent-purple to-accent-pink bg-clip-text text-transparent font-semibold">
-                🎯 Enable Color Removal
+                🎯 Color Removal
               </span>
             </CardTitle>
           </CardHeader>
@@ -210,6 +333,25 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   </span>
                 </CardTitle>
               </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
+                  <div className="flex items-center gap-2">
+                    <Wand className="w-4 h-4 text-accent-cyan" />
+                    <span className="text-sm font-medium text-accent-cyan">Magic Wand (Threshold: {contiguousSettings.threshold})</span>
+                  </div>
+                  <SliderWithInput
+                    value={[contiguousSettings.threshold]}
+                    onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
+                    min={1}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan w-24"
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground p-2 bg-accent-cyan/5 rounded border border-accent-cyan/20 mt-2">
+                  💡 Magic wand tool threshold for connected pixel selection
+                </div>
+              </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30">
@@ -329,6 +471,65 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
           </>
         )}
+
+        {/* Ink Stamp Effect */}
+        <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Switch
+                checked={effectSettings.inkStamp.enabled}
+                onCheckedChange={(enabled) => updateInkStamp({ enabled })}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
+              />
+              <Stamp className="w-4 h-4 text-accent-red" />
+              <span className="bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
+                Ink Stamp Effect
+              </span>
+            </CardTitle>
+          </CardHeader>
+          
+          {effectSettings.inkStamp.enabled && (
+            <CardContent className="pt-0 space-y-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent">
+                  🎨 Stamp Color
+                </Label>
+                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <input
+                    type="color"
+                    value={effectSettings.inkStamp.color}
+                    onChange={(e) => updateInkStamp({ color: e.target.value })}
+                    className="w-12 h-8 rounded-lg border-2 border-accent-red cursor-pointer shadow-lg"
+                  />
+                  <span className="text-sm text-accent-red font-mono font-bold bg-accent-red/10 px-2 py-1 rounded">
+                    {effectSettings.inkStamp.color.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent">
+                  ⚡ Intensity
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <SliderWithInput
+                    value={[effectSettings.inkStamp.threshold]}
+                    onValueChange={([threshold]) => updateInkStamp({ threshold })}
+                    min={1}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                  />
+                </div>
+                <div className="flex justify-between text-xs mt-1">
+                  <span className="text-accent-red font-medium">🌱 Light (1)</span>
+                  <span className="font-bold text-accent-red bg-accent-red/10 px-2 py-1 rounded">{effectSettings.inkStamp.threshold}</span>
+                  <span className="text-accent-pink font-medium">🔥 Heavy (100)</span>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
 
       </div>
     </div>
