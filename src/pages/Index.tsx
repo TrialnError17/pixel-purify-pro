@@ -212,7 +212,26 @@ const Index = () => {
       <Header 
         onAddImages={handleFileInput}
         onAddFolder={handleFolderInput}
-        onDownloadPNG={() => selectedImage && downloadImage(selectedImage, colorSettings, effectSettings)}
+        onDownloadPNG={() => {
+          if (selectedImage) {
+            const prevImages = [...images];
+            
+            // Add undo action before processing
+            addUndoAction({
+              type: 'batch_operation',
+              description: `Download ${selectedImage.name}`,
+              undo: () => {
+                setImages(prevImages);
+                setIsProcessing(false);
+              }
+            });
+            
+            setIsProcessing(true);
+            processImage(selectedImage, colorSettings, effectSettings, setImages).finally(() => {
+              setIsProcessing(false);
+            });
+          }
+        }}
         canDownload={selectedImage?.status === 'completed'}
         onUndo={undo}
         onRedo={redo}
@@ -287,7 +306,24 @@ const Index = () => {
           canGoNext={selectedImageIndex < images.length - 1}
           currentImageIndex={selectedImageIndex + 1}
           totalImages={images.length}
-          onDownloadImage={(image) => downloadImage(image, colorSettings, effectSettings)}
+          onDownloadImage={(image) => {
+            const prevImages = [...images];
+            
+            // Add undo action before processing
+            addUndoAction({
+              type: 'batch_operation',
+              description: `Download ${image.name}`,
+              undo: () => {
+                setImages(prevImages);
+                setIsProcessing(false);
+              }
+            });
+            
+            setIsProcessing(true);
+            processImage(image, colorSettings, effectSettings, setImages).finally(() => {
+              setIsProcessing(false);
+            });
+          }}
           addUndoAction={addUndoAction}
         />
         
