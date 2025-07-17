@@ -655,19 +655,36 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
     
+    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
+    console.log(`Canvas dimensions: ${width}x${height}`);
+    
     // Get target color
     const index = (startY * width + startX) * 4;
     const targetR = data[index];
     const targetG = data[index + 1];
     const targetB = data[index + 2];
+    const targetA = data[index + 3];
+    
+    console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
+    
+    // Skip if pixel is already transparent
+    if (targetA === 0) {
+      console.log('Target pixel is already transparent, skipping');
+      return;
+    }
     
     // Flood fill algorithm to remove contiguous pixels
     const visited = new Set<string>();
     const stack = [[startX, startY]];
+    let removedPixels = 0;
+    
+    const thresholdScaled = threshold * 2.55;
+    console.log(`Threshold scaled: ${thresholdScaled}`);
     
     const isColorSimilar = (r: number, g: number, b: number) => {
       const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      return distance <= threshold * 2.55; // Convert threshold to 0-255 scale
+      const similar = distance <= thresholdScaled;
+      return similar;
     };
     
     while (stack.length > 0) {
@@ -681,17 +698,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const r = data[pixelIndex];
       const g = data[pixelIndex + 1];
       const b = data[pixelIndex + 2];
+      const a = data[pixelIndex + 3];
+      
+      // Skip if pixel is already transparent
+      if (a === 0) continue;
       
       if (!isColorSimilar(r, g, b)) continue;
       
       // Make pixel transparent
       data[pixelIndex + 3] = 0;
+      removedPixels++;
       
       // Add neighbors to stack
       stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
-    ctx.putImageData(imageData, 0, 0);
+    console.log(`Removed ${removedPixels} pixels`);
+    
+    if (removedPixels > 0) {
+      ctx.putImageData(imageData, 0, 0);
+      console.log('Applied image data to canvas');
+    } else {
+      console.log('No pixels were removed');
+    }
   };
 
   const removePickedColor = (ctx: CanvasRenderingContext2D, targetR: number, targetG: number, targetB: number, threshold: number) => {
