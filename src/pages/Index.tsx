@@ -7,6 +7,7 @@ import { ImageQueue } from '@/components/ImageQueue';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
+import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 export interface ImageItem {
   id: string;
@@ -81,6 +82,15 @@ const Index = () => {
   });
 
   const [manualMode, setManualMode] = useState(false);
+
+  const [speckleSettings, setSpeckleSettings] = useState<SpeckleSettings>({
+    enabled: false,
+    highlightSpecks: false,
+    removeSpecks: false,
+    minSpeckSize: 50
+  });
+
+  const [speckCount, setSpeckCount] = useState<number | undefined>(undefined);
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
@@ -100,6 +110,7 @@ const Index = () => {
 
   const { processImage, processAllImages, downloadImage, cancelProcessing } = useImageProcessor();
   const { addUndoAction, undo, redo, canUndo, canRedo, clearHistory } = useUndoManager();
+  const { processSpecks } = useSpeckleTools();
 
   // Monitor single image progress
   React.useEffect(() => {
@@ -291,6 +302,32 @@ const Index = () => {
               undo: () => setColorSettings(prevSettings)
             });
           }}
+          speckleSettings={speckleSettings}
+          onSpeckleSettingsChange={(newSpeckleSettings) => {
+            const prevSpeckleSettings = { ...speckleSettings };
+            setSpeckleSettings(newSpeckleSettings);
+            
+            // Process speckles when settings change and image is selected
+            if (selectedImage?.processedData) {
+              const result = processSpecks(selectedImage.processedData, newSpeckleSettings);
+              setSpeckCount(result.speckCount);
+              
+              // Update image with speckle processing result
+              setImages(prev => prev.map(img => 
+                img.id === selectedImage.id 
+                  ? { ...img, processedData: result.processedData }
+                  : img
+              ));
+            }
+            
+            // Add undo action for speckle settings changes
+            addUndoAction({
+              type: 'settings',
+              description: 'Change speckle tool settings',
+              undo: () => setSpeckleSettings(prevSpeckleSettings)
+            });
+          }}
+          speckCount={speckCount}
         />
         
         <MainCanvas 
@@ -300,6 +337,7 @@ const Index = () => {
           colorSettings={colorSettings}
           contiguousSettings={contiguousSettings}
           effectSettings={effectSettings}
+          speckleSettings={speckleSettings}
           manualMode={manualMode}
           onImageUpdate={(updatedImage) => {
             setImages(prev => prev.map(img => 
@@ -376,6 +414,7 @@ const Index = () => {
             }, 1000);
           }}
           addUndoAction={addUndoAction}
+          onSpeckCountUpdate={(count) => setSpeckCount(count)}
         />
         
         <RightSidebar 

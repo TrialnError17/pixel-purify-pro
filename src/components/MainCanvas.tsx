@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
+import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { 
   Move, 
   Pipette, 
@@ -26,6 +27,7 @@ interface MainCanvasProps {
   colorSettings: ColorRemovalSettings;
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
+  speckleSettings: SpeckleSettings;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -37,6 +39,7 @@ interface MainCanvasProps {
   onDownloadImage: (image: ImageItem) => void;
   addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
   manualMode?: boolean;
+  onSpeckCountUpdate?: (count: number) => void;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -46,6 +49,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   colorSettings,
   contiguousSettings,
   effectSettings,
+  speckleSettings,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -56,8 +60,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   totalImages,
   onDownloadImage,
   addUndoAction,
-  manualMode = false
+  manualMode = false,
+  onSpeckCountUpdate
 }) => {
+  const { processSpecks } = useSpeckleTools();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -406,7 +412,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
       if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
         console.log('Applying auto-processed data');
-        ctx.putImageData(processedData, 0, 0);
+        
+        // Apply speckle processing if enabled
+        if (speckleSettings.enabled) {
+          const speckleResult = processSpecks(processedData, speckleSettings);
+          ctx.putImageData(speckleResult.processedData, 0, 0);
+          
+          // Update speck count if callback is provided
+          if (onSpeckCountUpdate) {
+            onSpeckCountUpdate(speckleResult.speckCount);
+          }
+        } else {
+          ctx.putImageData(processedData, 0, 0);
+        }
       } else {
         console.log('Skipping auto-processed data application');
       }
@@ -416,7 +434,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, manualMode, manualImageData, debouncedProcessImageData]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, manualMode, manualImageData, debouncedProcessImageData, processSpecks, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
