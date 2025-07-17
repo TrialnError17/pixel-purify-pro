@@ -193,11 +193,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
               />
             </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-accent-cyan font-medium">🎯 Precise (1)</span>
-              <span className="font-bold text-accent-cyan bg-accent-cyan/10 px-2 py-1 rounded">{contiguousSettings.threshold}</span>
-              <span className="text-accent-blue font-medium">🌊 Loose (100)</span>
-            </div>
           </CardContent>
         </Card>
 
@@ -357,11 +352,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-accent-red font-medium">🎯 Precise (1)</span>
-                  <span className="font-bold text-accent-red bg-accent-red/10 px-2 py-1 rounded">{settings.threshold}</span>
-                  <span className="text-accent-pink font-medium">🌊 Loose (100)</span>
-                </div>
               </CardContent>
             </Card>
 
@@ -382,11 +372,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     step={10}
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-indigo [&_[role=slider]]:to-accent-purple [&_[role=slider]]:border-accent-indigo"
                   />
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-accent-indigo font-medium">🔬 1px</span>
-                  <span className="font-bold text-accent-indigo bg-accent-indigo/10 px-2 py-1 rounded">{settings.minRegionSize}px</span>
-                  <span className="text-accent-purple font-medium">🏔️ 4000px</span>
                 </div>
               </CardContent>
             </Card>
@@ -459,11 +444,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
                       />
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-accent-blue font-medium">🔬 1px</span>
-                      <span className="font-bold text-accent-blue bg-accent-blue/10 px-2 py-1 rounded">{speckleSettings.minSpeckSize}px</span>
-                      <span className="text-accent-indigo font-medium">🏔️ 500px</span>
-                    </div>
                   </div>
 
                   {/* Speck Count Display */}
@@ -517,11 +497,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         step={1}
                         sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
                       />
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-accent-purple font-medium">🎯 0px</span>
-                      <span className="font-bold text-accent-purple bg-accent-purple/10 px-2 py-1 rounded">{edgeCleanupSettings.trimRadius}px</span>
-                      <span className="text-accent-indigo font-medium">✂️ 10px</span>
                     </div>
                   </div>
                 </CardContent>
@@ -579,11 +554,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     step={1}
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
-                </div>
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-accent-red font-medium">🌱 Light (1)</span>
-                  <span className="font-bold text-accent-red bg-accent-red/10 px-2 py-1 rounded">{effectSettings.inkStamp.threshold}</span>
-                  <span className="text-accent-pink font-medium">🔥 Heavy (100)</span>
                 </div>
               </div>
             </CardContent>
