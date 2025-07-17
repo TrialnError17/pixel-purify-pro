@@ -379,7 +379,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode) {
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode || isProcessing) {
       return;
     }
     
