@@ -365,29 +365,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, [image, hasManualEditsRef.current, manualImageData, originalImageData, onImageUpdate]);
 
   // Debounced processing to prevent flashing
-  const debouncedProcessImageData = useMemo(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    return (imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
-      return new Promise<ImageData>((resolve) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          const result = processImageData(imageData, colorSettings, effectSettings);
-          resolve(result);
-        }, 50); // 50ms debounce
-      });
-    };
+  const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
+    return new Promise<ImageData>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        const result = processImageData(imageData, colorSettings, effectSettings);
+        resolve(result);
+      }, 50); // 50ms debounce
+      
+      // Return cleanup function
+      return () => clearTimeout(timeoutId);
+    });
   }, [processImageData]);
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
     if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode) {
-      console.log('Skipping auto-processing:', {
-        hasOriginalData: !!originalImageData,
-        hasCanvas: !!canvasRef.current,
-        hasManualEdits: hasManualEditsRef.current,
-        manualMode
-      });
       return;
     }
     
@@ -395,7 +387,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    console.log('Starting auto-processing with settings:', colorSettings);
+    console.log('Auto-processing triggered');
     setIsProcessing(true);
 
     // Use manual image data if available, otherwise original
@@ -404,31 +396,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
-      console.log('Processing completed, checking conditions:', {
-        sameCanvas: canvasRef.current === canvas,
-        hasManualEdits: hasManualEditsRef.current,
-        manualMode,
-        willApply: canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode
-      });
-      
       if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
         console.log('Applying auto-processed data');
         ctx.putImageData(processedData, 0, 0);
-        setIsProcessing(false);
       } else {
-        console.log('Skipping auto-processed data application:', {
-          sameCanvas: canvasRef.current === canvas,
-          hasManualEdits: hasManualEditsRef.current,
-          manualMode
-        });
-        setIsProcessing(false);
+        console.log('Skipping auto-processed data application');
       }
+      setIsProcessing(false);
+    }).catch((error) => {
+      console.error('Auto-processing error:', error);
+      setIsProcessing(false);
     });
 
-    return () => {
-      setIsProcessing(false);
-    };
-  }, [originalImageData, manualImageData, colorSettings, effectSettings, debouncedProcessImageData, manualMode]);
+  }, [originalImageData, colorSettings, effectSettings, manualMode, manualImageData, debouncedProcessImageData]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
