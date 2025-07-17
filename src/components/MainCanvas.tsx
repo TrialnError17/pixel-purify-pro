@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Target,
+  Wand,
   Undo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1006,7 +1006,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             className="flex items-center gap-2"
             title="Magic Wand - Remove connected pixels"
           >
-            <Target className="w-4 h-4" />
+            <Wand className="w-4 h-4" />
             Magic Wand
           </Button>
         </div>
