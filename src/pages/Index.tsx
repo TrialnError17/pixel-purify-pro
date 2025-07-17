@@ -293,9 +293,9 @@ const Index = () => {
                   });
                   
                   // Process speckles when settings change and image is selected
-                  if (selectedImage?.originalData) {
-                    // Always start from original data to avoid compounding speckle effects
-                    const baseData = selectedImage.originalData;
+                  if (selectedImage?.processedData || selectedImage?.originalData) {
+                    // Use processedData if available (includes color effects), otherwise fall back to originalData
+                    const baseData = selectedImage.processedData || selectedImage.originalData!;
                     
                     // Create a fresh copy to avoid modifying the original
                     const cleanBaseData = new ImageData(
@@ -304,19 +304,16 @@ const Index = () => {
                       baseData.height
                     );
                     
-                    console.log('Processing speckles from original data');
+                    console.log('Processing speckles from', selectedImage.processedData ? 'processed' : 'original', 'data');
                     const result = processSpecks(cleanBaseData, newSpeckleSettings);
                     setSpeckCount(result.speckCount);
                     
-                    // Use requestAnimationFrame to update smoothly and prevent flashing
-                    requestAnimationFrame(() => {
-                      // Update image with speckle processing result
-                      setImages(prev => prev.map(img => 
-                        img.id === selectedImage.id 
-                          ? { ...img, processedData: result.processedData }
-                          : img
-                      ));
-                    });
+                    // Update image with speckle processing result immediately
+                    setImages(prev => prev.map(img => 
+                      img.id === selectedImage.id 
+                        ? { ...img, processedData: result.processedData }
+                        : img
+                    ));
                   }
                   
                   // Add undo action for speckle settings changes
