@@ -349,8 +349,15 @@ const Index = () => {
               setImages(currentImages => {
                 const processedImage = currentImages.find(img => img.id === image.id);
                 if (processedImage && processedImage.status === 'completed') {
-                  // Trigger download
-                  downloadImage(processedImage, colorSettings, effectSettings);
+                  // For preview downloads, disable trimming to get exactly what's shown
+                  const previewEffectSettings = {
+                    ...effectSettings,
+                    download: {
+                      ...effectSettings.download,
+                      trimTransparentPixels: false
+                    }
+                  };
+                  downloadImage(processedImage, colorSettings, previewEffectSettings);
                 }
                 return currentImages;
               });
