@@ -1096,7 +1096,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           {image && (
             <Button
-              variant="ghost"
+              variant="default"
               size="sm"
               onClick={handleDownload}
               disabled={!image}
