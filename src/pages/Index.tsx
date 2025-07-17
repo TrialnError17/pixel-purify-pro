@@ -60,7 +60,7 @@ export interface ContiguousToolSettings {
 const Index = () => {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
-  const [queueVisible, setQueueVisible] = useState(false);
+  const [queueVisible, setQueueVisible] = useState(true);
   const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
