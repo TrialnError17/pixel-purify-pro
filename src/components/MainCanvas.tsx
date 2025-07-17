@@ -900,17 +900,18 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current) return;
     
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Use manual image data if available (contains manual edits), otherwise use processed data
+    const dataToDownload = manualImageData || image.processedData || originalImageData;
     
-    // Get current canvas data
-    const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (!dataToDownload) {
+      console.error('No image data available for download');
+      return;
+    }
     
-    // Create a temporary image object with current canvas data
+    // Create a temporary image object with the correct data for download
     const imageWithCurrentData = {
       ...image,
-      processedData: currentImageData,
+      processedData: dataToDownload,
       status: 'completed' as const
     };
     
