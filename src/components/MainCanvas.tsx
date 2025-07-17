@@ -36,6 +36,7 @@ interface MainCanvasProps {
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
   addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
+  manualMode?: boolean;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -54,7 +55,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   currentImageIndex,
   totalImages,
   onDownloadImage,
-  addUndoAction
+  addUndoAction,
+  manualMode = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +67,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
-  const [hasManualEdits, setHasManualEdits] = useState(false);
+  const hasManualEditsRef = useRef(false);
+  const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Color processing functions
@@ -304,7 +307,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setOriginalImageData(imageData);
       
       // Reset manual edits when new image is loaded
-      setHasManualEdits(false);
+      hasManualEditsRef.current = false;
+      setManualImageData(null);
       setUndoStack([]);
       
       // Update image with original data if not already set
@@ -353,9 +357,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [processImageData]);
 
-  // Process and display image when settings change (but not if there are manual edits)
+  // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    if (!originalImageData || !canvasRef.current || hasManualEdits) return;
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -363,10 +367,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     setIsProcessing(true);
 
+    // Use manual image data if available, otherwise original
+    const baseImageData = manualImageData || originalImageData;
+
     // Use debounced processing to prevent rapid updates
-    debouncedProcessImageData(originalImageData, colorSettings, effectSettings).then((processedData) => {
+    debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
-      if (canvasRef.current === canvas && !hasManualEdits) {
+      if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
         ctx.putImageData(processedData, 0, 0);
         setIsProcessing(false);
       }
@@ -375,7 +382,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return () => {
       setIsProcessing(false);
     };
-  }, [originalImageData, colorSettings, effectSettings, debouncedProcessImageData, hasManualEdits]);
+  }, [originalImageData, manualImageData, colorSettings, effectSettings, debouncedProcessImageData, manualMode]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
@@ -440,7 +447,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       removePickedColor(ctx, r, g, b, 30);
       
       // Mark that we have manual edits
-      setHasManualEdits(true);
+      hasManualEditsRef.current = true;
       
       // Store the result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -481,7 +488,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       });
       
       // Mark that we have manual edits to prevent auto-processing from overwriting
-      setHasManualEdits(true);
+      hasManualEditsRef.current = true;
       
       // Store the manually edited result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -493,8 +500,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Contiguous removal tool - removes only connected pixels of clicked color
       console.log('Contiguous tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
       
-      // Mark that we have manual edits FIRST to prevent auto-processing from overriding
-      setHasManualEdits(true);
+      // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
+      hasManualEditsRef.current = true;
       
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
@@ -521,6 +528,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const updatedImage = { ...image, processedData: newImageData };
                 onImageUpdate(updatedImage);
+                // Reset manual edits state on undo
+                hasManualEditsRef.current = false;
+                setManualImageData(null);
               }
             }
           }
@@ -528,15 +538,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       
       // Remove contiguous color at clicked position using independent contiguous threshold
-      console.log('Before removeContiguousColorIndependent, hasManualEdits will be set to true');
+      console.log('Before removeContiguousColorIndependent, manual edits marked');
       removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
       
-      // Store the manually edited result
+      // Store the manually edited result as base for future operations
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setManualImageData(newImageData);
+      
       if (image) {
         const updatedImage = { ...image, processedData: newImageData };
-        console.log('Updating image with new data');
+        console.log('Updating image with manually edited data');
         onImageUpdate(updatedImage);
       }
     }
@@ -761,7 +773,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (!ctx) return;
     
     // Clear manual edits and reprocess with automatic settings
-    setHasManualEdits(false);
+    hasManualEditsRef.current = false;
+    setManualImageData(null);
     setUndoStack([]);
     
     // Reprocess the original image with current settings
@@ -927,7 +940,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            disabled={!hasManualEdits}
+            disabled={!hasManualEditsRef.current && !manualImageData}
             title="Reset to automatic processing"
           >
             <RefreshCw className="w-4 h-4" />

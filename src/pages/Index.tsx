@@ -78,6 +78,8 @@ const Index = () => {
   const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
     threshold: 30
   });
+
+  const [manualMode, setManualMode] = useState(false);
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
@@ -231,6 +233,15 @@ const Index = () => {
         <LeftSidebar 
           settings={colorSettings}
           contiguousSettings={contiguousSettings}
+          manualMode={manualMode}
+          onManualModeChange={(enabled) => {
+            setManualMode(enabled);
+            addUndoAction({
+              type: 'settings',
+              description: `${enabled ? 'Enable' : 'Disable'} manual mode`,
+              undo: () => setManualMode(!enabled)
+            });
+          }}
           onSettingsChange={(newSettings) => {
             const prevSettings = { ...colorSettings };
             setColorSettings(newSettings);
@@ -262,6 +273,7 @@ const Index = () => {
           colorSettings={colorSettings}
           contiguousSettings={contiguousSettings}
           effectSettings={effectSettings}
+          manualMode={manualMode}
           onImageUpdate={(updatedImage) => {
             setImages(prev => prev.map(img => 
               img.id === updatedImage.id ? updatedImage : img
