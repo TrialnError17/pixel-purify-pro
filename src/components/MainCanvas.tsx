@@ -599,6 +599,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const updatedImage = { ...image, processedData: newImageData };
         console.log('Updating image with manually edited data');
         onImageUpdate(updatedImage);
+        
+        // Force a small delay to ensure the update sticks
+        setTimeout(() => {
+          console.log('Verifying canvas state after update');
+          const verifyData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const transparentPixels = Array.from(verifyData.data).filter((_, i) => i % 4 === 3 && verifyData.data[i] === 0).length;
+          console.log(`Canvas verification: ${transparentPixels} transparent pixels`);
+        }, 100);
       }
     }
   }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction]);
