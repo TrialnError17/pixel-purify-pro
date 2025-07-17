@@ -900,22 +900,31 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current) return;
     
-    // Use manual image data if available (contains manual edits), otherwise use processed data
-    const dataToDownload = manualImageData || image.processedData || originalImageData;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
-    if (!dataToDownload) {
-      console.error('No image data available for download');
-      return;
-    }
+    // Get exactly what's shown on canvas without any additional processing
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        console.error('Failed to create blob from canvas');
+        return;
+      }
+      
+      console.log('Downloading exactly what\'s shown in preview - no additional processing');
+      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+      console.log('Blob size:', blob.size);
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${image.name.replace(/\.[^/.]+$/, '')}_preview.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png', 1.0);
     
-    // Create a temporary image object with the correct data for download
-    const imageWithCurrentData = {
-      ...image,
-      processedData: dataToDownload,
-      status: 'completed' as const
-    };
-    
-    onDownloadImage(imageWithCurrentData);
+    // Call the onDownloadImage for progress tracking
+    onDownloadImage(image);
   }, [image, onDownloadImage]);
 
   return (

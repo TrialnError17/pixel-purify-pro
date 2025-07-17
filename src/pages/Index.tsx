@@ -327,44 +327,53 @@ const Index = () => {
           currentImageIndex={selectedImageIndex + 1}
           totalImages={images.length}
           onDownloadImage={(image) => {
+            // For preview downloads, we want to download exactly what's shown on canvas
+            // without any additional processing, so we'll get the canvas data directly
+            
             const prevImages = [...images];
             
-            // Start single image progress tracking instead of expanding queue
+            // Show progress immediately
             setSingleImageProgress({ imageId: image.id, progress: 0 });
             
-            // Add undo action before processing
+            // Add undo action
             addUndoAction({
-              type: 'batch_operation',
+              type: 'batch_operation', 
               description: `Download ${image.name}`,
               undo: () => {
                 setImages(prevImages);
                 setSingleImageProgress(null);
               }
             });
+
+            // Simulate progress for immediate feedback
+            const progressSteps = [25, 50, 75, 90, 100];
+            let currentStep = 0;
             
-            // Process image and monitor progress
-            processImage(image, colorSettings, effectSettings, setImages).then(() => {
-              // After processing is complete, automatically download the image
-              // Find the processed image in the updated state
-              setImages(currentImages => {
-                const processedImage = currentImages.find(img => img.id === image.id);
-                if (processedImage && processedImage.status === 'completed') {
-                  // For preview downloads, disable trimming to get exactly what's shown
-                  const previewEffectSettings = {
-                    ...effectSettings,
-                    download: {
-                      ...effectSettings.download,
-                      trimTransparentPixels: false
-                    }
-                  };
-                  downloadImage(processedImage, colorSettings, previewEffectSettings);
-                }
-                return currentImages;
-              });
-            }).finally(() => {
-              // Clear progress and hide after a short delay
-              setTimeout(() => setSingleImageProgress(null), 1500);
-            });
+            const updateProgress = () => {
+              if (currentStep < progressSteps.length) {
+                setSingleImageProgress({ imageId: image.id, progress: progressSteps[currentStep] });
+                currentStep++;
+                setTimeout(updateProgress, 200);
+              }
+            };
+            
+            // Start progress animation
+            setTimeout(updateProgress, 100);
+            
+            // Download directly using the current canvas data (what user sees)
+            setTimeout(() => {
+              // For preview downloads, disable all effects to get exactly what's shown
+              const previewEffectSettings = {
+                background: { enabled: false, color: '#ffffff', saveWithBackground: false },
+                inkStamp: { enabled: false, color: '#000000', threshold: 50 },
+                download: { trimTransparentPixels: false }
+              };
+              
+              downloadImage(image, colorSettings, previewEffectSettings);
+              
+              // Clear progress after download
+              setTimeout(() => setSingleImageProgress(null), 1000);
+            }, 1000);
           }}
           addUndoAction={addUndoAction}
         />
