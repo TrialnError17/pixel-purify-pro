@@ -73,10 +73,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         </div>
       </div>
       
-      <div className="flex-1 p-4 space-y-6 overflow-y-auto min-h-0">
+      <div className="flex-1 p-3 space-y-4 overflow-y-auto min-h-0">
         {/* Background Enable Toggle */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 shadow-colorful">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Switch
                 checked={effectSettings.background.enabled}
@@ -88,8 +88,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
+          <CardContent className="pt-0 pb-2">
+            <div className="flex items-center justify-between p-2 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-accent-green">🔗 Contiguous Only</span>
               </div>
@@ -105,19 +105,19 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         {effectSettings.background.enabled && (
           <>
             {/* Background Color Picker */}
-            <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Palette className="w-4 h-4 text-accent-orange" />
                   <span className="bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent font-semibold">
                     Background Color
                   </span>
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
-                  <input
-                    type="color"
+          </CardHeader>
+          <CardContent className="pt-0 pb-2 space-y-3">
+            <div className="flex items-center gap-3 p-2 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
+              <input
+                type="color"
                     value={effectSettings.background.color}
                     onChange={(e) => updateBackground({ color: e.target.value })}
                     className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
@@ -130,9 +130,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </Card>
 
             {/* Save with Background Toggle */}
-            <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Switch
                     checked={effectSettings.background.saveWithBackground}
                     onCheckedChange={(saveWithBackground) => updateBackground({ saveWithBackground })}
@@ -149,7 +149,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
         {/* Magic Wand Tool Settings */}
         <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30 shadow-colorful">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Wand className="w-4 h-4 text-accent-cyan" />
               <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
@@ -157,8 +157,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-3">
-            <div className="p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
+          <CardContent className="pt-0 pb-2 space-y-2">
+            <div className="p-2 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
               <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
               <SliderWithInput
                 value={[contiguousSettings.threshold]}
@@ -179,7 +179,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
         {/* Color Removal Section */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30 shadow-colorful">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Switch
                 checked={settings.enabled}

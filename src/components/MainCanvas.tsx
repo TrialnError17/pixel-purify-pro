@@ -948,7 +948,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             className="flex items-center gap-2"
           >
             <Move className="w-4 h-4" />
-            Pan
+            Move
           </Button>
           
           <Button
