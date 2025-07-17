@@ -135,59 +135,74 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     )}>
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
-        <div className="flex items-center gap-4">
-          {!isFullscreen && (
-            <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          {/* Process & Clear All buttons on the left */}
+          {images.length > 0 && (
+            <>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={onToggleVisible}
+                onClick={onProcessAll}
+                disabled={pendingCount === 0 || isProcessing}
                 className="flex items-center gap-2"
               >
-                {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                Image Queue ({images.length})
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PlayCircle className="w-4 h-4" />
+                )}
+                Process All ({pendingCount})
               </Button>
               
-              {isProcessing && processingProgress && (
-                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm font-medium">
-                    Processing {processingProgress.current}/{processingProgress.total}
-                  </span>
-                </div>
-              )}
-            </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearAll}
+                disabled={isProcessing}
+                className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All
+              </Button>
+            </>
           )}
           
-          {isFullscreen && (
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-semibold">Image Queue ({images.length})</div>
-              {isProcessing && processingProgress && (
-                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">
-                      Processing {processingProgress.current}/{processingProgress.total}
-                    </span>
-                  </div>
-                </div>
-              )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleVisible}
+            className="flex items-center gap-2"
+          >
+            {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            Image Queue ({images.length})
+          </Button>
+          
+          {isProcessing && processingProgress && (
+            <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm font-medium">
+                Processing {processingProgress.current}/{processingProgress.total}
+              </span>
             </div>
           )}
           
           {images.length > 0 && (!isFullscreen || !isProcessing) && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               {pendingCount > 0 && <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {pendingCount}
+                <Clock className="w-3 h-3" />
+                {pendingCount} pending
               </span>}
               {processingCount > 0 && <span className="flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" /> {processingCount}
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {processingCount} processing
               </span>}
               {completedCount > 0 && <span className="flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> {completedCount}
+                <CheckCircle className="w-3 h-3" />
+                {completedCount} completed
               </span>}
               {errorCount > 0 && <span className="flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> {errorCount}
+                <AlertCircle className="w-3 h-3" />
+                {errorCount} failed
               </span>}
             </div>
           )}
@@ -218,36 +233,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             {isFullscreen ? "Exit" : "Fullscreen"}
           </Button>
-          
-          {images.length > 0 && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onProcessAll}
-                disabled={pendingCount === 0 || isProcessing}
-                className="flex items-center gap-2"
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <PlayCircle className="w-4 h-4" />
-                )}
-                Process & Download All ({pendingCount})
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClearAll}
-                disabled={isProcessing}
-                className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-                Clear All
-              </Button>
-            </>
-          )}
         </div>
       </div>
 

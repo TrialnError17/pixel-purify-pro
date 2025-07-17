@@ -934,7 +934,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     <div className="flex-1 flex flex-col bg-canvas-bg">
       {/* Toolbar */}
       <div className="h-12 bg-gradient-header border-b border-border flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {/* Navigation */}
           <Button
             variant="ghost"
@@ -988,14 +988,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             Redo
           </Button>
           
-          <div className="w-px h-6 bg-border mx-2" />
+          <div className="w-px h-6 bg-border mx-1" />
           
           {/* Tools */}
           <Button
             variant={tool === 'pan' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('pan')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1"
           >
             <Move className="w-4 h-4" />
             Move
@@ -1005,7 +1005,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'color-stack' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1"
           >
             <Pipette className="w-4 h-4" />
             Color Stack
@@ -1016,7 +1016,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'magic-wand' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1"
             title="Magic Wand - Remove connected pixels"
           >
             <Wand className="w-4 h-4" />
@@ -1024,7 +1024,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -1034,7 +1034,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <ZoomOut className="w-4 h-4" />
           </Button>
           
-          <span className="text-sm text-muted-foreground min-w-16 text-center">
+          <span className="text-sm text-muted-foreground min-w-12 text-center">
             {Math.round(zoom * 100)}%
           </span>
           
