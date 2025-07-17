@@ -174,9 +174,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <span className="font-bold text-accent-cyan bg-accent-cyan/10 px-2 py-1 rounded">{contiguousSettings.threshold}</span>
               <span className="text-accent-blue font-medium">🌊 Loose (100)</span>
             </div>
-            <div className="text-xs text-muted-foreground p-2 bg-accent-cyan/5 rounded border border-accent-cyan/20">
-              💡 This threshold is independent from color removal. Click with the magic wand tool to remove connected pixels.
-            </div>
           </CardContent>
         </Card>
 
