@@ -211,8 +211,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     onCheckedChange={(checked) => updateSettings({ contiguous: !!checked })}
                     className="w-3 h-3"
                   />
-                  <label htmlFor="contiguous-checkbox" className="text-xs text-muted-foreground cursor-pointer">
-                    contiguous only
+                  <label htmlFor="contiguous-checkbox" className="text-sm text-muted-foreground cursor-pointer">
+                    contiguous
                   </label>
                 </div>
               )}
