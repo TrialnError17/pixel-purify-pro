@@ -268,7 +268,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Target className="w-4 h-4 text-accent-cyan" />
               <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
-                🎯 Contiguous Tool
+                🎯 Magic Wand Tool
               </span>
             </CardTitle>
           </CardHeader>
@@ -290,7 +290,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <span className="text-accent-blue font-medium">🌊 Loose (100)</span>
             </div>
             <div className="text-xs text-muted-foreground p-2 bg-accent-cyan/5 rounded border border-accent-cyan/20">
-              💡 This threshold is independent from color removal. Click with the contiguous tool to remove connected pixels.
+              💡 This threshold is independent from color removal. Click with the magic wand tool to remove connected pixels.
             </div>
           </CardContent>
         </Card>

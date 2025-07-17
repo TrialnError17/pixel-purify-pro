@@ -60,7 +60,7 @@ const Index = () => {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(false);
-  const [currentTool, setCurrentTool] = useState<'pan' | 'eyedropper' | 'remove' | 'contiguous'>('pan');
+  const [currentTool, setCurrentTool] = useState<'pan' | 'eyedropper' | 'remove' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();

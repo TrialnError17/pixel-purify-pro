@@ -21,8 +21,8 @@ import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous';
-  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous') => void;
+  tool: 'pan' | 'eyedropper' | 'remove' | 'magic-wand';
+  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'magic-wand') => void;
   colorSettings: ColorRemovalSettings;
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
@@ -70,7 +70,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const hasManualEditsRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [previousTool, setPreviousTool] = useState<'pan' | 'eyedropper' | 'remove' | 'contiguous'>('pan');
+  const [previousTool, setPreviousTool] = useState<'pan' | 'eyedropper' | 'remove' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   // Color processing functions
@@ -564,9 +564,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const updatedImage = { ...image, processedData: newImageData };
         onImageUpdate(updatedImage);
       }
-    } else if (tool === 'contiguous') {
-      // Contiguous removal tool - removes only connected pixels of clicked color
-      console.log('Contiguous tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
+    } else if (tool === 'magic-wand') {
+      // Magic wand tool - removes only connected pixels of clicked color
+      console.log('Magic wand tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
       
       // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
       hasManualEditsRef.current = true;
@@ -586,7 +586,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       if (addUndoAction && image) {
         addUndoAction({
           type: 'canvas_edit',
-          description: `Contiguous removal of ${hex}`,
+          description: `Magic wand removal of ${hex}`,
           undo: () => {
             if (canvasRef.current && image) {
               const canvas = canvasRef.current;
@@ -842,13 +842,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
+    console.log('Local undo - restoring previous state');
     const previousState = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
     
+    // Restore the previous canvas state
     ctx.putImageData(previousState, 0, 0);
     
-    const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const updatedImage = { ...image, processedData: newImageData };
+    // Update the image with the restored state
+    const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const updatedImage = { ...image, processedData: restoredImageData };
+    
+    // Update manual image data to preserve the undo state
+    setManualImageData(restoredImageData);
+    
+    console.log('Local undo completed, undoStack length:', undoStack.length - 1);
     onImageUpdate(updatedImage);
   }, [undoStack, image, onImageUpdate]);
 
@@ -992,13 +1000,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
           
           <Button
-            variant={tool === 'contiguous' ? 'default' : 'ghost'}
+            variant={tool === 'magic-wand' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onToolChange('contiguous')}
+            onClick={() => onToolChange('magic-wand')}
             className="flex items-center gap-2"
+            title="Magic Wand - Remove connected pixels"
           >
             <Target className="w-4 h-4" />
-            Contiguous
+            Magic Wand
           </Button>
         </div>
         
@@ -1100,7 +1109,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'eyedropper' && 'cursor-crosshair',
                 tool === 'remove' && 'cursor-pointer',
-                tool === 'contiguous' && 'cursor-crosshair'
+                tool === 'magic-wand' && 'cursor-crosshair'
               )}
               style={{
                 transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
