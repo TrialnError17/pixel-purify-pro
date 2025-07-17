@@ -208,9 +208,6 @@ const Index = () => {
 
   return (
     <div className="h-screen bg-background text-foreground flex overflow-hidden">
-      {/* Independent Advertisement Space */}
-      <RightSidebar />
-      
       {/* Main App Content */}
       <div 
         className="flex-1 flex flex-col overflow-hidden"
@@ -494,6 +491,9 @@ const Index = () => {
           className="hidden"
         />
       </div>
+      
+      {/* Independent Advertisement Space */}
+      <RightSidebar />
     </div>
   );
 };
