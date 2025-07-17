@@ -284,9 +284,28 @@ const Index = () => {
                   const prevSpeckleSettings = { ...speckleSettings };
                   setSpeckleSettings(newSpeckleSettings);
                   
+                  console.log('Speckle settings changed:', { 
+                    enabled: newSpeckleSettings.enabled, 
+                    highlight: newSpeckleSettings.highlightSpecks,
+                    remove: newSpeckleSettings.removeSpecks,
+                    hasProcessedData: !!selectedImage?.processedData,
+                    hasOriginalData: !!selectedImage?.originalData 
+                  });
+                  
                   // Process speckles when settings change and image is selected
-                  if (selectedImage?.processedData) {
-                    const result = processSpecks(selectedImage.processedData, newSpeckleSettings);
+                  if (selectedImage?.originalData) {
+                    // Always start from original data to avoid compounding speckle effects
+                    const baseData = selectedImage.originalData;
+                    
+                    // Create a fresh copy to avoid modifying the original
+                    const cleanBaseData = new ImageData(
+                      new Uint8ClampedArray(baseData.data),
+                      baseData.width,
+                      baseData.height
+                    );
+                    
+                    console.log('Processing speckles from original data');
+                    const result = processSpecks(cleanBaseData, newSpeckleSettings);
                     setSpeckCount(result.speckCount);
                     
                     // Update image with speckle processing result
