@@ -22,8 +22,8 @@ import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'eyedropper' | 'remove' | 'magic-wand';
-  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'magic-wand') => void;
+  tool: 'pan' | 'color-stack' | 'magic-wand';
+  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
   colorSettings: ColorRemovalSettings;
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
@@ -38,7 +38,7 @@ interface MainCanvasProps {
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
   addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
-  manualMode?: boolean;
+  
   onSpeckCountUpdate?: (count: number) => void;
 }
 
@@ -60,7 +60,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   totalImages,
   onDownloadImage,
   addUndoAction,
-  manualMode = false,
   onSpeckCountUpdate
 }) => {
   const { processSpecks } = useSpeckleTools();
@@ -76,7 +75,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const hasManualEditsRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [previousTool, setPreviousTool] = useState<'pan' | 'eyedropper' | 'remove' | 'magic-wand'>('pan');
+  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   // Color processing functions
@@ -393,7 +392,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode || isProcessing) {
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || isProcessing) {
       return;
     }
     
@@ -410,7 +409,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
-      if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
+      if (canvasRef.current === canvas && !hasManualEditsRef.current) {
         console.log('Applying auto-processed data');
         
         // Apply speckle processing if enabled
@@ -434,7 +433,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, manualMode, manualImageData, debouncedProcessImageData, processSpecks, onSpeckCountUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, manualImageData, debouncedProcessImageData, processSpecks, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -490,7 +489,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
 
-    if (tool === 'eyedropper') {
+    if (tool === 'color-stack') {
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
       const r = originalImageData.data[index];
@@ -532,47 +531,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       hasManualEditsRef.current = true;
       
       // Store the result
-      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      if (image) {
-        const updatedImage = { ...image, processedData: newImageData };
-        onImageUpdate(updatedImage);
-      }
-    } else if (tool === 'remove') {
-      // Interactive removal tool should always work, regardless of color removal settings
-      // Save current state for undo (both local canvas undo and global undo)
-      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setUndoStack(prev => [...prev, currentImageData]);
-      
-      // Add global undo action
-      if (addUndoAction && image) {
-        addUndoAction({
-          type: 'canvas_edit',
-          description: 'Manual color removal',
-          undo: () => {
-            if (canvasRef.current && image) {
-              const canvas = canvasRef.current;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.putImageData(currentImageData, 0, 0);
-                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const updatedImage = { ...image, processedData: newImageData };
-                onImageUpdate(updatedImage);
-              }
-            }
-          }
-        });
-      }
-      
-      // Remove contiguous color at clicked position (using manual threshold)
-      removeContiguousColor(ctx, x, y, { 
-        ...colorSettings, 
-        threshold: colorSettings.threshold || 30 // Use current threshold or default
-      });
-      
-      // Mark that we have manual edits to prevent auto-processing from overwriting
-      hasManualEditsRef.current = true;
-      
-      // Store the manually edited result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       if (image) {
         const updatedImage = { ...image, processedData: newImageData };
@@ -620,7 +578,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       
       // Remove contiguous color at clicked position using independent contiguous threshold
-      console.log('Before removeContiguousColorIndependent, manual edits marked, manualMode:', manualMode);
+      console.log('Before removeContiguousColorIndependent, manual edits marked');
       removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
       
@@ -994,24 +952,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
           
           <Button
-            variant={tool === 'eyedropper' ? 'default' : 'ghost'}
+            variant={tool === 'color-stack' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onToolChange('eyedropper')}
+            onClick={() => onToolChange('color-stack')}
             className="flex items-center gap-2"
           >
             <Pipette className="w-4 h-4" />
-            Eyedropper
+            Color Stack
           </Button>
           
-          <Button
-            variant={tool === 'remove' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => onToolChange('remove')}
-            className="flex items-center gap-2"
-          >
-            <MousePointer className="w-4 h-4" />
-            Remove
-          </Button>
           
           <Button
             variant={tool === 'magic-wand' ? 'default' : 'ghost'}
@@ -1121,8 +1070,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               className={cn(
                 "absolute cursor-crosshair border border-canvas-border",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
-                tool === 'eyedropper' && 'cursor-crosshair',
-                tool === 'remove' && 'cursor-pointer',
+                tool === 'color-stack' && 'cursor-crosshair',
                 tool === 'magic-wand' && 'cursor-crosshair'
               )}
               style={{

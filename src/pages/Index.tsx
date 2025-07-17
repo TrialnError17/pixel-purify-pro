@@ -61,7 +61,7 @@ const Index = () => {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(false);
-  const [currentTool, setCurrentTool] = useState<'pan' | 'eyedropper' | 'remove' | 'magic-wand'>('pan');
+  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,7 +81,7 @@ const Index = () => {
     threshold: 10
   });
 
-  const [manualMode, setManualMode] = useState(false);
+  
 
   const [speckleSettings, setSpeckleSettings] = useState<SpeckleSettings>({
     enabled: false,
@@ -282,15 +282,6 @@ const Index = () => {
       <div className="flex flex-1 min-h-0">
         <LeftSidebar 
           settings={colorSettings}
-          manualMode={manualMode}
-          onManualModeChange={(enabled) => {
-            setManualMode(enabled);
-            addUndoAction({
-              type: 'settings',
-              description: `${enabled ? 'Enable' : 'Disable'} manual mode`,
-              undo: () => setManualMode(!enabled)
-            });
-          }}
           onSettingsChange={(newSettings) => {
             const prevSettings = { ...colorSettings };
             setColorSettings(newSettings);
@@ -312,7 +303,7 @@ const Index = () => {
           contiguousSettings={contiguousSettings}
           effectSettings={effectSettings}
           speckleSettings={speckleSettings}
-          manualMode={manualMode}
+          
           onImageUpdate={(updatedImage) => {
             setImages(prev => prev.map(img => 
               img.id === updatedImage.id ? updatedImage : img
