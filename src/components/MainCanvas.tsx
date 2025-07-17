@@ -781,20 +781,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const factor = direction === 'in' ? 1.2 : 0.8;
       const newZoom = Math.max(0.1, Math.min(5, prev * factor));
       
-      // If center coordinates are provided (from wheel event), adjust pan to keep that point centered
-      if (centerX !== undefined && centerY !== undefined) {
-        const containerRect = container.getBoundingClientRect();
-        
-        // Calculate mouse position relative to canvas
-        const mouseCanvasX = (centerX - containerRect.left - centerOffset.x - pan.x) / prev;
-        const mouseCanvasY = (centerY - containerRect.top - centerOffset.y - pan.y) / prev;
-        
-        // Calculate new pan to keep the mouse position centered
-        const newPanX = pan.x - (mouseCanvasX * (newZoom - prev));
-        const newPanY = pan.y - (mouseCanvasY * (newZoom - prev));
-        
-        setPan({ x: newPanX, y: newPanY });
-      }
+      // If no center coordinates provided (from button clicks), use container center
+      const containerRect = container.getBoundingClientRect();
+      const actualCenterX = centerX ?? containerRect.left + containerRect.width / 2;
+      const actualCenterY = centerY ?? containerRect.top + containerRect.height / 2;
+      
+      // Calculate mouse/center position relative to canvas
+      const centerCanvasX = (actualCenterX - containerRect.left - centerOffset.x - pan.x) / prev;
+      const centerCanvasY = (actualCenterY - containerRect.top - centerOffset.y - pan.y) / prev;
+      
+      // Calculate new pan to keep the center point centered
+      const newPanX = pan.x - (centerCanvasX * (newZoom - prev));
+      const newPanY = pan.y - (centerCanvasY * (newZoom - prev));
+      
+      setPan({ x: newPanX, y: newPanY });
       
       return newZoom;
     });
