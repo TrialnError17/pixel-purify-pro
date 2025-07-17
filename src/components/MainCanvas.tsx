@@ -1155,7 +1155,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <ZoomOut className="w-4 h-4" />
           </Button>
           
-          <span className="text-sm text-muted-foreground min-w-12 text-center">
+          <span 
+            className="text-sm text-muted-foreground min-w-12 text-center cursor-pointer hover:text-primary transition-colors"
+            onDoubleClick={handleFitToScreen}
+            title="Double-click to fit to screen"
+          >
             {Math.round(zoom * 100)}%
           </span>
           

@@ -754,7 +754,7 @@ export const useImageProcessor = () => {
   }, []);
 
   // Download single image
-  const downloadImage = useCallback((image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings) => {
+  const downloadImage = useCallback((image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings, setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void, setIsFullscreen?: (value: boolean) => void) => {
     // Prioritize processedData (includes manual edits) over originalData
     if (!image.processedData && !image.originalData) {
       console.error('No image data available for download');
@@ -853,6 +853,9 @@ export const useImageProcessor = () => {
     canvas.toBlob((blob) => {
       if (!blob) {
         console.error('Failed to create blob from canvas');
+        if (setSingleImageProgress) {
+          setSingleImageProgress(null);
+        }
         return;
       }
       
@@ -865,6 +868,14 @@ export const useImageProcessor = () => {
       a.download = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
       a.click();
       URL.revokeObjectURL(url);
+      
+      // Clear progress and exit fullscreen mode after download
+      if (setSingleImageProgress) {
+        setSingleImageProgress(null);
+      }
+      if (setIsFullscreen) {
+        setIsFullscreen(false);
+      }
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast

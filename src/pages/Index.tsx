@@ -69,6 +69,7 @@ const Index = () => {
   const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
+  const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -379,7 +380,7 @@ const Index = () => {
                 totalImages={images.length}
                 onDownloadImage={() => {
                   if (selectedImage) {
-                    downloadImage(selectedImage, colorSettings, effectSettings);
+                    downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
                   }
                 }}
                 addUndoAction={addUndoAction}
@@ -402,6 +403,8 @@ const Index = () => {
                     }
                   : undefined
               }
+              isFullscreen={isQueueFullscreen}
+              onSetFullscreen={setIsQueueFullscreen}
               onRemoveImage={(imageId) => {
                 const targetImage = images.find(img => img.id === imageId);
                 if (!targetImage) return;
@@ -460,10 +463,10 @@ const Index = () => {
                   // Find the processed image in the updated state
                   setImages(currentImages => {
                     const processedImage = currentImages.find(img => img.id === image.id);
-                    if (processedImage && processedImage.status === 'completed') {
-                      // Trigger download
-                      downloadImage(processedImage, colorSettings, effectSettings);
-                    }
+                     if (processedImage && processedImage.status === 'completed') {
+                       // Trigger download
+                       downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
+                     }
                     return currentImages;
                   });
                 }).finally(() => {

@@ -39,6 +39,8 @@ interface ImageQueueProps {
     total: number;
     currentImage?: string;
   };
+  isFullscreen?: boolean;
+  onSetFullscreen?: (value: boolean) => void;
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -55,9 +57,15 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   isProcessing = false,
   forceFullscreen = false,
   singleImageProgress,
-  processingProgress
+  processingProgress,
+  isFullscreen: externalIsFullscreen,
+  onSetFullscreen
 }) => {
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [internalIsFullscreen, setInternalIsFullscreen] = React.useState(false);
+  
+  // Use external fullscreen state if provided, otherwise use internal state
+  const isFullscreen = externalIsFullscreen !== undefined ? externalIsFullscreen : internalIsFullscreen;
+  const setIsFullscreen = onSetFullscreen || setInternalIsFullscreen;
   
 
   // Auto-switch to fullscreen when processing starts
