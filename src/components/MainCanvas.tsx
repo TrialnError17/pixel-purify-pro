@@ -90,6 +90,25 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return Math.sqrt(dr * dr + dg * dg + db * db);
   }, []);
 
+  // Helper function to compare ImageData objects
+  const areImageDataEqual = useCallback((data1: ImageData, data2: ImageData): boolean => {
+    if (data1.width !== data2.width || data1.height !== data2.height) {
+      return false;
+    }
+    
+    // Sample comparison - check every 10th pixel for performance
+    const step = 40; // Check every 10th pixel (4 bytes per pixel)
+    for (let i = 0; i < data1.data.length; i += step) {
+      if (data1.data[i] !== data2.data[i] ||
+          data1.data[i + 1] !== data2.data[i + 1] ||
+          data1.data[i + 2] !== data2.data[i + 2] ||
+          data1.data[i + 3] !== data2.data[i + 3]) {
+        return false;
+      }
+    }
+    return true;
+  }, []);
+
   const processImageData = useCallback((imageData: ImageData, settings: ColorRemovalSettings, effects: EffectSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
@@ -492,6 +511,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
     
+    // Skip auto-processing if we already have processed data and no settings changed
+    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled) {
+      return;
+    }
+    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -524,10 +548,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
         }
         
-        // Use requestAnimationFrame to ensure smooth canvas update
-        requestAnimationFrame(() => {
-          ctx.putImageData(processedData, 0, 0);
-        });
+        // Only update canvas if the processed data is different
+        const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const isDifferent = !areImageDataEqual(currentData, processedData);
+        
+        if (isDifferent) {
+          // Use requestAnimationFrame to ensure smooth canvas update
+          requestAnimationFrame(() => {
+            ctx.putImageData(processedData, 0, 0);
+          });
+        }
       } else {
         console.log('Skipping auto-processed data application');
       }
@@ -1221,7 +1251,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             size="sm"
             onClick={handleReset}
             disabled={!hasManualEditsRef.current && !manualImageData}
-            title="Reset to automatic processing"
+            title="Reset image"
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
