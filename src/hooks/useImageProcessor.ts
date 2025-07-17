@@ -666,32 +666,41 @@ export const useImageProcessor = () => {
       sourceData.height
     );
 
-    // Re-process with current settings (same logic as MainCanvas preview)
-    const data = processedData.data;
-    const width = processedData.width;
-    const height = processedData.height;
+    // Only reprocess if we're using originalData (no manual edits)
+    // If using processedData, it already includes manual edits and should not be reprocessed
+    const hasManualEdits = image.processedData && sourceData === image.processedData;
+    
+    if (hasManualEdits) {
+      console.log('Skipping reprocessing - using manual edits as-is');
+    } else {
+      console.log('Reprocessing from original data with current settings');
+      // Re-process with current settings (same logic as MainCanvas preview)
+      const data = processedData.data;
+      const width = processedData.width;
+      const height = processedData.height;
 
-    // Count initial non-transparent pixels
-    let initialCount = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] > 0) initialCount++;
-    }
-    console.log('Initial non-transparent pixels:', initialCount);
-
-    // Apply the same color removal logic as preview using current settings
-    if (colorSettings.enabled) {
-      if (colorSettings.mode === 'auto') {
-        processedData = autoColorRemoval(processedData, colorSettings);
-      } else {
-        processedData = manualColorRemoval(processedData, colorSettings);
+      // Count initial non-transparent pixels
+      let initialCount = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] > 0) initialCount++;
       }
+      console.log('Initial non-transparent pixels:', initialCount);
 
-      if (colorSettings.contiguous) {
-        processedData = borderFloodFill(processedData, colorSettings);
-      }
+      // Apply the same color removal logic as preview using current settings
+      if (colorSettings.enabled) {
+        if (colorSettings.mode === 'auto') {
+          processedData = autoColorRemoval(processedData, colorSettings);
+        } else {
+          processedData = manualColorRemoval(processedData, colorSettings);
+        }
 
-      if (colorSettings.minRegionSize > 0) {
-        processedData = cleanupRegions(processedData, colorSettings);
+        if (colorSettings.contiguous) {
+          processedData = borderFloodFill(processedData, colorSettings);
+        }
+
+        if (colorSettings.minRegionSize > 0) {
+          processedData = cleanupRegions(processedData, colorSettings);
+        }
       }
     }
     
