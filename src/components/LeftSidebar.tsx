@@ -150,23 +150,17 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     {effectSettings.background.color.toUpperCase()}
                   </span>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Save with Background Toggle */}
-        <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
-          <CardHeader className="pt-2 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+                
+                {/* Save with Background Toggle - Compact */}
+                <div className="flex items-center justify-between p-2 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
+                  <span className="text-sm font-medium text-accent-green">💾 Save with BG</span>
                   <Switch
                     checked={effectSettings.background.saveWithBackground}
                     onCheckedChange={(saveWithBackground) => updateBackground({ saveWithBackground })}
                     className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
                   />
-                  <span className="bg-gradient-to-r from-accent-green to-accent-lime bg-clip-text text-transparent font-semibold">
-                    💾 Save with Background
-                  </span>
-                </CardTitle>
-              </CardHeader>
+                </div>
+              </CardContent>
             </Card>
           </>
         )}
