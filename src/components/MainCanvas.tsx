@@ -39,7 +39,7 @@ interface MainCanvasProps {
   currentImageIndex: number;
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
-  addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
+  addUndoAction?: (action: { type: string; description: string; undo: () => void; redo?: () => void }) => void;
   
   onSpeckCountUpdate?: (count: number) => void;
 }
@@ -643,8 +643,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 ctx.putImageData(currentImageData, 0, 0);
                 const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const updatedImage = { ...image, processedData: newImageData };
+                hasManualEditsRef.current = true;
+                setManualImageData(newImageData);
                 onImageUpdate(updatedImage);
               }
+            }
+          },
+          redo: () => {
+            if (canvasRef.current && image) {
+              removePickedColor(ctx, r, g, b, 30);
+              const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const updatedImage = { ...image, processedData: newImageData };
+              hasManualEditsRef.current = true;
+              setManualImageData(newImageData);
+              onImageUpdate(updatedImage);
             }
           }
         });
@@ -694,10 +706,23 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 ctx.putImageData(currentImageData, 0, 0);
                 const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const updatedImage = { ...image, processedData: newImageData };
+                hasManualEditsRef.current = true;
+                setManualImageData(newImageData);
                 onImageUpdate(updatedImage);
-                // Reset manual edits state on undo
-                hasManualEditsRef.current = false;
-                setManualImageData(null);
+              }
+            }
+          },
+          redo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                hasManualEditsRef.current = true;
+                setManualImageData(newImageData);
+                onImageUpdate(updatedImage);
               }
             }
           }
@@ -965,6 +990,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const updatedImage = { ...image, processedData: restoredImageData };
     
     // Update manual image data to preserve the undo state
+    hasManualEditsRef.current = true;
     setManualImageData(restoredImageData);
     
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
@@ -993,6 +1019,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const updatedImage = { ...image, processedData: restoredImageData };
     
     // Update manual image data to preserve the redo state
+    hasManualEditsRef.current = true;
     setManualImageData(restoredImageData);
     
     console.log('Local redo completed, redoStack length:', redoStack.length - 1);
