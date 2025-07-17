@@ -361,12 +361,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode) return;
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode) {
+      console.log('Skipping auto-processing:', {
+        hasOriginalData: !!originalImageData,
+        hasCanvas: !!canvasRef.current,
+        hasManualEdits: hasManualEditsRef.current,
+        manualMode
+      });
+      return;
+    }
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    console.log('Starting auto-processing with settings:', colorSettings);
     setIsProcessing(true);
 
     // Use manual image data if available, otherwise original
@@ -376,8 +385,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
       if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
+        console.log('Applying auto-processed data');
         ctx.putImageData(processedData, 0, 0);
         setIsProcessing(false);
+      } else {
+        console.log('Skipping auto-processed data application:', {
+          sameCanvas: canvasRef.current === canvas,
+          hasManualEdits: hasManualEditsRef.current,
+          manualMode
+        });
       }
     });
 
@@ -570,13 +586,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       
       // Remove contiguous color at clicked position using independent contiguous threshold
-      console.log('Before removeContiguousColorIndependent, manual edits marked');
+      console.log('Before removeContiguousColorIndependent, manual edits marked, manualMode:', manualMode);
       removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
       
       // Store the manually edited result as base for future operations
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setManualImageData(newImageData);
+      console.log('Stored manual image data');
       
       if (image) {
         const updatedImage = { ...image, processedData: newImageData };
