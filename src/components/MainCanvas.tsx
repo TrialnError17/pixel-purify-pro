@@ -932,8 +932,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Shift + scroll = pan up/down
       const deltaY = e.deltaY * 0.5; // Adjust sensitivity
       setPan(prev => ({ x: prev.x, y: prev.y - deltaY }));
-    } else if (e.ctrlKey) {
-      // Ctrl + scroll = pan left/right
+    } else if (e.altKey) {
+      // Alt + scroll = pan left/right
       const deltaX = e.deltaY * 0.5; // Adjust sensitivity
       setPan(prev => ({ x: prev.x - deltaX, y: prev.y }));
     } else {
