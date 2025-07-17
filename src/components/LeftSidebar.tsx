@@ -204,16 +204,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 pb-2">
-            <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
-              <Switch
-                checked={settings.contiguous}
-                onCheckedChange={(contiguous) => updateSettings({ contiguous })}
-                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
-              />
-              <span className="text-sm font-medium text-accent-green">🔗 Contiguous Only</span>
-            </div>
-          </CardContent>
+          {settings.enabled && (
+            <CardContent className="pt-0 pb-2">
+              <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
+                <Switch
+                  checked={settings.contiguous}
+                  onCheckedChange={(contiguous) => updateSettings({ contiguous })}
+                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
+                />
+                <span className="text-sm font-medium text-accent-green">🔗 Contiguous Only</span>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
         {settings.enabled && (
