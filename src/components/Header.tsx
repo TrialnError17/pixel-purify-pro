@@ -28,15 +28,14 @@ export const Header: React.FC<HeaderProps> = ({
   processingProgress
 }) => {
   return (
-    <header className="h-14 bg-gradient-header border-b border-border flex items-center justify-between px-4 shadow-panel">
+    <header className="h-14 bg-black border-b border-border flex items-center justify-between px-4 shadow-panel">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-rainbow rounded-lg flex items-center justify-center shadow-colorful">
-            <Package className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-lg font-semibold bg-gradient-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
-            BG Remover Pro
-          </h1>
+          <img 
+            src="/lovable-uploads/692a11d9-d069-4748-a1fa-f3281996fa0a.png" 
+            alt="iScalePOD Logo" 
+            className="h-8 w-auto"
+          />
         </div>
         
         {/* Processing Indicator */}
