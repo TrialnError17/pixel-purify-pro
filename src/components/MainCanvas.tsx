@@ -15,8 +15,7 @@ import {
   ChevronRight,
   Download,
   Wand,
-  Undo,
-  SkipBack
+  Undo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -902,57 +901,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
   }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
-  const handleResetToOriginal = useCallback(() => {
-    if (!originalImageData || !canvasRef.current || !image) return;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    console.log('Resetting to original image state');
-    
-    // Save current state for undo if we have manual edits
-    if (hasManualEditsRef.current) {
-      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setUndoStack(prev => [...prev, currentImageData]);
-      
-      // Add global undo action
-      if (addUndoAction) {
-        addUndoAction({
-          type: 'reset_to_original',
-          description: 'Reset to original image',
-          undo: () => {
-            if (canvasRef.current && image) {
-              const canvas = canvasRef.current;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.putImageData(currentImageData, 0, 0);
-                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const updatedImage = { ...image, processedData: newImageData };
-                onImageUpdate(updatedImage);
-                hasManualEditsRef.current = true;
-                setManualImageData(newImageData);
-              }
-            }
-          }
-        });
-      }
-    }
-    
-    // Clear all manual edits and processing
-    hasManualEditsRef.current = false;
-    setManualImageData(null);
-    
-    // Restore the pure original image
-    ctx.putImageData(originalImageData, 0, 0);
-    
-    // Update the image with original data
-    const updatedImage = { ...image, processedData: originalImageData };
-    onImageUpdate(updatedImage);
-    
-    console.log('Reset to original completed');
-  }, [originalImageData, image, onImageUpdate, addUndoAction]);
-
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current) return;
     
@@ -1005,21 +953,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           <div className="w-px h-6 bg-border mx-2" />
           
-          {/* Reset to Original */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResetToOriginal}
-            disabled={!hasManualEditsRef.current && !manualImageData}
-            className="flex items-center gap-2"
-            title="Reset to original image (no processing)"
-          >
-            <SkipBack className="w-4 h-4" />
-            Reset to Original
-          </Button>
-
-          <div className="w-px h-6 bg-border mx-2" />
-
           {/* Undo */}
           <Button
             variant="ghost"
@@ -1126,16 +1059,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             title="Reset to automatic processing"
           >
             <RefreshCw className="w-4 h-4" />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetToOriginal}
-            disabled={!hasManualEditsRef.current && !manualImageData}
-            title="Reset to original image (no processing)"
-          >
-            <SkipBack className="w-4 h-4" />
           </Button>
           
           {image && (
