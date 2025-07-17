@@ -399,14 +399,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // If we have manual edits and processedData, use that instead of reloading
     if (hasManualEditsRef.current && image.processedData && manualImageData) {
       console.log('Preserving manual edits, using processedData');
-      ctx.putImageData(image.processedData, 0, 0);
+      // Use requestAnimationFrame to ensure smooth update
+      requestAnimationFrame(() => {
+        ctx.putImageData(image.processedData!, 0, 0);
+      });
       return;
     }
 
     // If image has processedData and no manual edits, use that
     if (image.processedData && !hasManualEditsRef.current) {
       console.log('Using existing processedData');
-      ctx.putImageData(image.processedData, 0, 0);
+      // Use requestAnimationFrame to ensure smooth update
+      requestAnimationFrame(() => {
+        ctx.putImageData(image.processedData!, 0, 0);
+      });
       
       // Store as original data if not set
       if (!originalImageData) {
@@ -518,7 +524,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
         }
         
-        ctx.putImageData(processedData, 0, 0);
+        // Use requestAnimationFrame to ensure smooth canvas update
+        requestAnimationFrame(() => {
+          ctx.putImageData(processedData, 0, 0);
+        });
       } else {
         console.log('Skipping auto-processed data application');
       }

@@ -308,12 +308,15 @@ const Index = () => {
                     const result = processSpecks(cleanBaseData, newSpeckleSettings);
                     setSpeckCount(result.speckCount);
                     
-                    // Update image with speckle processing result
-                    setImages(prev => prev.map(img => 
-                      img.id === selectedImage.id 
-                        ? { ...img, processedData: result.processedData }
-                        : img
-                    ));
+                    // Use requestAnimationFrame to update smoothly and prevent flashing
+                    requestAnimationFrame(() => {
+                      // Update image with speckle processing result
+                      setImages(prev => prev.map(img => 
+                        img.id === selectedImage.id 
+                          ? { ...img, processedData: result.processedData }
+                          : img
+                      ));
+                    });
                   }
                   
                   // Add undo action for speckle settings changes
