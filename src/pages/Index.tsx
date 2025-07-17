@@ -215,6 +215,10 @@ const Index = () => {
         onDownloadPNG={() => {
           if (selectedImage) {
             const prevImages = [...images];
+            const wasQueueVisible = queueVisible;
+            
+            // Show queue for progress feedback
+            setQueueVisible(true);
             
             // Add undo action before processing
             addUndoAction({
@@ -223,12 +227,17 @@ const Index = () => {
               undo: () => {
                 setImages(prevImages);
                 setIsProcessing(false);
+                setQueueVisible(wasQueueVisible);
               }
             });
             
             setIsProcessing(true);
             processImage(selectedImage, colorSettings, effectSettings, setImages).finally(() => {
               setIsProcessing(false);
+              // Auto-hide queue after processing if it wasn't visible before
+              if (!wasQueueVisible) {
+                setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
+              }
             });
           }
         }}
@@ -308,6 +317,10 @@ const Index = () => {
           totalImages={images.length}
           onDownloadImage={(image) => {
             const prevImages = [...images];
+            const wasQueueVisible = queueVisible;
+            
+            // Show queue for progress feedback
+            setQueueVisible(true);
             
             // Add undo action before processing
             addUndoAction({
@@ -316,12 +329,28 @@ const Index = () => {
               undo: () => {
                 setImages(prevImages);
                 setIsProcessing(false);
+                setQueueVisible(wasQueueVisible);
               }
             });
             
             setIsProcessing(true);
-            processImage(image, colorSettings, effectSettings, setImages).finally(() => {
+            processImage(image, colorSettings, effectSettings, setImages).then(() => {
+              // After processing is complete, automatically download the image
+              // Find the processed image in the updated state
+              setImages(currentImages => {
+                const processedImage = currentImages.find(img => img.id === image.id);
+                if (processedImage && processedImage.status === 'completed') {
+                  // Trigger download
+                  downloadImage(processedImage, colorSettings, effectSettings);
+                }
+                return currentImages;
+              });
+            }).finally(() => {
               setIsProcessing(false);
+              // Auto-hide queue after processing if it wasn't visible before
+              if (!wasQueueVisible) {
+                setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
+              }
             });
           }}
           addUndoAction={addUndoAction}
