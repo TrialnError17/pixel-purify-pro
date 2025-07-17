@@ -232,7 +232,6 @@ const Index = () => {
       <div className="flex flex-1 min-h-0">
         <LeftSidebar 
           settings={colorSettings}
-          contiguousSettings={contiguousSettings}
           manualMode={manualMode}
           onManualModeChange={(enabled) => {
             setManualMode(enabled);
@@ -251,17 +250,6 @@ const Index = () => {
               type: 'settings',
               description: 'Change color removal settings',
               undo: () => setColorSettings(prevSettings)
-            });
-          }}
-          onContiguousSettingsChange={(newContiguousSettings) => {
-            const prevContiguousSettings = { ...contiguousSettings };
-            setContiguousSettings(newContiguousSettings);
-            
-            // Add undo action for contiguous settings changes
-            addUndoAction({
-              type: 'settings',
-              description: 'Change contiguous tool settings',
-              undo: () => setContiguousSettings(prevContiguousSettings)
             });
           }}
         />
@@ -305,6 +293,18 @@ const Index = () => {
         
         <RightSidebar 
           settings={effectSettings}
+          contiguousSettings={contiguousSettings}
+          onContiguousSettingsChange={(newContiguousSettings) => {
+            const prevContiguousSettings = { ...contiguousSettings };
+            setContiguousSettings(newContiguousSettings);
+            
+            // Add undo action for magic wand settings changes
+            addUndoAction({
+              type: 'settings',
+              description: 'Change magic wand tool settings',
+              undo: () => setContiguousSettings(prevContiguousSettings)
+            });
+          }}
           onSettingsChange={(newSettings) => {
             const prevSettings = { ...effectSettings };
             setEffectSettings(newSettings);
