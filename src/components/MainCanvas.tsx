@@ -15,9 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Wand,
-  Undo,
-  Redo
+  Wand
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -962,34 +960,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           <div className="w-px h-6 bg-border mx-2" />
           
-          {/* Undo */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleUndo}
-            disabled={undoStack.length === 0}
-            className="flex items-center gap-2"
-            title="Undo last manual edit"
-          >
-            <Undo className="w-4 h-4" />
-            Undo
-          </Button>
-          
-          {/* Redo */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRedo}
-            disabled={redoStack.length === 0}
-            className="flex items-center gap-2"
-            title="Redo last undone edit"
-          >
-            <Redo className="w-4 h-4" />
-            Redo
-          </Button>
-          
-          <div className="w-px h-6 bg-border mx-1" />
-          
           {/* Tools */}
           <Button
             variant={tool === 'pan' ? 'default' : 'ghost'}
@@ -1053,15 +1023,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             onClick={handleFitToScreen}
           >
             <Maximize className="w-4 h-4" />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleUndo}
-            disabled={undoStack.length === 0}
-          >
-            <RotateCcw className="w-4 h-4" />
           </Button>
           
           <Button

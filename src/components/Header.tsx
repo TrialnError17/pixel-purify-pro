@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, ImagePlus, Download, Undo, Redo, Package, Loader2 } from 'lucide-react';
+import { FolderPlus, ImagePlus, Loader2 } from 'lucide-react';
 
 interface HeaderProps {
   onAddImages: () => void;
@@ -59,16 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onDownloadPNG}
-          disabled={!canDownload || isProcessing}
-          className="flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Download
-        </Button>
+        {/* Empty space for right side */}
       </div>
     </header>
   );
