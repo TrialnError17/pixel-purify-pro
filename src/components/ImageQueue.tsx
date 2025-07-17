@@ -17,7 +17,8 @@ import {
   Clock,
   Loader2,
   Maximize,
-  Minimize
+  Minimize,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface ImageQueueProps {
@@ -58,6 +59,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   processingProgress
 }) => {
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isFullHeight, setIsFullHeight] = React.useState(false);
 
   // Auto-switch to fullscreen when processing starts
   React.useEffect(() => {
@@ -129,9 +131,11 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen 
         ? "fixed inset-0 z-50 h-screen" 
-        : visible 
-          ? "h-48" 
-          : "h-12"
+        : isFullHeight
+          ? "fixed top-14 bottom-0 left-0 right-96 z-40" // Full height but exclude header and right sidebar
+          : visible 
+            ? "h-48" 
+            : "h-12"
     )}>
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
@@ -221,6 +225,19 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
             </Button>
           )}
           
+          {/* Full Height Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsFullHeight(!isFullHeight)}
+            disabled={isFullscreen}
+            className="flex items-center gap-2"
+            title={isFullHeight ? "Exit full height" : "Full height queue"}
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            Full Height Queue
+          </Button>
+          
           {/* Fullscreen Toggle */}
           <Button
             variant="ghost"
@@ -260,10 +277,14 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
       )}
 
       {/* Queue Content */}
-      {(visible || isFullscreen) && (
+      {(visible || isFullscreen || isFullHeight) && (
         <div className={cn(
           "overflow-y-auto",
-          isFullscreen ? "h-[calc(100vh-3rem)]" : "h-36"
+          isFullscreen 
+            ? "h-[calc(100vh-3rem)]" 
+            : isFullHeight 
+              ? "h-[calc(100vh-8rem)]" // Full height minus header and queue header
+              : "h-36"
         )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
