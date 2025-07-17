@@ -649,20 +649,21 @@ export const useImageProcessor = () => {
 
   // Download single image
   const downloadImage = useCallback((image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings) => {
-    if (!image.originalData) {
-      console.error('No original data available for download');
+    // Prioritize processedData (includes manual edits) over originalData
+    if (!image.processedData && !image.originalData) {
+      console.error('No image data available for download');
       return;
     }
 
-    console.log('Downloading image:', image.name, 'Original data size:', image.originalData.data.length);
+    const sourceData = image.processedData || image.originalData!;
+    console.log('Downloading image:', image.name, 'Using:', image.processedData ? 'processedData (with manual edits)' : 'originalData');
     console.log('Download effect settings:', JSON.stringify(effectSettings, null, 2));
 
-    // Process fresh from original data using the current color settings
-    // This ensures download matches what the user sees in preview
+    // Use the current processed data (includes manual edits) as starting point
     let processedData = new ImageData(
-      new Uint8ClampedArray(image.originalData.data),
-      image.originalData.width,
-      image.originalData.height
+      new Uint8ClampedArray(sourceData.data),
+      sourceData.width,
+      sourceData.height
     );
 
     // Re-process with current settings (same logic as MainCanvas preview)
