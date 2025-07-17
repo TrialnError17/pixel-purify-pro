@@ -6,34 +6,23 @@ import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ColorRemovalSettings, PickedColor } from '@/pages/Index';
-import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff } from 'lucide-react';
-import { SpeckleSettings } from '@/hooks/useSpeckleTools';
+import { Palette, Settings, X, Trash2 } from 'lucide-react';
 
 interface LeftSidebarProps {
   settings: ColorRemovalSettings;
   onSettingsChange: (settings: ColorRemovalSettings) => void;
   manualMode: boolean;
   onManualModeChange: (enabled: boolean) => void;
-  speckleSettings: SpeckleSettings;
-  onSpeckleSettingsChange: (settings: SpeckleSettings) => void;
-  speckCount?: number;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   settings,
   onSettingsChange,
   manualMode,
-  onManualModeChange,
-  speckleSettings,
-  onSpeckleSettingsChange,
-  speckCount
+  onManualModeChange
 }) => {
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
-  };
-
-  const updateSpeckleSettings = (updates: Partial<SpeckleSettings>) => {
-    onSpeckleSettingsChange({ ...speckleSettings, ...updates });
   };
 
   return (
@@ -265,93 +254,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </>
         )}
 
-        {/* Speckle Tools Section */}
-        <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Switch
-                checked={speckleSettings.enabled}
-                onCheckedChange={(enabled) => updateSpeckleSettings({ enabled })}
-                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-indigo"
-              />
-              <span className="bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent font-semibold flex items-center gap-1">
-                <Zap className="w-4 h-4 text-accent-blue" />
-                ✨ Speckle Tools
-              </span>
-            </CardTitle>
-          </CardHeader>
-          {speckleSettings.enabled && (
-            <CardContent className="pt-0 space-y-4">
-              <div className="text-xs text-muted-foreground p-2 bg-accent-blue/5 rounded border border-accent-blue/20">
-                🔍 Detects and manages isolated pixel clusters (specks) in your image
-              </div>
-
-              {/* Highlight Specks Toggle */}
-              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                <div className="flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-accent-blue" />
-                  <span className="text-sm font-medium text-accent-blue">Highlight Specks</span>
-                </div>
-                <Switch
-                  checked={speckleSettings.highlightSpecks}
-                  onCheckedChange={(highlightSpecks) => updateSpeckleSettings({ 
-                    highlightSpecks, 
-                    removeSpecks: highlightSpecks ? false : speckleSettings.removeSpecks 
-                  })}
-                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-indigo"
-                />
-              </div>
-
-              {/* Remove Specks Toggle */}
-              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                <div className="flex items-center gap-2">
-                  <EyeOff className="w-4 h-4 text-accent-red" />
-                  <span className="text-sm font-medium text-accent-red">Remove Specks</span>
-                </div>
-                <Switch
-                  checked={speckleSettings.removeSpecks}
-                  onCheckedChange={(removeSpecks) => updateSpeckleSettings({ 
-                    removeSpecks, 
-                    highlightSpecks: removeSpecks ? false : speckleSettings.highlightSpecks 
-                  })}
-                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
-                />
-              </div>
-
-              {/* Min Speck Size Slider */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
-                  📏 Min Speck Size
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                  <SliderWithInput
-                    value={[speckleSettings.minSpeckSize]}
-                    onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
-                    min={1}
-                    max={500}
-                    step={1}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
-                  />
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-accent-blue font-medium">🔬 1px</span>
-                  <span className="font-bold text-accent-blue bg-accent-blue/10 px-2 py-1 rounded">{speckleSettings.minSpeckSize}px</span>
-                  <span className="text-accent-indigo font-medium">🏔️ 500px</span>
-                </div>
-              </div>
-
-              {/* Speck Count Display */}
-              {speckCount !== undefined && speckCount > 0 && (
-                <div className="p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-yellow/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-accent-orange">🎯 Specks Found</span>
-                    <span className="font-bold text-accent-orange bg-accent-orange/10 px-2 py-1 rounded">{speckCount}</span>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          )}
-        </Card>
       </div>
     </div>
   );
