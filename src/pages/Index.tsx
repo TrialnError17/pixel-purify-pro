@@ -293,6 +293,32 @@ const Index = () => {
               undo: () => setColorSettings(prevSettings)
             });
           }}
+          speckleSettings={speckleSettings}
+          onSpeckleSettingsChange={(newSpeckleSettings) => {
+            const prevSpeckleSettings = { ...speckleSettings };
+            setSpeckleSettings(newSpeckleSettings);
+            
+            // Process speckles when settings change and image is selected
+            if (selectedImage?.processedData) {
+              const result = processSpecks(selectedImage.processedData, newSpeckleSettings);
+              setSpeckCount(result.speckCount);
+              
+              // Update image with speckle processing result
+              setImages(prev => prev.map(img => 
+                img.id === selectedImage.id 
+                  ? { ...img, processedData: result.processedData }
+                  : img
+              ));
+            }
+            
+            // Add undo action for speckle settings changes
+            addUndoAction({
+              type: 'settings',
+              description: 'Change speckle tool settings',
+              undo: () => setSpeckleSettings(prevSpeckleSettings)
+            });
+          }}
+          speckCount={speckCount}
         />
         
         <MainCanvas 
@@ -407,32 +433,6 @@ const Index = () => {
               undo: () => setEffectSettings(prevSettings)
             });
           }}
-          speckleSettings={speckleSettings}
-          onSpeckleSettingsChange={(newSpeckleSettings) => {
-            const prevSpeckleSettings = { ...speckleSettings };
-            setSpeckleSettings(newSpeckleSettings);
-            
-            // Process speckles when settings change and image is selected
-            if (selectedImage?.processedData) {
-              const result = processSpecks(selectedImage.processedData, newSpeckleSettings);
-              setSpeckCount(result.speckCount);
-              
-              // Update image with speckle processing result
-              setImages(prev => prev.map(img => 
-                img.id === selectedImage.id 
-                  ? { ...img, processedData: result.processedData }
-                  : img
-              ));
-            }
-            
-            // Add undo action for speckle settings changes
-            addUndoAction({
-              type: 'settings',
-              description: 'Change speckle tool settings',
-              undo: () => setSpeckleSettings(prevSpeckleSettings)
-            });
-          }}
-          speckCount={speckCount}
         />
       </div>
       
