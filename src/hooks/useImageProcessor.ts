@@ -79,6 +79,112 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
 
+  // Unified processing function that matches MainCanvas logic
+  const processImageDataUnified = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+
+    // Only process if color removal is enabled
+    if (settings.enabled) {
+      if (settings.mode === 'auto') {
+        // Use top-left corner color
+        const targetR = data[0];
+        const targetG = data[1];
+        const targetB = data[2];
+        const threshold = settings.threshold * 2.55;
+
+        if (settings.contiguous) {
+          // Contiguous removal starting from top-left corner
+          const visited = new Set<string>();
+          const stack = [[0, 0]];
+          
+          const isColorSimilar = (r: number, g: number, b: number) => {
+            const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+            return distance <= threshold;
+          };
+          
+          while (stack.length > 0) {
+            const [x, y] = stack.pop()!;
+            const key = `${x},${y}`;
+            
+            if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+            visited.add(key);
+            
+            const pixelIndex = (y * width + x) * 4;
+            const r = data[pixelIndex];
+            const g = data[pixelIndex + 1];
+            const b = data[pixelIndex + 2];
+            
+            if (!isColorSimilar(r, g, b)) continue;
+            
+            // Make pixel transparent
+            data[pixelIndex + 3] = 0;
+            
+            // Add neighbors to stack
+            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+          }
+        } else {
+          // Simple non-contiguous removal for auto mode
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+            
+            if (distance <= threshold) {
+              data[i + 3] = 0; // Make transparent
+            }
+          }
+        }
+      } else {
+        // Manual mode - handle both single target color and picked colors
+        let colorsToRemove = [];
+        
+        // Add the main target color
+        const hex = settings.targetColor.replace('#', '');
+        colorsToRemove.push({
+          r: parseInt(hex.substr(0, 2), 16),
+          g: parseInt(hex.substr(2, 2), 16),
+          b: parseInt(hex.substr(4, 2), 16),
+          threshold: settings.threshold
+        });
+        
+        // Add all picked colors with their individual thresholds
+        settings.pickedColors.forEach(pickedColor => {
+          const pickedHex = pickedColor.color.replace('#', '');
+          colorsToRemove.push({
+            r: parseInt(pickedHex.substr(0, 2), 16),
+            g: parseInt(pickedHex.substr(2, 2), 16),
+            b: parseInt(pickedHex.substr(4, 2), 16),
+            threshold: pickedColor.threshold
+          });
+        });
+
+        // Process each pixel against all target colors (always non-contiguous in manual mode)
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Check against each target color
+          for (const targetColor of colorsToRemove) {
+            const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
+            const threshold = targetColor.threshold * 2.55; // Scale to 0-255 range
+            
+            if (distance <= threshold) {
+              data[i + 3] = 0; // Make transparent
+              break; // No need to check other colors once removed
+            }
+          }
+        }
+      }
+    }
+
+    return new ImageData(data, width, height);
+  }, [calculateColorDistance]);
+
   // Contiguous color removal from borders
   const borderFloodFill = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
@@ -688,16 +794,9 @@ export const useImageProcessor = () => {
 
       // Apply the same color removal logic as preview using current settings
       if (colorSettings.enabled) {
-        if (colorSettings.mode === 'auto') {
-          processedData = autoColorRemoval(processedData, colorSettings);
-        } else {
-          processedData = manualColorRemoval(processedData, colorSettings);
-        }
-
-        if (colorSettings.contiguous) {
-          processedData = borderFloodFill(processedData, colorSettings);
-        }
-
+        // Use the same unified processing logic as MainCanvas
+        processedData = processImageDataUnified(processedData, colorSettings);
+        
         if (colorSettings.minRegionSize > 0) {
           processedData = cleanupRegions(processedData, colorSettings);
         }
@@ -769,7 +868,7 @@ export const useImageProcessor = () => {
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified]);
 
 
   return {
