@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
+import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { 
   Move, 
@@ -29,6 +29,7 @@ interface MainCanvasProps {
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   speckleSettings: SpeckleSettings;
+  edgeCleanupSettings: EdgeCleanupSettings;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -51,6 +52,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   contiguousSettings,
   effectSettings,
   speckleSettings,
+  edgeCleanupSettings,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -293,6 +295,91 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
 
+  // Edge cleanup processing function
+  const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
+    if (!settings.enabled || settings.trimRadius === 0) {
+      return imageData;
+    }
+
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+    const radius = settings.trimRadius;
+
+    // Create a map of pixels to be made transparent
+    const toTransparent = new Set<number>();
+
+    // Function to check if a pixel is on an edge (next to transparent or border)
+    const isEdgePixel = (x: number, y: number): boolean => {
+      const index = (y * width + x) * 4;
+      
+      // Skip if already transparent
+      if (data[index + 3] === 0) return false;
+      
+      // Check if at image border
+      if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+        return true;
+      }
+      
+      // Check surrounding pixels for transparency
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          
+          const nx = x + dx;
+          const ny = y + dy;
+          
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const neighborIndex = (ny * width + nx) * 4;
+            if (data[neighborIndex + 3] === 0) {
+              return true;
+            }
+          }
+        }
+      }
+      
+      return false;
+    };
+
+    // Find all edge pixels
+    const edgePixels: Array<{x: number, y: number}> = [];
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (isEdgePixel(x, y)) {
+          edgePixels.push({x, y});
+        }
+      }
+    }
+
+    // For each edge pixel, mark pixels within radius for transparency
+    edgePixels.forEach(({x, y}) => {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          
+          // Check if within image bounds
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            // Check if within circular radius
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance <= radius) {
+              const pixelIndex = ny * width + nx;
+              toTransparent.add(pixelIndex);
+            }
+          }
+        }
+      }
+    });
+
+    // Apply transparency to marked pixels
+    toTransparent.forEach(pixelIndex => {
+      const dataIndex = pixelIndex * 4;
+      data[dataIndex + 3] = 0; // Make transparent
+    });
+
+    return new ImageData(data, width, height);
+  }, []);
+
   // Load original image and store image data
   useEffect(() => {
     console.log('Image loading effect triggered:', { 
@@ -418,15 +505,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         // Apply speckle processing if enabled
         if (speckleSettings.enabled) {
           const speckleResult = processSpecks(processedData, speckleSettings);
-          ctx.putImageData(speckleResult.processedData, 0, 0);
+          processedData = speckleResult.processedData;
           
           // Update speck count if callback is provided
           if (onSpeckCountUpdate) {
             onSpeckCountUpdate(speckleResult.speckCount);
           }
-        } else {
-          ctx.putImageData(processedData, 0, 0);
         }
+        
+        // Apply edge cleanup processing if enabled
+        if (edgeCleanupSettings.enabled) {
+          processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
+        }
+        
+        ctx.putImageData(processedData, 0, 0);
       } else {
         console.log('Skipping auto-processed data application');
       }
@@ -436,7 +528,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, manualImageData, debouncedProcessImageData, processSpecks, onSpeckCountUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {

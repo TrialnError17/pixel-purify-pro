@@ -5,8 +5,8 @@ import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
-import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus } from 'lucide-react';
+import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
+import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 interface LeftSidebarProps {
@@ -19,6 +19,8 @@ interface LeftSidebarProps {
   onEffectSettingsChange: (settings: EffectSettings) => void;
   contiguousSettings: ContiguousToolSettings;
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
+  edgeCleanupSettings: EdgeCleanupSettings;
+  onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
   onAddImages: () => void;
   onAddFolder: () => void;
 }
@@ -33,6 +35,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onEffectSettingsChange,
   contiguousSettings,
   onContiguousSettingsChange,
+  edgeCleanupSettings,
+  onEdgeCleanupSettingsChange,
   onAddImages,
   onAddFolder
 }) => {
@@ -62,6 +66,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
   const updateContiguousSettings = (updates: Partial<ContiguousToolSettings>) => {
     onContiguousSettingsChange({ ...contiguousSettings, ...updates });
+  };
+
+  const updateEdgeCleanupSettings = (updates: Partial<EdgeCleanupSettings>) => {
+    onEdgeCleanupSettingsChange({ ...edgeCleanupSettings, ...updates });
   };
 
   return (
@@ -469,6 +477,53 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       </div>
                     </div>
                   )}
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Edge Cleanup Section */}
+            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Switch
+                    checked={edgeCleanupSettings.enabled}
+                    onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
+                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                  />
+                  <Scissors className="w-4 h-4 text-accent-purple" />
+                  <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
+                    Edge Cleanup
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              
+              {edgeCleanupSettings.enabled && (
+                <CardContent className="pt-0 space-y-4">
+                  <div className="text-xs text-muted-foreground p-2 bg-accent-purple/5 rounded border border-accent-purple/20">
+                    ✂️ Removes residual color pixels along edges of non-transparent areas
+                  </div>
+
+                  {/* Edge Trim Radius Slider */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                      📏 Edge Trim Radius
+                    </Label>
+                    <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                      <SliderWithInput
+                        value={[edgeCleanupSettings.trimRadius]}
+                        onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
+                        min={0}
+                        max={10}
+                        step={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-accent-purple font-medium">🎯 0px</span>
+                      <span className="font-bold text-accent-purple bg-accent-purple/10 px-2 py-1 rounded">{edgeCleanupSettings.trimRadius}px</span>
+                      <span className="text-accent-indigo font-medium">✂️ 10px</span>
+                    </div>
+                  </div>
                 </CardContent>
               )}
             </Card>

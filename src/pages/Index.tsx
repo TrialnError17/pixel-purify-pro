@@ -53,6 +53,11 @@ export interface EffectSettings {
   };
 }
 
+export interface EdgeCleanupSettings {
+  enabled: boolean;
+  trimRadius: number;
+}
+
 export interface ContiguousToolSettings {
   threshold: number;
 }
@@ -104,6 +109,11 @@ const Index = () => {
     download: {
       trimTransparentPixels: false
     }
+  });
+
+  const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
+    enabled: false,
+    trimRadius: 2
   });
 
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
@@ -309,32 +319,45 @@ const Index = () => {
                     undo: () => setEffectSettings(prevSettings)
                   });
                 }}
-                contiguousSettings={contiguousSettings}
-                onContiguousSettingsChange={(newContiguousSettings) => {
-                  const prevContiguousSettings = { ...contiguousSettings };
-                  setContiguousSettings(newContiguousSettings);
-                  
-                  // Add undo action for magic wand settings changes
-                  addUndoAction({
-                    type: 'settings',
-                    description: 'Change magic wand tool settings',
-                    undo: () => setContiguousSettings(prevContiguousSettings)
-                  });
-                }}
-                onAddImages={handleFileInput}
-                onAddFolder={handleFolderInput}
-              />
+              contiguousSettings={contiguousSettings}
+              onContiguousSettingsChange={(newContiguousSettings) => {
+                const prevContiguousSettings = { ...contiguousSettings };
+                setContiguousSettings(newContiguousSettings);
+                
+                // Add undo action for magic wand settings changes
+                addUndoAction({
+                  type: 'settings',
+                  description: 'Change magic wand tool settings',
+                  undo: () => setContiguousSettings(prevContiguousSettings)
+                });
+              }}
+              edgeCleanupSettings={edgeCleanupSettings}
+              onEdgeCleanupSettingsChange={(newEdgeCleanupSettings) => {
+                const prevEdgeCleanupSettings = { ...edgeCleanupSettings };
+                setEdgeCleanupSettings(newEdgeCleanupSettings);
+                
+                // Add undo action for edge cleanup settings changes
+                addUndoAction({
+                  type: 'settings',
+                  description: 'Change edge cleanup settings',
+                  undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
+                });
+              }}
+              onAddImages={handleFileInput}
+              onAddFolder={handleFolderInput}
+            />
               
               <MainCanvas 
                 image={selectedImage}
                 tool={currentTool}
                 onToolChange={setCurrentTool}
-                colorSettings={colorSettings}
-                contiguousSettings={contiguousSettings}
-                effectSettings={effectSettings}
-                speckleSettings={speckleSettings}
-                
-                onImageUpdate={(updatedImage) => {
+              colorSettings={colorSettings}
+              contiguousSettings={contiguousSettings}
+              effectSettings={effectSettings}
+              speckleSettings={speckleSettings}
+              edgeCleanupSettings={edgeCleanupSettings}
+              
+              onImageUpdate={(updatedImage) => {
                   setImages(prev => prev.map(img => 
                     img.id === updatedImage.id ? updatedImage : img
                   ));
