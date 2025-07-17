@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
@@ -202,20 +203,21 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <span className="bg-gradient-to-r from-accent-purple to-accent-pink bg-clip-text text-transparent font-semibold">
                 🎯 Color Removal
               </span>
+              {settings.enabled && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <Checkbox
+                    id="contiguous-checkbox"
+                    checked={settings.contiguous}
+                    onCheckedChange={(checked) => updateSettings({ contiguous: !!checked })}
+                    className="w-3 h-3"
+                  />
+                  <label htmlFor="contiguous-checkbox" className="text-xs text-muted-foreground cursor-pointer">
+                    contiguous only
+                  </label>
+                </div>
+              )}
             </CardTitle>
           </CardHeader>
-          {settings.enabled && (
-            <CardContent className="pt-0 pb-2">
-              <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
-                <Switch
-                  checked={settings.contiguous}
-                  onCheckedChange={(contiguous) => updateSettings({ contiguous })}
-                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
-                />
-                <span className="text-sm font-medium text-accent-green">🔗 Contiguous Only</span>
-              </div>
-            </CardContent>
-          )}
         </Card>
 
         {settings.enabled && (
