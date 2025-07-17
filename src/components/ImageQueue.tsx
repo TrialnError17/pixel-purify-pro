@@ -251,9 +251,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                 <span className="text-sm font-medium text-primary">
                   Downloading image...
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {Math.round(singleImageProgress.progress)}%
-                </span>
               </div>
               <Progress 
                 value={singleImageProgress.progress} 
@@ -342,11 +339,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                       {image.status === 'processing' && (
                         <div className="space-y-1">
                           <Progress value={image.progress} className="h-2" />
-                          {isFullscreen && (
-                            <div className="text-xs text-muted-foreground text-center">
-                              {image.progress}% complete
-                            </div>
-                          )}
                         </div>
                       )}
                       
