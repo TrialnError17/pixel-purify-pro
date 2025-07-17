@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
             alt="iScalePOD Logo" 
             className="h-8 w-auto"
           />
-          <h1 className="text-lg font-semibold text-white">
+          <h1 className="text-lg font-semibold text-foreground">
             Image Color Remover
           </h1>
         </div>
