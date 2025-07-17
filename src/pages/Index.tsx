@@ -417,7 +417,7 @@ const Index = () => {
           // Add undo action before processing
           addUndoAction({
             type: 'batch_operation',
-            description: `Process ${image.name}`,
+            description: `Process and download ${image.name}`,
             undo: () => {
               setImages(prevImages);
               setIsProcessing(false);
@@ -426,7 +426,18 @@ const Index = () => {
           });
           
           setIsProcessing(true);
-          processImage(image, colorSettings, effectSettings, setImages).finally(() => {
+          processImage(image, colorSettings, effectSettings, setImages).then(() => {
+            // After processing is complete, automatically download the image
+            // Find the processed image in the updated state
+            setImages(currentImages => {
+              const processedImage = currentImages.find(img => img.id === image.id);
+              if (processedImage && processedImage.status === 'completed') {
+                // Trigger download
+                downloadImage(processedImage, colorSettings, effectSettings);
+              }
+              return currentImages;
+            });
+          }).finally(() => {
             setIsProcessing(false);
           });
         }}
