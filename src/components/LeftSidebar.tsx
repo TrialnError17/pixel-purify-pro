@@ -212,7 +212,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     className="w-3 h-3"
                   />
                   <label htmlFor="contiguous-checkbox" className="text-sm text-muted-foreground cursor-pointer">
-                    contiguous
+                    Contiguous
                   </label>
                 </div>
               )}
