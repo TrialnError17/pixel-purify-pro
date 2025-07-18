@@ -296,7 +296,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const stampR = parseInt(hex.substr(0, 2), 16);
       const stampG = parseInt(hex.substr(2, 2), 16);
       const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = (100 - effects.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
+      const threshold = effects.inkStamp.threshold === 1 ? 255 : (100 - effects.inkStamp.threshold) * 2.55; // Show all pixels when value is 1
 
       let processedPixels = 0;
       for (let i = 0; i < data.length; i += 4) {
