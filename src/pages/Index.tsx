@@ -117,8 +117,7 @@ const Index = () => {
     enabled: false,
     minSpeckSize: 50,
     highlightSpecks: false,
-    removeSpecks: false,
-    removeAllSpecks: false,
+    removeSpecks: false
   });
 
   const [speckCount, setSpeckCount] = useState<number | undefined>(undefined);
