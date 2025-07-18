@@ -420,35 +420,50 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         min={0}
                         max={10}
                         step={1}
+                        buttonStep={1}
                         sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
                       />
                     </div>
                   </div>
+
+                  {/* Min Region Size */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={edgeCleanupSettings.minRegionSize.enabled && !settings.contiguous}
+                        onCheckedChange={(enabled) => updateEdgeCleanupSettings({ 
+                          minRegionSize: { ...edgeCleanupSettings.minRegionSize, enabled: enabled && !settings.contiguous }
+                        })}
+                        disabled={settings.contiguous}
+                        className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-indigo data-[state=checked]:to-accent-purple"
+                      />
+                      <Label className="text-sm font-medium bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent">
+                        📏 Min Region Size
+                      </Label>
+                      {settings.contiguous && (
+                        <span className="text-xs text-muted-foreground ml-auto">(Auto-disabled: Contiguous ON)</span>
+                      )}
+                    </div>
+                    
+                    {edgeCleanupSettings.minRegionSize.enabled && !settings.contiguous && (
+                      <div className="p-3 bg-gradient-to-r from-accent-indigo/5 to-accent-purple/5 rounded-lg border border-accent-indigo/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.minRegionSize.value]}
+                          onValueChange={([value]) => updateEdgeCleanupSettings({ 
+                            minRegionSize: { ...edgeCleanupSettings.minRegionSize, value }
+                          })}
+                          min={1}
+                          max={4000}
+                          step={10}
+                          buttonStep={10}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-indigo [&_[role=slider]]:to-accent-purple [&_[role=slider]]:border-accent-indigo"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               )}
             </Card>
-
-            <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30">
-              <CardHeader className="pt-2 pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent font-semibold">
-                  📏 Min Region Size
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="p-3 bg-gradient-to-r from-accent-indigo/5 to-accent-purple/5 rounded-lg border border-accent-indigo/20">
-                  <SliderWithInput
-                    value={[settings.minRegionSize]}
-                    onValueChange={([minRegionSize]) => updateSettings({ minRegionSize })}
-                    min={1}
-                    max={4000}
-                    step={10}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-indigo [&_[role=slider]]:to-accent-purple [&_[role=slider]]:border-accent-indigo"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Speckle Tools Section */}
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">

@@ -246,8 +246,8 @@ export const useImageProcessor = () => {
     const width = imageData.width;
     const height = imageData.height;
 
-    // Step 1: Remove small transparent regions (fill holes)
-    if (settings.minRegionSize > 0) {
+    // Step 1: Remove small transparent regions (fill holes) - MOVED TO EDGE CLEANUP
+    if (false) { // Temporarily disabled - will be handled by edge cleanup
       const visited = new Set<string>();
       
       const floodFillRegion = (startX: number, startY: number, isTransparent: boolean): number => {
@@ -285,8 +285,8 @@ export const useImageProcessor = () => {
           if (isTransparent) {
             const regionSize = floodFillRegion(x, y, true);
             
-            // If region is too small, fill it (make it opaque)
-            if (regionSize < settings.minRegionSize) {
+            // If region is too small, fill it (make it opaque) - MOVED TO EDGE CLEANUP
+            if (false) { // Temporarily disabled
               // Get surrounding color to fill with
               let fillR = 0, fillG = 0, fillB = 0, count = 0;
               
@@ -720,9 +720,10 @@ export const useImageProcessor = () => {
         // Add delay to make progress visible
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        if (colorSettings.minRegionSize > 0) {
-          processedData = cleanupRegions(processedData, colorSettings);
-        }
+        // Region cleanup is now handled by edge cleanup settings
+        // if (colorSettings.minRegionSize > 0) {
+        //   processedData = cleanupRegions(processedData, colorSettings);
+        // }
       }
 
       // Step 4: Store clean processed data (without background/effects applied)
@@ -960,9 +961,10 @@ export const useImageProcessor = () => {
         // Use the same unified processing logic as MainCanvas
         processedData = processImageDataUnified(processedData, colorSettings);
         
-        if (colorSettings.minRegionSize > 0) {
-          processedData = cleanupRegions(processedData, colorSettings);
-        }
+        // Region cleanup is now handled by edge cleanup settings  
+        // if (colorSettings.minRegionSize > 0) {
+        //   processedData = cleanupRegions(processedData, colorSettings);
+        // }
       }
     }
     

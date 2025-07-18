@@ -215,7 +215,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
 
       // Apply minimum region size filtering
-      if (settings.minRegionSize > 0) {
+      if (edgeCleanupSettings.minRegionSize.enabled && edgeCleanupSettings.minRegionSize.value > 0) {
         const alphaData = new Uint8ClampedArray(width * height);
         
         // Extract alpha channel
@@ -256,7 +256,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               }
               
               // If region is smaller than minimum size, restore it
-              if (regionPixels.length < settings.minRegionSize) {
+              if (regionPixels.length < edgeCleanupSettings.minRegionSize.value) {
                 for (const pixelIndex of regionPixels) {
                   data[pixelIndex * 4 + 3] = 255; // Make opaque
                 }
@@ -458,85 +458,151 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Edge cleanup processing function
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
-    if (!settings.enabled || settings.trimRadius === 0) {
+    if (!settings.enabled) {
       return imageData;
     }
 
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
-    const radius = settings.trimRadius;
 
-    // Create a map of pixels to be made transparent
-    const toTransparent = new Set<number>();
+    // Step 1: Edge trimming (if radius > 0)
+    if (settings.trimRadius > 0) {
+      const radius = settings.trimRadius;
+      const toTransparent = new Set<number>();
 
-    // Function to check if a pixel is on an edge (next to transparent or border)
-    const isEdgePixel = (x: number, y: number): boolean => {
-      const index = (y * width + x) * 4;
-      
-      // Skip if already transparent
-      if (data[index + 3] === 0) return false;
-      
-      // Check if at image border
-      if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-        return true;
-      }
-      
-      // Check surrounding pixels for transparency
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          
-          const nx = x + dx;
-          const ny = y + dy;
-          
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            const neighborIndex = (ny * width + nx) * 4;
-            if (data[neighborIndex + 3] === 0) {
-              return true;
+      // Function to check if a pixel is on an edge (next to transparent or border)
+      const isEdgePixel = (x: number, y: number): boolean => {
+        const index = (y * width + x) * 4;
+        
+        // Skip if already transparent
+        if (data[index + 3] === 0) return false;
+        
+        // Check if at image border
+        if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+          return true;
+        }
+        
+        // Check surrounding pixels for transparency
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            
+            const nx = x + dx;
+            const ny = y + dy;
+            
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const neighborIndex = (ny * width + nx) * 4;
+              if (data[neighborIndex + 3] === 0) {
+                return true;
+              }
             }
           }
         }
+        
+        return false;
+      };
+
+      // Find all edge pixels
+      const edgePixels: Array<{x: number, y: number}> = [];
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (isEdgePixel(x, y)) {
+            edgePixels.push({x, y});
+          }
+        }
+      }
+
+      // For each edge pixel, mark pixels within radius for transparency
+      edgePixels.forEach(({x, y}) => {
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            
+            // Check if within image bounds
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              // Check if within circular radius
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance <= radius) {
+                const pixelIndex = ny * width + nx;
+                toTransparent.add(pixelIndex);
+              }
+            }
+          }
+        }
+      });
+
+      // Apply transparency to marked pixels
+      toTransparent.forEach(pixelIndex => {
+        const dataIndex = pixelIndex * 4;
+        data[dataIndex + 3] = 0; // Make transparent
+      });
+    }
+
+    // Step 2: Min region size cleanup (if enabled and contiguous is not active)
+    if (settings.minRegionSize.enabled && settings.minRegionSize.value > 0) {
+      const alphaData = new Uint8ClampedArray(width * height);
+      
+      // Extract alpha channel
+      for (let i = 0; i < data.length; i += 4) {
+        alphaData[i / 4] = data[i + 3];
       }
       
-      return false;
-    };
-
-    // Find all edge pixels
-    const edgePixels: Array<{x: number, y: number}> = [];
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (isEdgePixel(x, y)) {
-          edgePixels.push({x, y});
+      const visited = new Set<number>();
+      
+      const floodFill = (startX: number, startY: number): number[] => {
+        const stack = [[startX, startY]];
+        const regionPixels: number[] = [];
+        
+        while (stack.length > 0) {
+          const [currentX, currentY] = stack.pop()!;
+          const currentIndex = currentY * width + currentX;
+          
+          if (visited.has(currentIndex)) continue;
+          if (alphaData[currentIndex] === 0) continue; // Skip transparent pixels
+          
+          visited.add(currentIndex);
+          regionPixels.push(currentIndex);
+          
+          // Check 4-connected neighbors
+          const neighbors = [
+            [currentX - 1, currentY], // left
+            [currentX + 1, currentY], // right
+            [currentX, currentY - 1], // up
+            [currentX, currentY + 1]  // down
+          ];
+          
+          for (const [nx, ny] of neighbors) {
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const neighborIndex = ny * width + nx;
+              if (!visited.has(neighborIndex) && alphaData[neighborIndex] > 0) {
+                stack.push([nx, ny]);
+              }
+            }
+          }
+        }
+        
+        return regionPixels;
+      };
+      
+      // Find all connected regions and remove small ones
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = y * width + x;
+          if (!visited.has(index) && alphaData[index] > 0) {
+            const regionPixels = floodFill(x, y);
+            
+            // If region is smaller than minimum size, remove it
+            if (regionPixels.length < settings.minRegionSize.value) {
+              for (const pixelIndex of regionPixels) {
+                data[pixelIndex * 4 + 3] = 0; // Make transparent
+              }
+            }
+          }
         }
       }
     }
-
-    // For each edge pixel, mark pixels within radius for transparency
-    edgePixels.forEach(({x, y}) => {
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const nx = x + dx;
-          const ny = y + dy;
-          
-          // Check if within image bounds
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            // Check if within circular radius
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance <= radius) {
-              const pixelIndex = ny * width + nx;
-              toTransparent.add(pixelIndex);
-            }
-          }
-        }
-      }
-    });
-
-    // Apply transparency to marked pixels
-    toTransparent.forEach(pixelIndex => {
-      const dataIndex = pixelIndex * 4;
-      data[dataIndex + 3] = 0; // Make transparent
-    });
 
     return new ImageData(data, width, height);
   }, []);

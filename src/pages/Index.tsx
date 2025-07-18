@@ -35,7 +35,6 @@ export interface ColorRemovalSettings {
   targetColor: string;
   threshold: number;
   contiguous: boolean;
-  minRegionSize: number;
   pickedColors: PickedColor[];
 }
 
@@ -73,6 +72,10 @@ export interface EffectSettings {
 export interface EdgeCleanupSettings {
   enabled: boolean;
   trimRadius: number;
+  minRegionSize: {
+    enabled: boolean;
+    value: number;
+  };
 }
 
 export interface ContiguousToolSettings {
@@ -97,7 +100,6 @@ const Index = () => {
     targetColor: '#ffffff',
     threshold: 30,
     contiguous: false,
-    minRegionSize: 100,
     pickedColors: []
   });
 
@@ -147,7 +149,11 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 2
+    trimRadius: 2,
+    minRegionSize: {
+      enabled: false,
+      value: 100
+    }
   });
 
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
