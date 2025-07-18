@@ -619,7 +619,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       value={[effectSettings.imageEffects.brightness]}
                       onValueChange={([brightness]) => updateImageEffects({ brightness })}
                       min={-100}
-                      max={100}
+                      max={70}
                       step={1}
                       buttonStep={5}
                       defaultValue={0}
@@ -661,7 +661,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
                     <SliderWithInput
                       value={[effectSettings.imageEffects.vibrance]}
-                      onValueChange={([vibrance]) => updateImageEffects({ vibrance })}
+                      onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
                       min={-100}
                       max={100}
                       step={1}
@@ -711,7 +711,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <div className="flex items-center gap-3">
                         <input
                           type="color"
-                          value={`hsl(${effectSettings.imageEffects.colorize.hue}, 50%, 50%)`}
+                          value={`hsl(${effectSettings.imageEffects.colorize.hue}, 100%, 50%)`}
                           onChange={(e) => {
                             const tempDiv = document.createElement('div');
                             tempDiv.style.color = e.target.value;
