@@ -263,6 +263,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               }
             }
           }
+        }
       }
     }
 
@@ -322,7 +323,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
       console.log('Ink stamp processed', processedPixels, 'pixels with threshold', threshold);
-    }
     }
 
     // Apply image effects at the end of the processing chain
