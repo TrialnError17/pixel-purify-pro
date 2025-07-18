@@ -4,6 +4,7 @@ export interface SpeckleSettings {
   enabled: boolean;
   highlightSpecks: boolean;
   removeSpecks: boolean;
+  removeAllSpecks: boolean;
   minSpeckSize: number;
 }
 
@@ -179,7 +180,8 @@ export const useSpeckleTools = () => {
 
     // Remove small components (specks) by making them transparent
     components.forEach(component => {
-      if (component.length <= settings.minSpeckSize) {
+      const shouldRemove = settings.removeAllSpecks || component.length <= settings.minSpeckSize;
+      if (shouldRemove) {
         component.forEach(index => {
           const pixelIndex = index * 4;
           data[pixelIndex + 3] = 0; // Make transparent
@@ -188,7 +190,7 @@ export const useSpeckleTools = () => {
       }
     });
 
-    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels)`);
+    console.log(`Removed ${removedSpecks} specks ${settings.removeAllSpecks ? '(ALL specks)' : `(components <= ${settings.minSpeckSize} pixels)`}`);
 
     return {
       processedData,

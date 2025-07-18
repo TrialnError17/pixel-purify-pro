@@ -560,22 +560,38 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     />
                   </div>
 
-                  {/* Min Speck Size Slider */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
-                      📏 Min Speck Size
-                    </Label>
-                    <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                      <SliderWithInput
-                        value={[speckleSettings.minSpeckSize]}
-                        onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
-                        min={1}
-                        max={2000}
-                        step={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                  {/* Remove All Specks Checkbox */}
+                  {speckleSettings.removeSpecks && (
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-orange/5 to-accent-red/5 rounded-lg border border-accent-orange/20">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-accent-orange">Remove ALL Specks</span>
+                      </div>
+                      <Switch
+                        checked={speckleSettings.removeAllSpecks}
+                        onCheckedChange={(removeAllSpecks) => updateSpeckleSettings({ removeAllSpecks })}
+                        className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-orange data-[state=checked]:to-accent-red"
                       />
                     </div>
-                  </div>
+                  )}
+
+                  {/* Min Speck Size Slider - only show if not removing all specks */}
+                  {!speckleSettings.removeAllSpecks && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
+                        📏 Min Speck Size
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
+                        <SliderWithInput
+                          value={[speckleSettings.minSpeckSize]}
+                          onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
+                          min={1}
+                          max={2000}
+                          step={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Speck Count Display */}
                   {(speckleSettings.highlightSpecks || speckleSettings.removeSpecks) && speckCount !== undefined && (
@@ -583,7 +599,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <div className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-accent-green" />
                         <span className="text-sm font-medium text-accent-green">
-                          Found {speckCount} speck{speckCount !== 1 ? 's' : ''} ≤ {speckleSettings.minSpeckSize}px
+                          {speckleSettings.removeAllSpecks 
+                            ? `Found ${speckCount} speck${speckCount !== 1 ? 's' : ''} (ALL will be removed)`
+                            : `Found ${speckCount} speck${speckCount !== 1 ? 's' : ''} ≤ ${speckleSettings.minSpeckSize}px`
+                          }
                         </span>
                       </div>
                     </div>
