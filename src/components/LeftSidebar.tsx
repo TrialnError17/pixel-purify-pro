@@ -617,6 +617,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     min={-100}
                     max={100}
                     step={1}
+                    className="[&_.slider-track]:relative [&_.slider-track]:before:content-[''] [&_.slider-track]:before:absolute [&_.slider-track]:before:left-1/2 [&_.slider-track]:before:top-0 [&_.slider-track]:before:bottom-0 [&_.slider-track]:before:w-px [&_.slider-track]:before:bg-border [&_.slider-track]:before:transform [&_.slider-track]:before:-translate-x-1/2"
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
                   />
                 </div>
@@ -634,6 +635,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     min={-100}
                     max={100}
                     step={1}
+                    className="[&_.slider-track]:relative [&_.slider-track]:before:content-[''] [&_.slider-track]:before:absolute [&_.slider-track]:before:left-1/2 [&_.slider-track]:before:top-0 [&_.slider-track]:before:bottom-0 [&_.slider-track]:before:w-px [&_.slider-track]:before:bg-border [&_.slider-track]:before:transform [&_.slider-track]:before:-translate-x-1/2"
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
                   />
                 </div>
@@ -651,6 +653,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     min={-100}
                     max={100}
                     step={1}
+                    className="[&_.slider-track]:relative [&_.slider-track]:before:content-[''] [&_.slider-track]:before:absolute [&_.slider-track]:before:left-1/2 [&_.slider-track]:before:top-0 [&_.slider-track]:before:bottom-0 [&_.slider-track]:before:w-px [&_.slider-track]:before:bg-border [&_.slider-track]:before:transform [&_.slider-track]:before:-translate-x-1/2"
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
                   />
                 </div>
@@ -669,7 +672,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       min={0}
                       max={360}
                       step={1}
-                      sliderClassName="[&_.slider-track]:h-4 [&_.slider-track]:bg-gradient-to-r [&_.slider-track]:from-red-500 [&_.slider-track]:via-yellow-500 [&_.slider-track]:via-green-500 [&_.slider-track]:via-cyan-500 [&_.slider-track]:via-blue-500 [&_.slider-track]:via-purple-500 [&_.slider-track]:to-red-500 [&_.slider-range]:bg-transparent [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-lg [&_[role=slider]]:w-6 [&_[role=slider]]:h-6"
+                      sliderClassName="[&_.slider-track]:h-4 [&_.slider-track]:rounded-full [&_.slider-track]:bg-gradient-to-r [&_.slider-track]:from-red-500 [&_.slider-track]:via-yellow-500 [&_.slider-track]:via-green-500 [&_.slider-track]:via-cyan-500 [&_.slider-track]:via-blue-500 [&_.slider-track]:via-purple-500 [&_.slider-track]:to-red-500 [&_.slider-range]:bg-transparent [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-gray-400 [&_[role=slider]]:shadow-lg [&_[role=slider]]:w-6 [&_[role=slider]]:h-6 [&_[role=slider]]:z-10"
                     />
                   </div>
                 </div>
