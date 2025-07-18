@@ -496,7 +496,7 @@ export const useImageProcessor = () => {
       imageData.height
     );
 
-    // Apply image effects first (at the end of processing chain)
+    // Apply image effects at the end of the processing chain
     processedData = applyImageEffects(processedData, settings);
 
     const data = processedData.data;
@@ -562,7 +562,7 @@ export const useImageProcessor = () => {
       imageData.height
     );
 
-    // Apply image effects first (at the end of processing chain)
+    // Apply image effects at the end of the processing chain
     processedData = applyImageEffects(processedData, settings);
 
     const data = processedData.data;
