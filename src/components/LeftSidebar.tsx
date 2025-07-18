@@ -536,7 +536,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         value={[speckleSettings.minSpeckSize]}
                         onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
                         min={1}
-                        max={500}
+                        max={2000}
                         step={1}
                         sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
                       />
