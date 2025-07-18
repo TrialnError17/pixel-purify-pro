@@ -77,7 +77,7 @@ export const GraphicEQBand = React.forwardRef<
   return (
     <div ref={ref} className={cn("flex flex-col items-center", className)} {...props}>
       {/* Label */}
-      <div className="text-xs font-medium mb-3 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center h-4 flex items-center min-w-0">
+      <div className="text-xs font-bold mb-3 text-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-accent-purple/20 text-center h-6 flex items-center justify-center min-w-0 shadow-sm">
         {label}
       </div>
       
@@ -120,22 +120,32 @@ export const GraphicEQBand = React.forwardRef<
         <ChevronDown className="h-3 w-3" />
       </Button>
 
-      {/* Input Field */}
-      <Input
-        type="number"
-        value={value}
-        onChange={handleInputChange}
-        onBlur={handleInputBlur}
-        onKeyDown={handleKeyDown}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        className="h-7 w-14 text-center text-xs px-1 bg-gradient-to-b from-background to-muted border-accent-purple/30 font-mono"
-        style={{
-          appearance: 'textfield'
-        }}
-      />
+      {/* Reset Button and Input Field */}
+      <div className="flex flex-col items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={resetToZero}
+          disabled={disabled}
+          className="h-6 w-12 p-0 text-xs bg-gradient-to-b from-background to-muted border-accent-purple/30 hover:bg-accent-purple/10"
+          title="Reset to 0"
+        >
+          ZERO
+        </Button>
+        
+        <Input
+          type="number"
+          value={value}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          onKeyDown={handleKeyDown}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          className="h-7 w-14 text-center text-xs px-1 bg-gradient-to-b from-background to-muted border-accent-purple/30 font-mono [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+        />
+      </div>
       
       {/* Value Range Indicators */}
       <div className="flex justify-between text-[10px] text-muted-foreground/60 w-full mt-1 px-1">

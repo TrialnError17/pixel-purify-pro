@@ -149,7 +149,7 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 2,
+    trimRadius: 1,
     minRegionSize: {
       enabled: false,
       value: 100
