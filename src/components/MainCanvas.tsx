@@ -716,6 +716,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
+      // Prevent infinite loop by temporarily disabling the manual edits flag during processing
+      const wasProcessing = isProcessing;
+      if (wasProcessing) {
+        console.log('Already processing, skipping to prevent loop');
+        return;
+      }
+      
       setIsProcessing(true);
       
       // Get current canvas data (which includes manual edits)
@@ -730,11 +737,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Update the manual image data cache
       setManualImageData(edgeCleanedData);
       
-      // Update the image object
-      if (image) {
-        const updatedImage = { ...image, processedData: edgeCleanedData };
-        onImageUpdate(updatedImage);
-      }
+      // DON'T call onImageUpdate here as it causes infinite loop
+      // The canvas update is sufficient for display
       
       setIsProcessing(false);
       console.log('Edge cleanup applied to manual edits');
