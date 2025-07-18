@@ -79,7 +79,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
-  const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
+  
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
@@ -270,11 +270,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Apply edge cleanup after color removal but before effects
-    if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
-      const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
-      data.set(edgeCleanupResult.data);
-    }
+    // Apply edge cleanup after color removal but before effects (now permanent)
+    const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
+    data.set(edgeCleanupResult.data);
 
     // Apply background color for preview only (regardless of saveWithBackground setting)
     if (effects.background.enabled) {
@@ -884,12 +882,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Check if we need to do any processing
       const needsSpeckleProcessing = speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks);
       const needsSpeckleRestore = (!speckleSettings.enabled || (!speckleSettings.highlightSpecks && !speckleSettings.removeSpecks)) && preSpeckleImageData;
-      const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
-      const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       const needsInkStamp = effectSettings.inkStamp.enabled;
       const needsImageEffects = effectSettings.imageEffects.enabled;
       
-      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects) {
+      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsInkStamp && !needsImageEffects) {
         console.log('Early return - no processing needed');
         return;
       }
@@ -1058,35 +1054,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         console.log('Ink stamp and/or image effects applied to manual edits');
       }
       
-      // Handle edge cleanup
-      if (needsEdgeCleanup) {
-        console.log('Manual edits detected, applying edge cleanup');
-        
-        // Get the current canvas data after all previous processing
-        currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Store pre-edge-cleanup state if we haven't already
-        if (!preEdgeCleanupImageData) {
-          setPreEdgeCleanupImageData(currentImageData);
-          console.log('Stored pre-edge-cleanup state');
-        }
-        
-        // Apply edge cleanup to the pre-edge-cleanup data (original manual edits)
-        const baseData = preEdgeCleanupImageData || currentImageData;
-        const edgeCleanedData = processEdgeCleanup(baseData, edgeCleanupSettings);
-        
-        // Apply the result back to canvas
-        ctx.putImageData(edgeCleanedData, 0, 0);
-        console.log('Edge cleanup applied to manual edits');
-      } else if (needsEdgeRestore) {
-        console.log('Edge cleanup disabled, restoring pre-edge-cleanup state');
-        
-        // Restore the pre-edge-cleanup state if available
-        if (preEdgeCleanupImageData) {
-          ctx.putImageData(preEdgeCleanupImageData, 0, 0);
-          console.log('Restored pre-edge-cleanup state');
-        }
-      }
       
       setIsProcessing(false);
       isProcessingEdgeCleanupRef.current = false;
@@ -1094,7 +1061,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
     
     // Skip auto-processing if we already have processed data and no settings changed
-    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !edgeCleanupSettings.enabled) {
+    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled) {
       console.log('Early return - no active settings requiring processing');
       return;
     }
@@ -1126,19 +1093,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           }
         }
         
-        // Apply edge cleanup processing if enabled
-        console.log('Edge cleanup check:', { 
-          enabled: edgeCleanupSettings.enabled, 
-          trimRadius: edgeCleanupSettings.trimRadius
-        });
-        
-        if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
-          console.log('Calling processEdgeCleanup...');
-          processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
-          console.log('processEdgeCleanup completed');
-        } else {
-          console.log('Edge cleanup is disabled, skipping');
-        }
+        // Apply all processing including permanent edge cleanup
+        processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
         
         // Only update canvas if the processed data is different
         const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1159,7 +1115,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -1327,8 +1283,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Mark that we have manual edits
       hasManualEditsRef.current = true;
       
-      // Clear any stored pre-edge-cleanup and pre-speckle state since we're making new manual edits  
-      setPreEdgeCleanupImageData(null);
+      // Clear any stored pre-speckle state since we're making new manual edits  
       setPreSpeckleImageData(null);
       
       // Store the result
@@ -1344,8 +1299,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
       hasManualEditsRef.current = true;
       
-      // Clear any stored pre-edge-cleanup and pre-speckle state since we're making new manual edits
-      setPreEdgeCleanupImageData(null);
+      // Clear any stored pre-speckle state since we're making new manual edits
       setPreSpeckleImageData(null);
       
       // Get color at clicked position from original image
@@ -1418,13 +1372,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         console.log('Speckle processing completed after magic wand');
       }
       
-      // Apply edge cleanup if enabled
-      if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
-        console.log('Running edge cleanup after magic wand removal');
-        newImageData = processEdgeCleanup(newImageData, edgeCleanupSettings);
-        console.log('Edge cleanup completed after magic wand');
-      }
-      
+      // Apply edge cleanup is now handled automatically in processImageData
       // Apply the processed data back to canvas
       ctx.putImageData(newImageData, 0, 0);
       
