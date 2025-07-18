@@ -685,6 +685,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
     
+    console.log('Processing conditions met:', {
+      hasProcessedData: !!image?.processedData,
+      colorRemovalEnabled: colorSettings.enabled,
+      backgroundEnabled: effectSettings.background.enabled,
+      inkStampEnabled: effectSettings.inkStamp.enabled,
+      imageEffectsEnabled: effectSettings.imageEffects.enabled
+    });
+    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -715,6 +723,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
+      console.log('Debounced processing completed, applying result');
+      console.log('Color settings enabled:', colorSettings.enabled);
+      console.log('Processing result size:', processedData.width, 'x', processedData.height);
       // Only apply if we're still on the same canvas
       if (canvasRef.current === canvas) {
         console.log('Applying auto-processed data');
