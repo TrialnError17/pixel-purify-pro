@@ -156,6 +156,9 @@ const Index = () => {
     }
   });
 
+  // Track if edge trim was auto-disabled by ink stamp
+  const [edgeTrimAutoDisabled, setEdgeTrimAutoDisabled] = useState(false);
+
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
@@ -364,13 +367,39 @@ const Index = () => {
             effectSettings={effectSettings}
             onEffectSettingsChange={(newEffectSettings) => {
               const prevEffectSettings = { ...effectSettings };
+              const prevEdgeCleanupSettings = { ...edgeCleanupSettings };
+              const prevEdgeTrimAutoDisabled = edgeTrimAutoDisabled;
+              
+              // Check if ink stamp is being turned on
+              if (!effectSettings.inkStamp.enabled && newEffectSettings.inkStamp.enabled) {
+                // Ink stamp is being turned ON
+                if (edgeCleanupSettings.enabled) {
+                  // Edge trim is currently enabled, auto-disable it
+                  setEdgeCleanupSettings(prev => ({ ...prev, enabled: false }));
+                  setEdgeTrimAutoDisabled(true);
+                }
+              }
+              // Check if ink stamp is being turned off
+              else if (effectSettings.inkStamp.enabled && !newEffectSettings.inkStamp.enabled) {
+                // Ink stamp is being turned OFF
+                if (edgeTrimAutoDisabled) {
+                  // We auto-disabled edge trim, so re-enable it
+                  setEdgeCleanupSettings(prev => ({ ...prev, enabled: true }));
+                  setEdgeTrimAutoDisabled(false);
+                }
+              }
+              
               setEffectSettings(newEffectSettings);
               
               // Add undo action for effect settings changes
               addUndoAction({
                 type: 'settings',
                 description: 'Change effect settings',
-                undo: () => setEffectSettings(prevEffectSettings)
+                undo: () => {
+                  setEffectSettings(prevEffectSettings);
+                  setEdgeCleanupSettings(prevEdgeCleanupSettings);
+                  setEdgeTrimAutoDisabled(prevEdgeTrimAutoDisabled);
+                }
               });
             }}
             contiguousSettings={contiguousSettings}
