@@ -417,8 +417,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </Card>
         )}
         
-        {/* Edge Cleanup Section - Only show when color removal is enabled */}
-        {settings.enabled && (
+        {/* Edge Cleanup Section */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
           <CardHeader className="pt-2 pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -460,11 +459,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </CardContent>
           )}
          </Card>
-        )}
 
-        {/* Speckle Detection/Removal - Only show when color removal is enabled */}
-        {settings.enabled && (
-          <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
+        {/* Speckle Detection/Removal */}
+        <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
             <CardHeader className="pt-2 pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Switch
@@ -547,7 +544,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardContent>
             )}
           </Card>
-        )}
 
 
         {/* Ink Stamp Effect */}
