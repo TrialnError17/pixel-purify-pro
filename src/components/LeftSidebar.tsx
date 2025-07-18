@@ -632,7 +632,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     value={effectSettings.imageEffects.brightness}
                     onValueChange={(brightness) => updateImageEffects({ brightness })}
                     min={-100}
-                    max={70}
+                    max={100}
                     step={1}
                   />
 
