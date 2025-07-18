@@ -110,7 +110,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <div className={`w-80 lg:w-96 bg-gradient-panel border-r border-border flex flex-col h-full ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}>
+    <div className={`w-64 sm:w-72 md:w-80 lg:w-96 bg-gradient-panel border-r border-border flex flex-col h-full flex-shrink-0 ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}>
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
