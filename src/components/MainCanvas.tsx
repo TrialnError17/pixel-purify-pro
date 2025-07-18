@@ -674,7 +674,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       hasProcessedData: !!image?.processedData
     });
     
-    if (!originalImageData || !canvasRef.current || isProcessing) {
+    if (!originalImageData || !canvasRef.current) {
       console.log('Early return due to missing requirements');
       return;
     }
