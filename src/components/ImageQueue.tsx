@@ -133,9 +133,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen
-        ? "fixed inset-0 z-40 md:top-14 md:left-80 lg:md:left-96 md:right-96" // Responsive fullscreen with sidebar width
+        ? "fixed top-14 bottom-0 left-96 right-96 z-40" // Full height between both sidebars
         : visible 
-          ? "h-32 sm:h-40 md:h-48" 
+          ? "h-48" 
           : "h-12"
     )}>
       {/* Header */}
@@ -266,8 +266,8 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
         <div className={cn(
           "overflow-y-auto",
           isFullscreen 
-            ? "h-[calc(100vh-8rem)] md:h-[calc(100vh-8rem)]" // Full height minus header and queue header
-            : "h-20 sm:h-28 md:h-36"
+            ? "h-[calc(100vh-8rem)]" // Full height minus header and queue header
+            : "h-36"
         )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -301,9 +301,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Thumbnail with Progress Overlay */}
+                    {/* Thumbnail */}
                     <div className={cn(
-                      "bg-muted rounded flex-shrink-0 flex items-center justify-center relative",
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
                       isFullscreen ? "w-16 h-16" : "w-12 h-12"
                     )}>
                       <img
@@ -312,20 +312,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         className="w-full h-full object-cover rounded"
                         onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
                       />
-                      
-                      {/* Progress Overlay for Individual Image Processing */}
-                      {singleImageProgress && singleImageProgress.imageId === image.id && (
-                        <div className="absolute inset-0 bg-gray-800/75 rounded flex items-center justify-center">
-                          <div className="w-full px-1">
-                            <div className="bg-gray-600 h-1 rounded-full overflow-hidden">
-                              <div 
-                                className="bg-blue-600 h-full transition-all duration-300 ease-out"
-                                style={{ width: `${singleImageProgress.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Info */}

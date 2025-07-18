@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { HueSlider } from '@/components/ui/hue-slider';
-import { StudioKnob } from '@/components/ui/studio-knob';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,7 +12,6 @@ import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 interface LeftSidebarProps {
-  disabled?: boolean;
   settings: ColorRemovalSettings;
   onSettingsChange: (settings: ColorRemovalSettings) => void;
   speckleSettings: SpeckleSettings;
@@ -30,7 +28,6 @@ interface LeftSidebarProps {
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
-  disabled = false,
   settings,
   onSettingsChange,
   speckleSettings,
@@ -111,7 +108,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <div className={`w-64 sm:w-72 md:w-80 lg:w-96 bg-gradient-panel border-r border-border flex flex-col h-full flex-shrink-0 ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}>
+    <div className="w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -255,155 +252,189 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               )}
             </CardTitle>
           </CardHeader>
-          
-          {settings.enabled && (
-            <CardContent className="pt-0 pb-2 space-y-3">
-              {/* Mode Selection */}
-              <div className="p-2 bg-gradient-to-r from-accent-purple/5 to-accent-pink/5 rounded-lg border border-accent-purple/20">
-                <Label className="text-xs font-medium text-accent-purple mb-2 block">Mode Selection</Label>
-                <RadioGroup
-                  value={settings.mode}
-                  onValueChange={(mode: 'auto' | 'manual') => updateSettings({ mode })}
-                  className="space-y-1"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="auto" id="auto" />
-                    <Label htmlFor="auto" className="text-xs cursor-pointer">Auto (top-left color)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="manual" id="manual" />
-                    <Label htmlFor="manual" className="text-xs cursor-pointer">Manual (pick color)</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Threshold Sensitivity */}
-              <div className="p-2 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                <Label className="text-xs font-medium text-accent-red mb-2 block">🎚️ Threshold Sensitivity: {settings.threshold}</Label>
-                <SliderWithInput
-                  value={[settings.threshold]}
-                  onValueChange={([threshold]) => updateSettings({ threshold })}
-                  min={1}
-                  max={100}
-                  step={1}
-                  sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
-                />
-              </div>
-            </CardContent>
-          )}
         </Card>
 
-        {settings.enabled && settings.mode === 'manual' && (
-          <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
-            <CardHeader className="pt-2 pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Palette className="w-4 h-4 text-accent-orange" />
-                <span className="bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent font-semibold">
-                  Target Color
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
-                <input
-                  type="color"
-                  value={settings.targetColor}
-                  onChange={(e) => updateSettings({ targetColor: e.target.value })}
-                  className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
-                />
-                <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
-                  {settings.targetColor.toUpperCase()}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {settings.enabled && (
+          <>
+            <div className="py-1">
+              <Label className="text-xs font-medium text-muted-foreground mb-1 block">Mode Selection</Label>
+              <RadioGroup
+                value={settings.mode}
+                onValueChange={(mode: 'auto' | 'manual') => updateSettings({ mode })}
+                className="space-y-1"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="auto" id="auto" />
+                  <Label htmlFor="auto" className="text-xs cursor-pointer">Auto (top-left color)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="manual" id="manual" />
+                  <Label htmlFor="manual" className="text-xs cursor-pointer">Manual (pick color)</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
-        {/* Picked Colors List */}
-        {settings.enabled && settings.mode === 'manual' && settings.pickedColors.length > 0 && (
-          <Card className="bg-gradient-to-br from-accent-lime/10 to-accent-green/10 border-accent-lime/30">
-            <CardHeader className="pt-2 pb-3">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
-                <span className="bg-gradient-to-r from-accent-lime to-accent-green bg-clip-text text-transparent font-semibold flex items-center gap-2">
-                  🎨 Picked Colors ({settings.pickedColors.length})
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => updateSettings({ pickedColors: [] })}
-                  className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {settings.pickedColors.map((pickedColor, index) => (
-                <div key={pickedColor.id} className="p-3 bg-gradient-to-r from-accent-lime/5 to-accent-green/5 rounded-lg border border-accent-lime/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-6 h-6 rounded border-2 border-accent-lime shadow-lg"
-                        style={{ backgroundColor: pickedColor.color }}
-                      />
-                      <span className="text-xs font-mono font-bold text-accent-green bg-accent-green/10 px-2 py-1 rounded">
-                        {pickedColor.color.toUpperCase()}
-                      </span>
-                    </div>
+            {settings.mode === 'manual' && (
+              <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
+                <CardHeader className="pt-2 pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-accent-orange" />
+                    <span className="bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent font-semibold">
+                      Target Color
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
+                    <input
+                      type="color"
+                      value={settings.targetColor}
+                      onChange={(e) => updateSettings({ targetColor: e.target.value })}
+                      className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
+                    />
+                    <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
+                      {settings.targetColor.toUpperCase()}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Picked Colors List */}
+            {settings.mode === 'manual' && settings.pickedColors.length > 0 && (
+              <Card className="bg-gradient-to-br from-accent-lime/10 to-accent-green/10 border-accent-lime/30">
+                <CardHeader className="pt-2 pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center justify-between">
+                    <span className="bg-gradient-to-r from-accent-lime to-accent-green bg-clip-text text-transparent font-semibold flex items-center gap-2">
+                      🎨 Picked Colors ({settings.pickedColors.length})
+                    </span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        const newPickedColors = settings.pickedColors.filter(c => c.id !== pickedColor.id);
-                        updateSettings({ pickedColors: newPickedColors });
-                      }}
+                      onClick={() => updateSettings({ pickedColors: [] })}
                       className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
                     >
-                      <X className="w-3 h-3" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-accent-green mb-1 block">Threshold: {pickedColor.threshold}</Label>
-                    <SliderWithInput
-                      value={[pickedColor.threshold]}
-                      onValueChange={([threshold]) => {
-                        const newPickedColors = settings.pickedColors.map(c => 
-                          c.id === pickedColor.id ? { ...c, threshold } : c
-                        );
-                        updateSettings({ pickedColors: newPickedColors });
-                      }}
-                      min={1}
-                      max={100}
-                      step={1}
-                      sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-3">
+                  {settings.pickedColors.map((pickedColor, index) => (
+                    <div key={pickedColor.id} className="p-3 bg-gradient-to-r from-accent-lime/5 to-accent-green/5 rounded-lg border border-accent-lime/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-6 h-6 rounded border-2 border-accent-lime shadow-lg"
+                            style={{ backgroundColor: pickedColor.color }}
+                          />
+                          <span className="text-xs font-mono font-bold text-accent-green bg-accent-green/10 px-2 py-1 rounded">
+                            {pickedColor.color.toUpperCase()}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const newPickedColors = settings.pickedColors.filter(c => c.id !== pickedColor.id);
+                            updateSettings({ pickedColors: newPickedColors });
+                          }}
+                          className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-accent-green mb-1 block">Threshold: {pickedColor.threshold}</Label>
+                        <SliderWithInput
+                          value={[pickedColor.threshold]}
+                          onValueChange={([threshold]) => {
+                            const newPickedColors = settings.pickedColors.map(c => 
+                              c.id === pickedColor.id ? { ...c, threshold } : c
+                            );
+                            updateSettings({ pickedColors: newPickedColors });
+                          }}
+                          min={1}
+                          max={100}
+                          step={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Min Region Size Section */}
-        {settings.enabled && (
-          <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30 shadow-colorful">
-            <CardHeader className="pt-2 pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Switch
-                  checked={settings.minRegionEnabled}
-                  onCheckedChange={(minRegionEnabled) => updateSettings({ minRegionEnabled })}
-                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-indigo data-[state=checked]:to-accent-purple"
-                />
-                <span className="bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent font-semibold">
+            <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
+                  🎚️ Threshold Sensitivity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <SliderWithInput
+                    value={[settings.threshold]}
+                    onValueChange={([threshold]) => updateSettings({ threshold })}
+                    min={1}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Edge Cleanup Section */}
+            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Switch
+                    checked={edgeCleanupSettings.enabled}
+                    onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
+                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                  />
+                  <Scissors className="w-4 h-4 text-accent-purple" />
+                  <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
+                    Edge Cleanup
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              
+              {edgeCleanupSettings.enabled && (
+                <CardContent className="pt-0 space-y-4">
+                  <div className="text-xs text-muted-foreground p-2 bg-accent-purple/5 rounded border border-accent-purple/20">
+                    ✂️ Removes residual color pixels along edges of non-transparent areas
+                  </div>
+
+                  {/* Edge Trim Radius Slider */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                      📏 Edge Trim Radius
+                    </Label>
+                    <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                      <SliderWithInput
+                        value={[edgeCleanupSettings.trimRadius]}
+                        onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
+                        min={0}
+                        max={10}
+                        step={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent font-semibold">
                   📏 Min Region Size
-                </span>
-              </CardTitle>
-            </CardHeader>
-            
-            {settings.minRegionEnabled && (
-              <CardContent className="pt-0 pb-2 space-y-3">
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
                 <div className="p-3 bg-gradient-to-r from-accent-indigo/5 to-accent-purple/5 rounded-lg border border-accent-indigo/20">
-                  <Label className="text-xs font-medium text-accent-indigo mb-2 block">Size: {settings.minRegionSize} pixels</Label>
                   <SliderWithInput
                     value={[settings.minRegionSize]}
                     onValueChange={([minRegionSize]) => updateSettings({ minRegionSize })}
@@ -414,138 +445,95 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   />
                 </div>
               </CardContent>
-            )}
-          </Card>
-        )}
-        
-        {/* Edge Cleanup Section */}
-        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
-          <CardHeader className="pt-2 pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Switch
-                checked={edgeCleanupSettings.enabled}
-                onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
-                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
-              />
-              <Scissors className="w-4 h-4 text-accent-purple" />
-              <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
-                Edge Cleanup
-              </span>
-            </CardTitle>
-          </CardHeader>
-          
-          {edgeCleanupSettings.enabled && (
-            <CardContent className="pt-0 space-y-4">
-              <div className="text-xs text-muted-foreground p-2 bg-accent-purple/5 rounded border border-accent-purple/20">
-                ✂️ Removes residual color pixels along edges of non-transparent areas
-              </div>
+            </Card>
 
-              {/* Edge Trim Radius Slider */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
-                  📏 Edge Trim Radius
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
-                  <SliderWithInput
-                    value={[edgeCleanupSettings.trimRadius]}
-                    onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
-                    min={0}
-                    max={10}
-                    step={1}
-                    buttonStep={1}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          )}
-         </Card>
-
-        {/* Speckle Detection/Removal */}
-        <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
-            <CardHeader className="pt-2 pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Switch
-                  checked={speckleSettings.enabled}
-                  onCheckedChange={(enabled) => updateSpeckleSettings({ enabled })}
-                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-indigo"
-                />
-                <span className="bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent font-semibold flex items-center gap-1">
-                  <Zap className="w-4 h-4 text-accent-blue" />
-                  ✨ Speckle Tools
-                </span>
-              </CardTitle>
-            </CardHeader>
-            {speckleSettings.enabled && (
-              <CardContent className="pt-0 space-y-4">
-                <div className="text-xs text-muted-foreground p-2 bg-accent-blue/5 rounded border border-accent-blue/20">
-                  🔍 Detects and manages isolated pixel clusters (specks) in your image
-                </div>
-
-                {/* Highlight Specks Toggle */}
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-accent-blue" />
-                    <span className="text-sm font-medium text-accent-blue">Highlight Specks</span>
-                  </div>
+            {/* Speckle Tools Section */}
+            <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Switch
-                    checked={speckleSettings.highlightSpecks}
-                    onCheckedChange={(highlightSpecks) => updateSpeckleSettings({ 
-                      highlightSpecks, 
-                      removeSpecks: highlightSpecks ? false : speckleSettings.removeSpecks 
-                    })}
+                    checked={speckleSettings.enabled}
+                    onCheckedChange={(enabled) => updateSpeckleSettings({ enabled })}
                     className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-indigo"
                   />
-                </div>
-
-                {/* Remove Specks Toggle */}
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <div className="flex items-center gap-2">
-                    <EyeOff className="w-4 h-4 text-accent-red" />
-                    <span className="text-sm font-medium text-accent-red">Remove Specks</span>
+                  <span className="bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent font-semibold flex items-center gap-1">
+                    <Zap className="w-4 h-4 text-accent-blue" />
+                    ✨ Speckle Tools
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              {speckleSettings.enabled && (
+                <CardContent className="pt-0 space-y-4">
+                  <div className="text-xs text-muted-foreground p-2 bg-accent-blue/5 rounded border border-accent-blue/20">
+                    🔍 Detects and manages isolated pixel clusters (specks) in your image
                   </div>
-                  <Switch
-                    checked={speckleSettings.removeSpecks}
-                    onCheckedChange={(removeSpecks) => updateSpeckleSettings({ 
-                      removeSpecks, 
-                      highlightSpecks: removeSpecks ? false : speckleSettings.highlightSpecks 
-                    })}
-                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
-                  />
-                </div>
 
-                {/* Min Speck Size Slider */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
-                    📏 Min Speck Size
-                  </Label>
-                  <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                    <SliderWithInput
-                      value={[speckleSettings.minSpeckSize]}
-                      onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
-                      min={1}
-                      max={500}
-                      step={1}
-                      sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                  {/* Highlight Specks Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-accent-blue" />
+                      <span className="text-sm font-medium text-accent-blue">Highlight Specks</span>
+                    </div>
+                    <Switch
+                      checked={speckleSettings.highlightSpecks}
+                      onCheckedChange={(highlightSpecks) => updateSpeckleSettings({ 
+                        highlightSpecks, 
+                        removeSpecks: highlightSpecks ? false : speckleSettings.removeSpecks 
+                      })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-indigo"
                     />
                   </div>
-                </div>
 
-                {/* Speck Count Display */}
-                {(speckleSettings.highlightSpecks || speckleSettings.removeSpecks) && speckCount !== undefined && (
-                  <div className="p-3 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
+                  {/* Remove Specks Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
                     <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-accent-green" />
-                      <span className="text-sm font-medium text-accent-green">
-                        Found {speckCount} speck{speckCount !== 1 ? 's' : ''} ≤ {speckleSettings.minSpeckSize}px
-                      </span>
+                      <EyeOff className="w-4 h-4 text-accent-red" />
+                      <span className="text-sm font-medium text-accent-red">Remove Specks</span>
+                    </div>
+                    <Switch
+                      checked={speckleSettings.removeSpecks}
+                      onCheckedChange={(removeSpecks) => updateSpeckleSettings({ 
+                        removeSpecks, 
+                        highlightSpecks: removeSpecks ? false : speckleSettings.highlightSpecks 
+                      })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
+                    />
+                  </div>
+
+                  {/* Min Speck Size Slider */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
+                      📏 Min Speck Size
+                    </Label>
+                    <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
+                      <SliderWithInput
+                        value={[speckleSettings.minSpeckSize]}
+                        onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
+                        min={1}
+                        max={500}
+                        step={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                      />
                     </div>
                   </div>
-                )}
-              </CardContent>
-            )}
-          </Card>
 
+                  {/* Speck Count Display */}
+                  {(speckleSettings.highlightSpecks || speckleSettings.removeSpecks) && speckCount !== undefined && (
+                    <div className="p-3 bg-gradient-to-r from-accent-green/5 to-accent-lime/5 rounded-lg border border-accent-green/20">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-accent-green" />
+                        <span className="text-sm font-medium text-accent-green">
+                          Found {speckCount} speck{speckCount !== 1 ? 's' : ''} ≤ {speckleSettings.minSpeckSize}px
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+
+          </>
+        )}
 
         {/* Ink Stamp Effect */}
         <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
@@ -618,82 +606,85 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </CardHeader>
           
           {effectSettings.imageEffects.enabled && (
-            <CardContent className="pt-0">
-              {/* Studio Control Section */}
-              <div className="bg-gradient-to-br from-card via-muted/30 to-card p-4 rounded-lg border border-accent-blue/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-                <div className="text-center mb-6">
-                  <div className="text-sm font-bold text-foreground mb-1">🎚️ STUDIO EFFECTS</div>
-                  <div className="h-px bg-gradient-to-r from-transparent via-accent-blue to-transparent opacity-50"></div>
+            <CardContent className="pt-0 space-y-4">
+              {/* Brightness */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  ☀️ Brightness
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <div className="relative">
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <SliderWithInput
+                      value={[effectSettings.imageEffects.brightness]}
+                      onValueChange={([brightness]) => updateImageEffects({ brightness })}
+                      min={-100}
+                      max={70}
+                      step={1}
+                      buttonStep={5}
+                      defaultValue={0}
+                      showReset={true}
+                    />
+                  </div>
                 </div>
-                
-                {/* Studio knobs grid */}
-                <div className="grid grid-cols-2 gap-6">
-                  <StudioKnob
-                    value={effectSettings.imageEffects.brightness}
-                    onChange={(brightness) => updateImageEffects({ brightness })}
-                    min={-100}
-                    max={70}
-                    step={1}
-                    defaultValue={0}
-                    label="BRIGHT"
-                    icon="☀️"
-                    accentColor="accent-yellow"
-                  />
-                  
-                  <StudioKnob
-                    value={effectSettings.imageEffects.contrast}
-                    onChange={(contrast) => updateImageEffects({ contrast })}
-                    min={-100}
-                    max={100}
-                    step={1}
-                    defaultValue={0}
-                    label="CONTRAST"
-                    icon="🎛️"
-                    accentColor="accent-orange"
-                  />
-                  
-                  <StudioKnob
-                    value={effectSettings.imageEffects.vibrance}
-                    onChange={(vibrance) => updateImageEffects({ vibrance: -vibrance })}
-                    min={-100}
-                    max={100}
-                    step={1}
-                    defaultValue={0}
-                    label="VIBRANCE"
-                    icon="🌈"
-                    accentColor="accent-purple"
-                  />
-                  
-                  <StudioKnob
-                    value={effectSettings.imageEffects.hue}
-                    onChange={(hue) => updateImageEffects({ hue })}
-                    min={-180}
-                    max={180}
-                    step={1}
-                    defaultValue={0}
-                    label="HUE"
-                    icon="🎨"
-                    accentColor="accent-cyan"
-                  />
+              </div>
+
+              {/* Contrast */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🎛️ Contrast
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <div className="relative">
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <SliderWithInput
+                      value={[effectSettings.imageEffects.contrast]}
+                      onValueChange={([contrast]) => updateImageEffects({ contrast })}
+                      min={-100}
+                      max={100}
+                      step={1}
+                      buttonStep={5}
+                      defaultValue={0}
+                      showReset={true}
+                    />
+                  </div>
                 </div>
-                
-                {/* Studio status lights */}
-                <div className="flex justify-center items-center mt-6 gap-3">
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.brightness !== 0 ? 'bg-accent-yellow shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
-                    <span className="text-xs text-muted-foreground">BRIGHT</span>
+              </div>
+
+              {/* Vibrance */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🌈 Vibrance
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <div className="relative">
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <SliderWithInput
+                      value={[effectSettings.imageEffects.vibrance]}
+                      onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
+                      min={-100}
+                      max={100}
+                      step={1}
+                      buttonStep={5}
+                      defaultValue={0}
+                      showReset={true}
+                    />
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.contrast !== 0 ? 'bg-accent-orange shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
-                    <span className="text-xs text-muted-foreground">CONT</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.vibrance !== 0 ? 'bg-accent-purple shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
-                    <span className="text-xs text-muted-foreground">VIB</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.hue !== 0 ? 'bg-accent-cyan shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
-                    <span className="text-xs text-muted-foreground">HUE</span>
+                </div>
+              </div>
+
+              {/* Hue */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🎨 Hue Shift
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <div className="relative">
+                    <HueSlider
+                      value={[effectSettings.imageEffects.hue]}
+                      onValueChange={([hue]) => updateImageEffects({ hue })}
+                      defaultValue={0}
+                    />
                   </div>
                 </div>
               </div>

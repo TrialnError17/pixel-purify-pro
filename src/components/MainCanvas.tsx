@@ -22,7 +22,6 @@ import {
 import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
-  disabled?: boolean;
   image: ImageItem | undefined;
   tool: 'pan' | 'color-stack' | 'magic-wand';
   onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
@@ -46,7 +45,6 @@ interface MainCanvasProps {
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
-  disabled = false,
   image,
   tool,
   onToolChange,
@@ -217,7 +215,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
 
       // Apply minimum region size filtering
-      if (settings.minRegionEnabled && settings.minRegionSize > 0) {
+      if (settings.minRegionSize > 0) {
         const alphaData = new Uint8ClampedArray(width * height);
         
         // Extract alpha channel
@@ -565,7 +563,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
-        setLastProcessedImageData(image.processedData!);
       });
       return;
     }
@@ -576,7 +573,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
-        setLastProcessedImageData(image.processedData!);
       });
       
       // Store as original data if not set
@@ -638,60 +634,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image]);
 
-  // Debounced processing state to prevent flashing
-  const [debouncedProcessing, setDebouncedProcessing] = useState(false);
-  const [lastProcessedImageData, setLastProcessedImageData] = useState<ImageData | null>(null);
-  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Debounced processing to prevent flashing - increased to 300ms as requested
+  // Debounced processing to prevent flashing
   const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
     return new Promise<ImageData>((resolve) => {
-      // Clear any existing timeout
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
-      
-      setDebouncedProcessing(true);
-      
-      processingTimeoutRef.current = setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         const result = processImageData(imageData, colorSettings, effectSettings);
-        setDebouncedProcessing(false);
         resolve(result);
-      }, 300); // 300ms debounce as requested
+      }, 50); // 50ms debounce
+      
+      // Return cleanup function
+      return () => clearTimeout(timeoutId);
     });
   }, [processImageData]);
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    console.log('Processing useEffect triggered:', {
-      hasOriginalImageData: !!originalImageData,
-      hasCanvas: !!canvasRef.current,
-      hasManualEdits: hasManualEditsRef.current,
-      isProcessing,
-      colorSettingsEnabled: colorSettings.enabled,
-      backgroundEnabled: effectSettings.background.enabled,
-      inkStampEnabled: effectSettings.inkStamp.enabled,
-      hasProcessedData: !!image?.processedData
-    });
-    
-    if (!originalImageData || !canvasRef.current) {
-      console.log('Early return due to missing requirements');
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || isProcessing) {
       return;
     }
     
     // Skip auto-processing if we already have processed data and no settings changed
-    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !effectSettings.imageEffects.enabled) {
-      console.log('Skipping processing - no effects enabled');
+    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled) {
       return;
     }
-    
-    console.log('Processing conditions met:', {
-      hasProcessedData: !!image?.processedData,
-      colorRemovalEnabled: colorSettings.enabled,
-      backgroundEnabled: effectSettings.background.enabled,
-      inkStampEnabled: effectSettings.inkStamp.enabled,
-      imageEffectsEnabled: effectSettings.imageEffects.enabled
-    });
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -700,34 +665,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     console.log('Auto-processing triggered');
     setIsProcessing(true);
 
-    // Store the current processed image data before starting new processing
-    // This prevents the original image from flashing during processing
-    if (!debouncedProcessing && !lastProcessedImageData) {
-      const currentCanvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setLastProcessedImageData(currentCanvasData);
-    }
-    
-    // During debounced processing, keep the last processed image visible
-    // Don't allow the canvas to revert to original image
-    if (debouncedProcessing && lastProcessedImageData) {
-      requestAnimationFrame(() => {
-        ctx.putImageData(lastProcessedImageData, 0, 0);
-      });
-      setIsProcessing(false);
-      return;
-    }
-
-    // Use manual image data if available and there are manual edits, otherwise original
-    // If color removal or effects are enabled, always process from the base data
-    const baseImageData = (hasManualEditsRef.current && manualImageData) ? manualImageData : originalImageData;
+    // Use manual image data if available, otherwise original
+    const baseImageData = manualImageData || originalImageData;
 
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
-      console.log('Debounced processing completed, applying result');
-      console.log('Color settings enabled:', colorSettings.enabled);
-      console.log('Processing result size:', processedData.width, 'x', processedData.height);
-      // Only apply if we're still on the same canvas
-      if (canvasRef.current === canvas) {
+      // Only apply if we're still on the same canvas and no manual edits occurred during processing
+      if (canvasRef.current === canvas && !hasManualEditsRef.current) {
         console.log('Applying auto-processed data');
         
         // Apply speckle processing if enabled
@@ -754,15 +698,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           // Use requestAnimationFrame to ensure smooth canvas update
           requestAnimationFrame(() => {
             ctx.putImageData(processedData, 0, 0);
-            // Update our stored processed image data
-            setLastProcessedImageData(processedData);
           });
-        }
-        
-        // Update the image object with the new processed data
-        if (image) {
-          const updatedImage = { ...image, processedData };
-          onImageUpdate(updatedImage);
         }
       } else {
         console.log('Skipping auto-processed data application');
@@ -773,14 +709,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-    // Cleanup function to clear timeout on unmount or dependency change
-    return () => {
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-        processingTimeoutRef.current = null;
-      }
-    };
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, debouncedProcessing, image, onImageUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -1360,7 +1289,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={onPreviousImage}
-            disabled={!canGoPrevious || disabled}
+            disabled={!canGoPrevious}
             title="Previous image"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -1374,7 +1303,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={onNextImage}
-            disabled={!canGoNext || disabled}
+            disabled={!canGoNext}
             title="Next image"
           >
             <ChevronRight className="w-4 h-4" />
@@ -1387,7 +1316,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleUndo}
-            disabled={undoStack.length === 0 || disabled}
+            disabled={undoStack.length === 0}
             className="flex items-center gap-1"
             title="Undo (Ctrl+Z)"
           >
@@ -1399,7 +1328,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleRedo}
-            disabled={redoStack.length === 0 || disabled}
+            disabled={redoStack.length === 0}
             className="flex items-center gap-1"
             title="Redo (Ctrl+Shift+Z)"
           >
@@ -1414,7 +1343,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'pan' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('pan')}
-            disabled={disabled}
             className="flex items-center gap-1"
           >
             <Move className="w-4 h-4" />
@@ -1425,7 +1353,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'color-stack' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
-            disabled={disabled}
             className="flex items-center gap-1"
           >
             <Pipette className="w-4 h-4" />
@@ -1437,7 +1364,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'magic-wand' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
-            disabled={disabled}
             className="flex items-center gap-1"
             title="Magic Wand - Remove connected pixels"
           >
@@ -1451,7 +1377,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => handleZoom('out')}
-            disabled={zoom <= 0.1 || disabled}
+            disabled={zoom <= 0.1}
           >
             <ZoomOut className="w-4 h-4" />
           </Button>
@@ -1468,7 +1394,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => handleZoom('in')}
-            disabled={zoom >= 5 || disabled}
+            disabled={zoom >= 5}
           >
             <ZoomIn className="w-4 h-4" />
           </Button>
@@ -1477,7 +1403,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleFitToScreen}
-            disabled={disabled}
           >
             <Maximize className="w-4 h-4" />
           </Button>
@@ -1486,7 +1411,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            disabled={(!hasManualEditsRef.current && !manualImageData) || disabled}
+            disabled={!hasManualEditsRef.current && !manualImageData}
             title="Reset image"
           >
             <RefreshCw className="w-4 h-4" />
@@ -1497,7 +1422,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               variant="default"
               size="sm"
               onClick={handleDownload}
-              disabled={!image || disabled}
+              disabled={!image}
               title="Download PNG"
               className="flex items-center gap-2"
             >

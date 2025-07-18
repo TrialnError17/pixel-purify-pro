@@ -36,7 +36,6 @@ export interface ColorRemovalSettings {
   threshold: number;
   contiguous: boolean;
   minRegionSize: number;
-  minRegionEnabled: boolean;
   pickedColors: PickedColor[];
 }
 
@@ -89,9 +88,6 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
-  
-  // Check if any individual image is being processed (for disabling controls)
-  const isAnyImageProcessing = isProcessing || singleImageProgress !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -102,7 +98,6 @@ const Index = () => {
     threshold: 30,
     contiguous: false,
     minRegionSize: 100,
-    minRegionEnabled: false,
     pickedColors: []
   });
 
@@ -152,7 +147,7 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 1
+    trimRadius: 2
   });
 
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
@@ -246,11 +241,10 @@ const Index = () => {
   }, [images, selectedImageId, addUndoAction]);
 
   return (
-    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-hidden">
-      {/* Main App Content with horizontal scroll */}
+    <div className="h-screen bg-background text-foreground flex overflow-hidden">
+      {/* Main App Content */}
       <div 
-        className="flex-1 flex flex-col overflow-x-auto overflow-y-hidden"
-        style={{ minWidth: '1000px' }}
+        className="flex-1 flex flex-col overflow-hidden"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
@@ -302,10 +296,9 @@ const Index = () => {
           }
         />
         
-        <div className="flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ minWidth: '1000px' }}>
-          {/* Left Tools Sidebar - Full Height with disabled state */}
-          <LeftSidebar
-            disabled={isAnyImageProcessing}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left Tools Sidebar - Full Height */}
+          <LeftSidebar 
             settings={colorSettings}
             onSettingsChange={(newSettings) => {
               const prevSettings = { ...colorSettings };
@@ -398,14 +391,13 @@ const Index = () => {
                 undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
               });
             }}
-             onAddImages={handleFileInput}
-             onAddFolder={handleFolderInput}
-           />
+            onAddImages={handleFileInput}
+            onAddFolder={handleFolderInput}
+          />
           
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
             <MainCanvas 
-              disabled={isAnyImageProcessing}
               image={selectedImage}
               tool={currentTool}
               onToolChange={setCurrentTool}
@@ -542,7 +534,7 @@ const Index = () => {
               forceFullscreen={isProcessing}
               onClearAll={handleClearAll}
             />
-           </div>
+          </div>
         </div>
         
         <input
@@ -555,7 +547,7 @@ const Index = () => {
         />
       </div>
       
-      {/* Fixed Right Advertisement Sidebar */}
+      {/* Independent Advertisement Space */}
       <RightSidebar />
     </div>
   );
