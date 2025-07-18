@@ -79,6 +79,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
+  const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -705,14 +706,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     // Allow edge cleanup to run even with manual edits, but skip other auto-processing
     if (hasManualEditsRef.current) {
-      // If we have manual edits, only proceed if edge cleanup is specifically enabled
-      if (!edgeCleanupSettings.enabled || isProcessingEdgeCleanupRef.current) {
-        console.log('Early return - has manual edits, no edge cleanup enabled or already processing edge cleanup');
+      // If we have manual edits, handle edge cleanup specially
+      if (isProcessingEdgeCleanupRef.current) {
+        console.log('Early return - already processing edge cleanup');
         return;
       }
-      
-      // For manual edits with edge cleanup, use a different processing path
-      console.log('Manual edits detected, applying edge cleanup only');
       
       // Set flag to prevent re-triggering
       isProcessingEdgeCleanupRef.current = true;
@@ -734,21 +732,35 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       setIsProcessing(true);
       
-      // Get current canvas data (which includes manual edits)
-      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      // Apply edge cleanup to the current data
-      const edgeCleanedData = processEdgeCleanup(currentImageData, edgeCleanupSettings);
-      
-      // Apply the result back to canvas
-      ctx.putImageData(edgeCleanedData, 0, 0);
-      
-      // DON'T update manualImageData here as it causes the loop
-      // The canvas update is sufficient for display
+      if (edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0) {
+        console.log('Manual edits detected, applying edge cleanup');
+        
+        // Store pre-edge-cleanup state if we haven't already
+        if (!preEdgeCleanupImageData) {
+          const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          setPreEdgeCleanupImageData(currentImageData);
+          console.log('Stored pre-edge-cleanup state');
+        }
+        
+        // Apply edge cleanup to the pre-edge-cleanup data (original manual edits)
+        const baseData = preEdgeCleanupImageData || ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const edgeCleanedData = processEdgeCleanup(baseData, edgeCleanupSettings);
+        
+        // Apply the result back to canvas
+        ctx.putImageData(edgeCleanedData, 0, 0);
+        console.log('Edge cleanup applied to manual edits');
+      } else {
+        console.log('Edge cleanup disabled, restoring pre-edge-cleanup state');
+        
+        // Restore the pre-edge-cleanup state if available
+        if (preEdgeCleanupImageData) {
+          ctx.putImageData(preEdgeCleanupImageData, 0, 0);
+          console.log('Restored pre-edge-cleanup state');
+        }
+      }
       
       setIsProcessing(false);
       isProcessingEdgeCleanupRef.current = false;
-      console.log('Edge cleanup applied to manual edits');
       return;
     }
     
@@ -986,6 +998,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Mark that we have manual edits
       hasManualEditsRef.current = true;
       
+      // Clear any stored pre-edge-cleanup state since we're making new manual edits  
+      setPreEdgeCleanupImageData(null);
+      
       // Store the result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       if (image) {
@@ -998,6 +1013,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
       hasManualEditsRef.current = true;
+      
+      // Clear any stored pre-edge-cleanup state since we're making new manual edits
+      setPreEdgeCleanupImageData(null);
       
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
