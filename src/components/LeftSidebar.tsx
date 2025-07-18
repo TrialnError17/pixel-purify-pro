@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
+import { VerticalSlider } from '@/components/ui/vertical-slider';
 import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -618,19 +619,25 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div className="flex flex-col items-center h-full">
                       <div className="relative h-20 flex flex-col items-center justify-center">
                         <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
-                        <SliderWithInput
+                        <VerticalSlider
                           value={[effectSettings.imageEffects.brightness]}
                           onValueChange={([brightness]) => updateImageEffects({ brightness })}
                           min={-100}
                           max={70}
                           step={1}
-                          buttonStep={5}
-                          defaultValue={0}
-                          showReset={true}
-                          className="[&_.flex]:flex-col [&_.flex-1]:h-16 [&_.flex-1]:w-6"
-                          sliderClassName="h-16 w-6 [&>*]:w-6 [&>*]:h-16 [&_[role=slider]]:w-4 [&_[role=slider]]:h-4"
-                          showInput={false}
+                          className="h-16"
                         />
+                      </div>
+                      <div className="flex flex-col items-center gap-1 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateImageEffects({ brightness: 0 })}
+                          className="h-5 w-12 p-0 text-xs"
+                          title="Reset to 0"
+                        >
+                          ZERO
+                        </Button>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1 font-mono">
                         {effectSettings.imageEffects.brightness}
@@ -646,19 +653,25 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div className="flex flex-col items-center h-full">
                       <div className="relative h-20 flex flex-col items-center justify-center">
                         <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
-                        <SliderWithInput
+                        <VerticalSlider
                           value={[effectSettings.imageEffects.contrast]}
                           onValueChange={([contrast]) => updateImageEffects({ contrast })}
                           min={-100}
                           max={100}
                           step={1}
-                          buttonStep={5}
-                          defaultValue={0}
-                          showReset={true}
-                          className="[&_.flex]:flex-col [&_.flex-1]:h-16 [&_.flex-1]:w-6"
-                          sliderClassName="h-16 w-6 [&>*]:w-6 [&>*]:h-16 [&_[role=slider]]:w-4 [&_[role=slider]]:h-4"
-                          showInput={false}
+                          className="h-16"
                         />
+                      </div>
+                      <div className="flex flex-col items-center gap-1 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateImageEffects({ contrast: 0 })}
+                          className="h-5 w-12 p-0 text-xs"
+                          title="Reset to 0"
+                        >
+                          ZERO
+                        </Button>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1 font-mono">
                         {effectSettings.imageEffects.contrast}
@@ -674,19 +687,25 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div className="flex flex-col items-center h-full">
                       <div className="relative h-20 flex flex-col items-center justify-center">
                         <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
-                        <SliderWithInput
+                        <VerticalSlider
                           value={[effectSettings.imageEffects.vibrance]}
                           onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
                           min={-100}
                           max={100}
                           step={1}
-                          buttonStep={5}
-                          defaultValue={0}
-                          showReset={true}
-                          className="[&_.flex]:flex-col [&_.flex-1]:h-16 [&_.flex-1]:w-6"
-                          sliderClassName="h-16 w-6 [&>*]:w-6 [&>*]:h-16 [&_[role=slider]]:w-4 [&_[role=slider]]:h-4"
-                          showInput={false}
+                          className="h-16"
                         />
+                      </div>
+                      <div className="flex flex-col items-center gap-1 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateImageEffects({ vibrance: 0 })}
+                          className="h-5 w-12 p-0 text-xs"
+                          title="Reset to 0"
+                        >
+                          ZERO
+                        </Button>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1 font-mono">
                         {-effectSettings.imageEffects.vibrance}
