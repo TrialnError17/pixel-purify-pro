@@ -5,13 +5,23 @@ import { cn } from "@/lib/utils"
 interface HueSliderProps {
   value: number[]
   onValueChange: (value: number[]) => void
+  defaultValue?: number
   className?: string
 }
 
 export const HueSlider = React.forwardRef<
   React.ElementRef<typeof SliderPrimitive.Root>,
   HueSliderProps
->(({ value, onValueChange, className, ...props }, ref) => (
+>(({ value, onValueChange, defaultValue = 0, className, ...props }, ref) => {
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.altKey) {
+      e.preventDefault()
+      console.log('Hue reset to default:', { defaultValue })
+      onValueChange([defaultValue])
+    }
+  }
+
+  return (
   <SliderPrimitive.Root
     ref={ref}
     className={cn(
@@ -20,6 +30,7 @@ export const HueSlider = React.forwardRef<
     )}
     value={value}
     onValueChange={onValueChange}
+    onClick={handleClick}
     min={0}
     max={360}
     step={1}
@@ -35,5 +46,6 @@ export const HueSlider = React.forwardRef<
     </SliderPrimitive.Track>
     <SliderPrimitive.Thumb className="block h-6 w-6 rounded-full border-2 border-white bg-white shadow-lg ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 z-10" />
   </SliderPrimitive.Root>
-))
+)
+})
 HueSlider.displayName = "HueSlider"

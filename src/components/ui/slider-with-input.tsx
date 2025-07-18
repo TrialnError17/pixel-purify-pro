@@ -2,7 +2,7 @@ import * as React from "react"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Plus, Minus } from "lucide-react"
+import { Plus, Minus, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SliderWithInputProps {
@@ -11,11 +11,13 @@ interface SliderWithInputProps {
   min: number
   max: number
   step: number
+  defaultValue?: number
   className?: string
   sliderClassName?: string
   inputClassName?: string
   label?: string
   showInput?: boolean
+  showReset?: boolean
   disabled?: boolean
 }
 
@@ -28,11 +30,13 @@ export const SliderWithInput = React.forwardRef<
   min, 
   max, 
   step, 
+  defaultValue = 0,
   className,
   sliderClassName,
   inputClassName,
   label,
   showInput = true,
+  showReset = false,
   disabled = false,
   ...props 
 }, ref) => {
@@ -66,6 +70,18 @@ export const SliderWithInput = React.forwardRef<
     onValueChange([newValue])
   }
 
+  const resetToDefault = () => {
+    console.log('Reset to default:', { defaultValue })
+    onValueChange([defaultValue])
+  }
+
+  const handleSliderClick = (e: React.MouseEvent) => {
+    if (e.altKey) {
+      e.preventDefault()
+      resetToDefault()
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowUp') {
       e.preventDefault()
@@ -88,11 +104,25 @@ export const SliderWithInput = React.forwardRef<
             step={step}
             className={cn("w-full", sliderClassName)}
             disabled={disabled}
+            onClick={handleSliderClick}
           />
         </div>
         
+        {showReset && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetToDefault}
+            disabled={disabled}
+            className="h-6 w-6 p-0 flex-shrink-0 ml-1"
+            title={`Reset to ${defaultValue}`}
+          >
+            <RotateCcw className="h-2.5 w-2.5" />
+          </Button>
+        )}
+
         {showInput && (
-          <div className="flex items-center gap-0.5 min-w-0">
+          <div className="flex items-center gap-0.5 min-w-0 ml-1">
             <Button
               variant="outline"
               size="sm"

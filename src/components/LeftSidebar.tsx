@@ -621,6 +621,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       min={-100}
                       max={100}
                       step={1}
+                      defaultValue={0}
+                      showReset={true}
                     />
                   </div>
                 </div>
@@ -640,6 +642,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       min={-100}
                       max={100}
                       step={1}
+                      defaultValue={0}
+                      showReset={true}
                     />
                   </div>
                 </div>
@@ -659,6 +663,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       min={-100}
                       max={100}
                       step={1}
+                      defaultValue={0}
+                      showReset={true}
                     />
                   </div>
                 </div>
@@ -674,6 +680,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <HueSlider
                       value={[effectSettings.imageEffects.hue]}
                       onValueChange={([hue]) => updateImageEffects({ hue })}
+                      defaultValue={0}
                     />
                   </div>
                 </div>
