@@ -482,80 +482,89 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
 
-    // Step 1: Edge trimming (if radius > 0)
+    // Step 1: Alpha feathering (if radius > 0)
     if (settings.trimRadius > 0) {
-      console.log('Processing edge trimming with radius:', settings.trimRadius);
+      console.log('Processing alpha feathering with radius:', settings.trimRadius);
       const radius = settings.trimRadius;
-      const toTransparent = new Set<number>();
 
-      // Function to check if a pixel is on an edge (next to transparent or border)
-      const isEdgePixel = (x: number, y: number): boolean => {
-        const index = (y * width + x) * 4;
+      // Helper function to get distance to nearest transparent pixel
+      const getDistanceToTransparent = (x: number, y: number, maxDistance: number): number => {
+        // Check if current pixel is already transparent
+        const currentIndex = (y * width + x) * 4;
+        if (data[currentIndex + 3] === 0) return 0;
+
+        let minDistance = maxDistance + 1;
         
-        // Skip if already transparent
-        if (data[index + 3] === 0) return false;
-        
-        // Check if at image border
-        if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-          return true;
-        }
-        
-        // Check surrounding pixels for transparency
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            
-            const nx = x + dx;
-            const ny = y + dy;
-            
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-              const neighborIndex = (ny * width + nx) * 4;
-              if (data[neighborIndex + 3] === 0) {
-                return true;
+        // Search in expanding squares around the pixel
+        for (let searchRadius = 1; searchRadius <= maxDistance; searchRadius++) {
+          let foundTransparent = false;
+          
+          // Check all pixels in the square border at this radius
+          for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+            for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+              // Only check the border of the square, not the interior
+              if (Math.abs(dx) !== searchRadius && Math.abs(dy) !== searchRadius) continue;
+              
+              const checkX = x + dx;
+              const checkY = y + dy;
+              
+              // Bounds check
+              if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+                // Treat out-of-bounds as transparent
+                foundTransparent = true;
+                minDistance = Math.min(minDistance, searchRadius);
+                continue;
+              }
+              
+              const checkIndex = (checkY * width + checkX) * 4;
+              if (data[checkIndex + 3] === 0) {
+                foundTransparent = true;
+                minDistance = Math.min(minDistance, searchRadius);
               }
             }
           }
+          
+          // If we found transparent pixels at this radius, we can stop searching
+          if (foundTransparent) {
+            break;
+          }
         }
         
-        return false;
+        return Math.min(minDistance, maxDistance);
       };
 
-      // Find all edge pixels
-      const edgePixels: Array<{x: number, y: number}> = [];
+      // Apply alpha feathering
+      let processedPixels = 0;
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          if (isEdgePixel(x, y)) {
-            edgePixels.push({x, y});
+          const index = (y * width + x) * 4;
+          const alpha = data[index + 3];
+          
+          // Only process pixels that are not fully transparent
+          if (alpha > 0) {
+            const distanceToTransparent = getDistanceToTransparent(x, y, radius);
+            
+            // Apply feathering if we're within the feather radius
+            if (distanceToTransparent <= radius) {
+              // Create smooth falloff - closer to transparent = more faded
+              const featherFactor = distanceToTransparent / radius;
+              
+              // Apply smooth curve for more natural transition
+              const smoothFactor = Math.pow(featherFactor, 0.7); // Gamma correction for natural look
+              
+              // Apply the feathering to alpha channel
+              const newAlpha = alpha * smoothFactor;
+              data[index + 3] = Math.max(0, Math.min(255, newAlpha));
+              
+              if (newAlpha < alpha) {
+                processedPixels++;
+              }
+            }
           }
         }
       }
 
-      // For each edge pixel, mark pixels within radius for transparency
-      edgePixels.forEach(({x, y}) => {
-        for (let dy = -radius; dy <= radius; dy++) {
-          for (let dx = -radius; dx <= radius; dx++) {
-            const nx = x + dx;
-            const ny = y + dy;
-            
-            // Check if within image bounds
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-              // Check if within circular radius
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              if (distance <= radius) {
-                const pixelIndex = ny * width + nx;
-                toTransparent.add(pixelIndex);
-              }
-            }
-          }
-        }
-      });
-
-      // Apply transparency to marked pixels
-      toTransparent.forEach(pixelIndex => {
-        const dataIndex = pixelIndex * 4;
-        data[dataIndex + 3] = 0; // Make transparent
-      });
-      console.log('Edge trimming processed', toTransparent.size, 'pixels');
+      console.log('Alpha feathering processed', processedPixels, 'pixels');
     }
 
 
