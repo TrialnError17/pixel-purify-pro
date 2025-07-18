@@ -662,16 +662,28 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     console.log('Loading image from file');
     const img = new Image();
     img.onload = () => {
+      console.log('Image loaded successfully:', { 
+        naturalWidth: img.naturalWidth, 
+        naturalHeight: img.naturalHeight 
+      });
+      
       // Set canvas size to image size
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
+      
+      console.log('Canvas size set to:', { width: canvas.width, height: canvas.height });
       
       // Clear and draw image
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       
+      console.log('Image drawn to canvas');
+      
       // Store original image data
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setOriginalImageData(imageData);
+      
+      console.log('Original image data stored');
       setOriginalImageData(imageData);
       
       // Reset manual edits when new image is loaded
@@ -702,6 +714,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         setPan({ x: 0, y: 0 });
         setCenterOffset({ x: centerX, y: centerY });
       }
+    };
+    
+    img.onerror = (error) => {
+      console.error('Failed to load image:', error);
     };
     
     img.src = URL.createObjectURL(image.file);
