@@ -271,7 +271,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
     // Apply edge cleanup after color removal but before effects
-    if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled) {
+    if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
       const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
       data.set(edgeCleanupResult.data);
     }
@@ -475,11 +475,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       alphaFeathering: settings.enabled, 
       trimRadius: settings.trimRadius,
       legacyEnabled: settings.legacyEnabled,
-      legacyRadius: settings.legacyRadius 
+      legacyRadius: settings.legacyRadius,
+      softeningEnabled: settings.softening.enabled,
+      softeningIterations: settings.softening.iterations
     });
     
-    if (!settings.enabled && !settings.legacyEnabled) {
-      console.log('Both edge cleanup methods disabled, returning original data');
+    if (!settings.enabled && !settings.legacyEnabled && !settings.softening.enabled) {
+      console.log('All edge cleanup methods disabled, returning original data');
       return imageData;
     }
 
@@ -619,6 +621,66 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       console.log('Alpha feathering processed', processedPixels, 'pixels');
     }
 
+    // Step 3: Edge softening (if enabled and iterations > 0)
+    if (settings.softening.enabled && settings.softening.iterations > 0) {
+      console.log('Processing edge softening with iterations:', settings.softening.iterations);
+      
+      // Helper function to calculate average color of neighboring pixels
+      const getNeighborAverage = (x: number, y: number): { r: number; g: number; b: number } => {
+        let r = 0, g = 0, b = 0;
+        let count = 0;
+        
+        // 3x3 neighborhood (excluding current pixel)
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue; // Skip center pixel
+            
+            const checkX = x + dx;
+            const checkY = y + dy;
+            
+            // Bounds check
+            if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
+              const neighborIndex = (checkY * width + checkX) * 4;
+              r += data[neighborIndex];
+              g += data[neighborIndex + 1];
+              b += data[neighborIndex + 2];
+              count++;
+            }
+          }
+        }
+        
+        return count > 0 ? {
+          r: r / count,
+          g: g / count,
+          b: b / count
+        } : { r: 0, g: 0, b: 0 };
+      };
+      
+      // Apply edge softening for specified iterations
+      for (let iteration = 0; iteration < settings.softening.iterations; iteration++) {
+        // Create a copy for this iteration
+        const iterationData = new Uint8ClampedArray(data);
+        
+        for (let y = 1; y < height - 1; y++) {
+          for (let x = 1; x < width - 1; x++) {
+            const index = (y * width + x) * 4;
+            
+            // Only process pixels that have some opacity
+            if (iterationData[index + 3] > 0) {
+              const neighbors = getNeighborAverage(x, y);
+              
+              // Apply averaging to RGB channels
+              data[index] = neighbors.r;
+              data[index + 1] = neighbors.g;
+              data[index + 2] = neighbors.b;
+              // Alpha remains unchanged for edge softening
+            }
+          }
+        }
+      }
+      
+      console.log('Edge softening completed with', settings.softening.iterations, 'iterations');
+    }
 
     const result = new ImageData(data, width, height);
     console.log('processEdgeCleanup completed');
@@ -1025,7 +1087,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           trimRadius: edgeCleanupSettings.trimRadius
         });
         
-        if (edgeCleanupSettings.enabled) {
+        if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
           console.log('Calling processEdgeCleanup...');
           processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
           console.log('processEdgeCleanup completed');

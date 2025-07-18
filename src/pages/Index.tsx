@@ -78,6 +78,10 @@ export interface EdgeCleanupSettings {
   trimRadius: number;
   legacyEnabled: boolean;
   legacyRadius: number;
+  softening: {
+    enabled: boolean;
+    iterations: number;
+  };
 }
 
 export interface ContiguousToolSettings {
@@ -158,6 +162,10 @@ const Index = () => {
     trimRadius: 3,
     legacyEnabled: false,
     legacyRadius: 2,
+    softening: {
+      enabled: false,
+      iterations: 1,
+    },
   });
 
   // Track if edge trim was auto-disabled by ink stamp

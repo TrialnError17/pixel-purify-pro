@@ -506,6 +506,42 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Edge Softening */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={edgeCleanupSettings.softening.enabled}
+                      onCheckedChange={(enabled) => updateEdgeCleanupSettings({ 
+                        softening: { ...edgeCleanupSettings.softening, enabled }
+                      })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-orange data-[state=checked]:to-accent-yellow"
+                    />
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Edge Softening
+                    </Label>
+                  </div>
+                  {edgeCleanupSettings.softening.enabled && (
+                    <div className="space-y-2 ml-6">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-orange to-accent-yellow bg-clip-text text-transparent">
+                        Iterations: {edgeCleanupSettings.softening.iterations}
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-orange/5 to-accent-yellow/5 rounded-lg border border-accent-orange/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.softening.iterations]}
+                          onValueChange={([iterations]) => updateEdgeCleanupSettings({ 
+                            softening: { ...edgeCleanupSettings.softening, iterations }
+                          })}
+                          min={1}
+                          max={5}
+                          step={1}
+                          buttonStep={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-orange [&_[role=slider]]:to-accent-yellow [&_[role=slider]]:border-accent-orange"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
