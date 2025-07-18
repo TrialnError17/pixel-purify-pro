@@ -703,12 +703,22 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       console.log('Early return - missing requirements or processing in progress');
       return;
     }
-    
-    // Allow edge cleanup to run even with manual edits, but skip other auto-processing
+     
+    // Allow speckle and edge cleanup to run even with manual edits, but skip other auto-processing
     if (hasManualEditsRef.current) {
-      // If we have manual edits, handle edge cleanup specially
+      // If we have manual edits, handle speckle and edge cleanup specially
       if (isProcessingEdgeCleanupRef.current) {
-        console.log('Early return - already processing edge cleanup');
+        console.log('Early return - already processing');
+        return;
+      }
+      
+      // Check if we need to do any processing
+      const needsSpeckleProcessing = speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks);
+      const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
+      const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
+      
+      if (!needsSpeckleProcessing && !needsEdgeCleanup && !needsEdgeRestore) {
+        console.log('Early return - no speckle or edge cleanup needed');
         return;
       }
       
@@ -732,24 +742,43 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       setIsProcessing(true);
       
-      if (edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0) {
+      // Get the current canvas data
+      let currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Handle speckle processing first if needed
+      if (needsSpeckleProcessing) {
+        console.log('Manual edits detected, applying speckle processing');
+        const speckleResult = processSpecks(currentImageData, speckleSettings);
+        currentImageData = speckleResult.processedData;
+        
+        // Update speck count
+        if (onSpeckCountUpdate) {
+          onSpeckCountUpdate(speckleResult.speckCount);
+        }
+        
+        // Apply speckle result to canvas
+        ctx.putImageData(currentImageData, 0, 0);
+        console.log('Speckle processing applied to manual edits');
+      }
+      
+      // Handle edge cleanup
+      if (needsEdgeCleanup) {
         console.log('Manual edits detected, applying edge cleanup');
         
         // Store pre-edge-cleanup state if we haven't already
         if (!preEdgeCleanupImageData) {
-          const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           setPreEdgeCleanupImageData(currentImageData);
           console.log('Stored pre-edge-cleanup state');
         }
         
         // Apply edge cleanup to the pre-edge-cleanup data (original manual edits)
-        const baseData = preEdgeCleanupImageData || ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const baseData = preEdgeCleanupImageData || currentImageData;
         const edgeCleanedData = processEdgeCleanup(baseData, edgeCleanupSettings);
         
         // Apply the result back to canvas
         ctx.putImageData(edgeCleanedData, 0, 0);
         console.log('Edge cleanup applied to manual edits');
-      } else {
+      } else if (needsEdgeRestore) {
         console.log('Edge cleanup disabled, restoring pre-edge-cleanup state');
         
         // Restore the pre-edge-cleanup state if available
