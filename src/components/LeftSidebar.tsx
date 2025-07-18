@@ -254,189 +254,155 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               )}
             </CardTitle>
           </CardHeader>
+          
+          {settings.enabled && (
+            <CardContent className="pt-0 pb-2 space-y-3">
+              {/* Mode Selection */}
+              <div className="p-2 bg-gradient-to-r from-accent-purple/5 to-accent-pink/5 rounded-lg border border-accent-purple/20">
+                <Label className="text-xs font-medium text-accent-purple mb-2 block">Mode Selection</Label>
+                <RadioGroup
+                  value={settings.mode}
+                  onValueChange={(mode: 'auto' | 'manual') => updateSettings({ mode })}
+                  className="space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="auto" id="auto" />
+                    <Label htmlFor="auto" className="text-xs cursor-pointer">Auto (top-left color)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="manual" id="manual" />
+                    <Label htmlFor="manual" className="text-xs cursor-pointer">Manual (pick color)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Threshold Sensitivity */}
+              <div className="p-2 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                <Label className="text-xs font-medium text-accent-red mb-2 block">🎚️ Threshold Sensitivity: {settings.threshold}</Label>
+                <SliderWithInput
+                  value={[settings.threshold]}
+                  onValueChange={([threshold]) => updateSettings({ threshold })}
+                  min={1}
+                  max={100}
+                  step={1}
+                  sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                />
+              </div>
+            </CardContent>
+          )}
         </Card>
 
-        {settings.enabled && (
-          <>
-            <div className="py-1">
-              <Label className="text-xs font-medium text-muted-foreground mb-1 block">Mode Selection</Label>
-              <RadioGroup
-                value={settings.mode}
-                onValueChange={(mode: 'auto' | 'manual') => updateSettings({ mode })}
-                className="space-y-1"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="auto" id="auto" />
-                  <Label htmlFor="auto" className="text-xs cursor-pointer">Auto (top-left color)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="manual" id="manual" />
-                  <Label htmlFor="manual" className="text-xs cursor-pointer">Manual (pick color)</Label>
-                </div>
-              </RadioGroup>
-            </div>
+        {settings.enabled && settings.mode === 'manual' && (
+          <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
+            <CardHeader className="pt-2 pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Palette className="w-4 h-4 text-accent-orange" />
+                <span className="bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent font-semibold">
+                  Target Color
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
+                <input
+                  type="color"
+                  value={settings.targetColor}
+                  onChange={(e) => updateSettings({ targetColor: e.target.value })}
+                  className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
+                />
+                <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
+                  {settings.targetColor.toUpperCase()}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-            {settings.mode === 'manual' && (
-              <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
-                <CardHeader className="pt-2 pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-accent-orange" />
-                    <span className="bg-gradient-to-r from-accent-yellow to-accent-orange bg-clip-text text-transparent font-semibold">
-                      Target Color
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
-                    <input
-                      type="color"
-                      value={settings.targetColor}
-                      onChange={(e) => updateSettings({ targetColor: e.target.value })}
-                      className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
-                    />
-                    <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
-                      {settings.targetColor.toUpperCase()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Picked Colors List */}
-            {settings.mode === 'manual' && settings.pickedColors.length > 0 && (
-              <Card className="bg-gradient-to-br from-accent-lime/10 to-accent-green/10 border-accent-lime/30">
-                <CardHeader className="pt-2 pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center justify-between">
-                    <span className="bg-gradient-to-r from-accent-lime to-accent-green bg-clip-text text-transparent font-semibold flex items-center gap-2">
-                      🎨 Picked Colors ({settings.pickedColors.length})
-                    </span>
+        {/* Picked Colors List */}
+        {settings.enabled && settings.mode === 'manual' && settings.pickedColors.length > 0 && (
+          <Card className="bg-gradient-to-br from-accent-lime/10 to-accent-green/10 border-accent-lime/30">
+            <CardHeader className="pt-2 pb-3">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span className="bg-gradient-to-r from-accent-lime to-accent-green bg-clip-text text-transparent font-semibold flex items-center gap-2">
+                  🎨 Picked Colors ({settings.pickedColors.length})
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateSettings({ pickedColors: [] })}
+                  className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {settings.pickedColors.map((pickedColor, index) => (
+                <div key={pickedColor.id} className="p-3 bg-gradient-to-r from-accent-lime/5 to-accent-green/5 rounded-lg border border-accent-lime/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-6 h-6 rounded border-2 border-accent-lime shadow-lg"
+                        style={{ backgroundColor: pickedColor.color }}
+                      />
+                      <span className="text-xs font-mono font-bold text-accent-green bg-accent-green/10 px-2 py-1 rounded">
+                        {pickedColor.color.toUpperCase()}
+                      </span>
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => updateSettings({ pickedColors: [] })}
+                      onClick={() => {
+                        const newPickedColors = settings.pickedColors.filter(c => c.id !== pickedColor.id);
+                        updateSettings({ pickedColors: newPickedColors });
+                      }}
                       className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <X className="w-3 h-3" />
                     </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-3">
-                  {settings.pickedColors.map((pickedColor, index) => (
-                    <div key={pickedColor.id} className="p-3 bg-gradient-to-r from-accent-lime/5 to-accent-green/5 rounded-lg border border-accent-lime/20">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-6 h-6 rounded border-2 border-accent-lime shadow-lg"
-                            style={{ backgroundColor: pickedColor.color }}
-                          />
-                          <span className="text-xs font-mono font-bold text-accent-green bg-accent-green/10 px-2 py-1 rounded">
-                            {pickedColor.color.toUpperCase()}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const newPickedColors = settings.pickedColors.filter(c => c.id !== pickedColor.id);
-                            updateSettings({ pickedColors: newPickedColors });
-                          }}
-                          className="h-6 w-6 p-0 text-accent-red hover:text-accent-red hover:bg-accent-red/10"
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-accent-green mb-1 block">Threshold: {pickedColor.threshold}</Label>
-                        <SliderWithInput
-                          value={[pickedColor.threshold]}
-                          onValueChange={([threshold]) => {
-                            const newPickedColors = settings.pickedColors.map(c => 
-                              c.id === pickedColor.id ? { ...c, threshold } : c
-                            );
-                            updateSettings({ pickedColors: newPickedColors });
-                          }}
-                          min={1}
-                          max={100}
-                          step={1}
-                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
-              <CardHeader className="pt-2 pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
-                  🎚️ Threshold Sensitivity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <SliderWithInput
-                    value={[settings.threshold]}
-                    onValueChange={([threshold]) => updateSettings({ threshold })}
-                    min={1}
-                    max={100}
-                    step={1}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
-                  />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-accent-green mb-1 block">Threshold: {pickedColor.threshold}</Label>
+                    <SliderWithInput
+                      value={[pickedColor.threshold]}
+                      onValueChange={([threshold]) => {
+                        const newPickedColors = settings.pickedColors.map(c => 
+                          c.id === pickedColor.id ? { ...c, threshold } : c
+                        );
+                        updateSettings({ pickedColors: newPickedColors });
+                      }}
+                      min={1}
+                      max={100}
+                      step={1}
+                      sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-lime [&_[role=slider]]:to-accent-green [&_[role=slider]]:border-accent-lime"
+                    />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
-            {/* Edge Cleanup Section */}
-            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
-              <CardHeader className="pt-2 pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Switch
-                    checked={edgeCleanupSettings.enabled}
-                    onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
-                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
-                  />
-                  <Scissors className="w-4 h-4 text-accent-purple" />
-                  <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
-                    Edge Cleanup
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              
-              {edgeCleanupSettings.enabled && (
-                <CardContent className="pt-0 space-y-4">
-                  <div className="text-xs text-muted-foreground p-2 bg-accent-purple/5 rounded border border-accent-purple/20">
-                    ✂️ Removes residual color pixels along edges of non-transparent areas
-                  </div>
-
-                  {/* Edge Trim Radius Slider */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
-                      📏 Edge Trim Radius
-                    </Label>
-                    <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
-                      <SliderWithInput
-                        value={[edgeCleanupSettings.trimRadius]}
-                        onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
-                        min={0}
-                        max={10}
-                        step={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-
-            <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30">
-              <CardHeader className="pt-2 pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent font-semibold">
+        {/* Min Region Size Section */}
+        {settings.enabled && (
+          <Card className="bg-gradient-to-br from-accent-indigo/10 to-accent-purple/10 border-accent-indigo/30 shadow-colorful">
+            <CardHeader className="pt-2 pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Switch
+                  checked={settings.minRegionEnabled}
+                  onCheckedChange={(minRegionEnabled) => updateSettings({ minRegionEnabled })}
+                  className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-indigo data-[state=checked]:to-accent-purple"
+                />
+                <span className="bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent font-semibold">
                   📏 Min Region Size
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
+                </span>
+              </CardTitle>
+            </CardHeader>
+            
+            {settings.minRegionEnabled && (
+              <CardContent className="pt-0 pb-2 space-y-3">
                 <div className="p-3 bg-gradient-to-r from-accent-indigo/5 to-accent-purple/5 rounded-lg border border-accent-indigo/20">
+                  <Label className="text-xs font-medium text-accent-indigo mb-2 block">Size: {settings.minRegionSize} pixels</Label>
                   <SliderWithInput
                     value={[settings.minRegionSize]}
                     onValueChange={([minRegionSize]) => updateSettings({ minRegionSize })}
@@ -447,7 +413,51 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   />
                 </div>
               </CardContent>
-            </Card>
+            )}
+          </Card>
+        )}
+
+        {/* Edge Cleanup Section */}
+        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
+          <CardHeader className="pt-2 pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Switch
+                checked={edgeCleanupSettings.enabled}
+                onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+              />
+              <Scissors className="w-4 h-4 text-accent-purple" />
+              <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
+                Edge Cleanup
+              </span>
+            </CardTitle>
+          </CardHeader>
+          
+          {edgeCleanupSettings.enabled && (
+            <CardContent className="pt-0 space-y-4">
+              <div className="text-xs text-muted-foreground p-2 bg-accent-purple/5 rounded border border-accent-purple/20">
+                ✂️ Removes residual color pixels along edges of non-transparent areas
+              </div>
+
+              {/* Edge Trim Radius Slider */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                  📏 Edge Trim Radius
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                  <SliderWithInput
+                    value={[edgeCleanupSettings.trimRadius]}
+                    onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
+                    min={0}
+                    max={10}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
 
             {/* Speckle Tools Section */}
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
@@ -534,8 +544,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               )}
             </Card>
 
-          </>
-        )}
 
         {/* Ink Stamp Effect */}
         <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">

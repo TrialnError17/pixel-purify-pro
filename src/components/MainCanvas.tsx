@@ -217,7 +217,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
 
       // Apply minimum region size filtering
-      if (settings.minRegionSize > 0) {
+      if (settings.minRegionEnabled && settings.minRegionSize > 0) {
         const alphaData = new Uint8ClampedArray(width * height);
         
         // Extract alpha channel
