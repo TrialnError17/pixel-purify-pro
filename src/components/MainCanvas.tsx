@@ -263,8 +263,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               }
             }
           }
-        }
       }
+    }
+
+    // Apply edge cleanup after color removal but before effects
+    if (edgeCleanupSettings.enabled) {
+      const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
+      data.set(edgeCleanupResult.data);
+    }
 
     // Apply background color for preview only (regardless of saveWithBackground setting)
     if (effects.background.enabled) {
