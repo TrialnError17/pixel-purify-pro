@@ -301,9 +301,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Thumbnail */}
+                    {/* Thumbnail with Progress Overlay */}
                     <div className={cn(
-                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center relative",
                       isFullscreen ? "w-16 h-16" : "w-12 h-12"
                     )}>
                       <img
@@ -312,6 +312,20 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         className="w-full h-full object-cover rounded"
                         onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
                       />
+                      
+                      {/* Progress Overlay for Individual Image Processing */}
+                      {singleImageProgress && singleImageProgress.imageId === image.id && (
+                        <div className="absolute inset-0 bg-gray-800/75 rounded flex items-center justify-center">
+                          <div className="w-full px-1">
+                            <div className="bg-gray-600 h-1 rounded-full overflow-hidden">
+                              <div 
+                                className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                                style={{ width: `${singleImageProgress.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Info */}

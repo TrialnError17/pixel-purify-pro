@@ -88,6 +88,9 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
+  
+  // Check if any individual image is being processed (for disabling controls)
+  const isAnyImageProcessing = isProcessing || singleImageProgress !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -297,8 +300,9 @@ const Index = () => {
         />
         
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Left Tools Sidebar - Full Height */}
+          {/* Left Tools Sidebar - Full Height with disabled state */}
           <LeftSidebar 
+            disabled={isAnyImageProcessing}
             settings={colorSettings}
             onSettingsChange={(newSettings) => {
               const prevSettings = { ...colorSettings };
@@ -398,6 +402,7 @@ const Index = () => {
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
             <MainCanvas 
+              disabled={isAnyImageProcessing}
               image={selectedImage}
               tool={currentTool}
               onToolChange={setCurrentTool}

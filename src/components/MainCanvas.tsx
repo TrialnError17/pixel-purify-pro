@@ -22,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
+  disabled?: boolean;
   image: ImageItem | undefined;
   tool: 'pan' | 'color-stack' | 'magic-wand';
   onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
@@ -45,6 +46,7 @@ interface MainCanvasProps {
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
+  disabled = false,
   image,
   tool,
   onToolChange,
@@ -1333,7 +1335,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={onPreviousImage}
-            disabled={!canGoPrevious}
+            disabled={!canGoPrevious || disabled}
             title="Previous image"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -1347,7 +1349,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={onNextImage}
-            disabled={!canGoNext}
+            disabled={!canGoNext || disabled}
             title="Next image"
           >
             <ChevronRight className="w-4 h-4" />
@@ -1360,7 +1362,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleUndo}
-            disabled={undoStack.length === 0}
+            disabled={undoStack.length === 0 || disabled}
             className="flex items-center gap-1"
             title="Undo (Ctrl+Z)"
           >
@@ -1372,7 +1374,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleRedo}
-            disabled={redoStack.length === 0}
+            disabled={redoStack.length === 0 || disabled}
             className="flex items-center gap-1"
             title="Redo (Ctrl+Shift+Z)"
           >
@@ -1387,6 +1389,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'pan' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('pan')}
+            disabled={disabled}
             className="flex items-center gap-1"
           >
             <Move className="w-4 h-4" />
@@ -1397,6 +1400,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'color-stack' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
+            disabled={disabled}
             className="flex items-center gap-1"
           >
             <Pipette className="w-4 h-4" />
@@ -1408,6 +1412,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'magic-wand' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
+            disabled={disabled}
             className="flex items-center gap-1"
             title="Magic Wand - Remove connected pixels"
           >
@@ -1421,7 +1426,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => handleZoom('out')}
-            disabled={zoom <= 0.1}
+            disabled={zoom <= 0.1 || disabled}
           >
             <ZoomOut className="w-4 h-4" />
           </Button>
@@ -1438,7 +1443,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => handleZoom('in')}
-            disabled={zoom >= 5}
+            disabled={zoom >= 5 || disabled}
           >
             <ZoomIn className="w-4 h-4" />
           </Button>
@@ -1447,6 +1452,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleFitToScreen}
+            disabled={disabled}
           >
             <Maximize className="w-4 h-4" />
           </Button>
@@ -1455,7 +1461,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            disabled={!hasManualEditsRef.current && !manualImageData}
+            disabled={(!hasManualEditsRef.current && !manualImageData) || disabled}
             title="Reset image"
           >
             <RefreshCw className="w-4 h-4" />
@@ -1466,7 +1472,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               variant="default"
               size="sm"
               onClick={handleDownload}
-              disabled={!image}
+              disabled={!image || disabled}
               title="Download PNG"
               className="flex items-center gap-2"
             >
