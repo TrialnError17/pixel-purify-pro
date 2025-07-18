@@ -386,7 +386,48 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardContent>
             </Card>
 
-            {/* Edge Cleanup Section */}
+            {/* Min Region Size Widget - only shown when color removal is enabled */}
+            <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-cyan/10 border-accent-blue/30 shadow-colorful">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Switch
+                    checked={settings.minRegionSize.enabled && !settings.contiguous}
+                    onCheckedChange={(enabled) => updateSettings({ 
+                      minRegionSize: { ...settings.minRegionSize, enabled: enabled && !settings.contiguous }
+                    })}
+                    disabled={settings.contiguous}
+                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-cyan"
+                  />
+                  <span className="bg-gradient-to-r from-accent-blue to-accent-cyan bg-clip-text text-transparent font-semibold">
+                    📏 Min Region Size
+                  </span>
+                  {settings.contiguous && (
+                    <span className="text-xs text-muted-foreground ml-auto">(Auto-disabled: Contiguous ON)</span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {settings.minRegionSize.enabled && !settings.contiguous && (
+                <CardContent className="pt-0">
+                  <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-cyan/5 rounded-lg border border-accent-blue/20">
+                    <SliderWithInput
+                      value={[settings.minRegionSize.value]}
+                      onValueChange={([value]) => updateSettings({ 
+                        minRegionSize: { ...settings.minRegionSize, value }
+                      })}
+                      min={1}
+                      max={4000}
+                      step={10}
+                      buttonStep={10}
+                      sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-cyan [&_[role=slider]]:border-accent-blue"
+                    />
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </>
+        )}
+
+        {/* Edge Cleanup Section */}
             <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -426,41 +467,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     </div>
                   </div>
 
-                  {/* Min Region Size */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={edgeCleanupSettings.minRegionSize.enabled && !settings.contiguous}
-                        onCheckedChange={(enabled) => updateEdgeCleanupSettings({ 
-                          minRegionSize: { ...edgeCleanupSettings.minRegionSize, enabled: enabled && !settings.contiguous }
-                        })}
-                        disabled={settings.contiguous}
-                        className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-indigo data-[state=checked]:to-accent-purple"
-                      />
-                      <Label className="text-sm font-medium bg-gradient-to-r from-accent-indigo to-accent-purple bg-clip-text text-transparent">
-                        📏 Min Region Size
-                      </Label>
-                      {settings.contiguous && (
-                        <span className="text-xs text-muted-foreground ml-auto">(Auto-disabled: Contiguous ON)</span>
-                      )}
-                    </div>
-                    
-                    {edgeCleanupSettings.minRegionSize.enabled && !settings.contiguous && (
-                      <div className="p-3 bg-gradient-to-r from-accent-indigo/5 to-accent-purple/5 rounded-lg border border-accent-indigo/20">
-                        <SliderWithInput
-                          value={[edgeCleanupSettings.minRegionSize.value]}
-                          onValueChange={([value]) => updateEdgeCleanupSettings({ 
-                            minRegionSize: { ...edgeCleanupSettings.minRegionSize, value }
-                          })}
-                          min={1}
-                          max={4000}
-                          step={10}
-                          buttonStep={10}
-                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-indigo [&_[role=slider]]:to-accent-purple [&_[role=slider]]:border-accent-indigo"
-                        />
-                      </div>
-                    )}
-                  </div>
                 </CardContent>
               )}
             </Card>
@@ -547,9 +553,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </CardContent>
               )}
             </Card>
-
-          </>
-        )}
 
         {/* Ink Stamp Effect */}
         <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">

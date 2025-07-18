@@ -215,7 +215,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
 
       // Apply minimum region size filtering
-      if (edgeCleanupSettings.minRegionSize.enabled && edgeCleanupSettings.minRegionSize.value > 0) {
+      if (settings.minRegionSize.enabled && settings.minRegionSize.value > 0) {
         const alphaData = new Uint8ClampedArray(width * height);
         
         // Extract alpha channel
@@ -256,7 +256,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               }
               
               // If region is smaller than minimum size, restore it
-              if (regionPixels.length < edgeCleanupSettings.minRegionSize.value) {
+              if (regionPixels.length < settings.minRegionSize.value) {
                 for (const pixelIndex of regionPixels) {
                   data[pixelIndex * 4 + 3] = 255; // Make opaque
                 }
@@ -464,7 +464,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Edge cleanup processing function
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
-    console.log('processEdgeCleanup called:', { enabled: settings.enabled, trimRadius: settings.trimRadius, minRegionSize: settings.minRegionSize });
+    console.log('processEdgeCleanup called:', { enabled: settings.enabled, trimRadius: settings.trimRadius });
     
     if (!settings.enabled) {
       console.log('Edge cleanup disabled, returning original data');
@@ -551,73 +551,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       console.log('Edge trimming processed', toTransparent.size, 'pixels');
     }
 
-    // Step 2: Min region size cleanup (if enabled and contiguous is not active)
-    if (settings.minRegionSize.enabled && settings.minRegionSize.value > 0) {
-      console.log('Processing min region size cleanup with value:', settings.minRegionSize.value);
-      let removedRegions = 0;
-      const alphaData = new Uint8ClampedArray(width * height);
-      
-      // Extract alpha channel
-      for (let i = 0; i < data.length; i += 4) {
-        alphaData[i / 4] = data[i + 3];
-      }
-      
-      const visited = new Set<number>();
-      
-      const floodFill = (startX: number, startY: number): number[] => {
-        const stack = [[startX, startY]];
-        const regionPixels: number[] = [];
-        
-        while (stack.length > 0) {
-          const [currentX, currentY] = stack.pop()!;
-          const currentIndex = currentY * width + currentX;
-          
-          if (visited.has(currentIndex)) continue;
-          if (alphaData[currentIndex] === 0) continue; // Skip transparent pixels
-          
-          visited.add(currentIndex);
-          regionPixels.push(currentIndex);
-          
-          // Check 4-connected neighbors
-          const neighbors = [
-            [currentX - 1, currentY], // left
-            [currentX + 1, currentY], // right
-            [currentX, currentY - 1], // up
-            [currentX, currentY + 1]  // down
-          ];
-          
-          for (const [nx, ny] of neighbors) {
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-              const neighborIndex = ny * width + nx;
-              if (!visited.has(neighborIndex) && alphaData[neighborIndex] > 0) {
-                stack.push([nx, ny]);
-              }
-            }
-          }
-        }
-        
-        return regionPixels;
-      };
-      
-      // Find all connected regions and remove small ones
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const index = y * width + x;
-          if (!visited.has(index) && alphaData[index] > 0) {
-            const regionPixels = floodFill(x, y);
-            
-            // If region is smaller than minimum size, remove it
-            if (regionPixels.length < settings.minRegionSize.value) {
-              for (const pixelIndex of regionPixels) {
-                data[pixelIndex * 4 + 3] = 0; // Make transparent
-              }
-              removedRegions++;
-            }
-          }
-        }
-      }
-      console.log('Min region size cleanup processed, removed', removedRegions, 'small regions');
-    }
 
     const result = new ImageData(data, width, height);
     console.log('processEdgeCleanup completed');
@@ -809,8 +742,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         // Apply edge cleanup processing if enabled
         console.log('Edge cleanup check:', { 
           enabled: edgeCleanupSettings.enabled, 
-          trimRadius: edgeCleanupSettings.trimRadius,
-          minRegionSize: edgeCleanupSettings.minRegionSize 
+          trimRadius: edgeCleanupSettings.trimRadius
         });
         
         if (edgeCleanupSettings.enabled) {

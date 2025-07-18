@@ -36,6 +36,10 @@ export interface ColorRemovalSettings {
   threshold: number;
   contiguous: boolean;
   pickedColors: PickedColor[];
+  minRegionSize: {
+    enabled: boolean;
+    value: number;
+  };
 }
 
 export interface EffectSettings {
@@ -72,10 +76,6 @@ export interface EffectSettings {
 export interface EdgeCleanupSettings {
   enabled: boolean;
   trimRadius: number;
-  minRegionSize: {
-    enabled: boolean;
-    value: number;
-  };
 }
 
 export interface ContiguousToolSettings {
@@ -100,7 +100,11 @@ const Index = () => {
     targetColor: '#ffffff',
     threshold: 30,
     contiguous: false,
-    pickedColors: []
+    pickedColors: [],
+    minRegionSize: {
+      enabled: false,
+      value: 100
+    }
   });
 
   const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
@@ -149,11 +153,7 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 1,
-    minRegionSize: {
-      enabled: false,
-      value: 100
-    }
+    trimRadius: 1
   });
 
   // Track if edge trim was auto-disabled by ink stamp
