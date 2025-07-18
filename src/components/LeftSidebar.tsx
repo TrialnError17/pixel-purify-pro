@@ -607,68 +607,91 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           
           {effectSettings.imageEffects.enabled && (
             <CardContent className="pt-0 space-y-4">
-              {/* Brightness */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  ☀️ Brightness
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
-                    <SliderWithInput
-                      value={[effectSettings.imageEffects.brightness]}
-                      onValueChange={([brightness]) => updateImageEffects({ brightness })}
-                      min={-100}
-                      max={70}
-                      step={1}
-                      buttonStep={5}
-                      defaultValue={0}
-                      showReset={true}
-                    />
+              {/* Parametric EQ Style Controls */}
+              <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                <div className="flex items-start justify-between gap-4 h-32">
+                  {/* Brightness */}
+                  <div className="flex flex-col items-center flex-1">
+                    <Label className="text-xs font-medium mb-2 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center">
+                      ☀️ Brightness
+                    </Label>
+                    <div className="flex flex-col items-center h-full">
+                      <div className="relative h-20 flex flex-col items-center justify-center">
+                        <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
+                        <SliderWithInput
+                          value={[effectSettings.imageEffects.brightness]}
+                          onValueChange={([brightness]) => updateImageEffects({ brightness })}
+                          min={-100}
+                          max={70}
+                          step={1}
+                          buttonStep={5}
+                          defaultValue={0}
+                          showReset={true}
+                          className="[&_.flex]:flex-col [&_.flex-1]:h-16 [&_.flex-1]:w-6"
+                          sliderClassName="h-16 w-6 [&>*]:w-6 [&>*]:h-16 [&_[role=slider]]:w-4 [&_[role=slider]]:h-4"
+                          showInput={false}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 font-mono">
+                        {effectSettings.imageEffects.brightness}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Contrast */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  🎛️ Contrast
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
-                    <SliderWithInput
-                      value={[effectSettings.imageEffects.contrast]}
-                      onValueChange={([contrast]) => updateImageEffects({ contrast })}
-                      min={-100}
-                      max={100}
-                      step={1}
-                      buttonStep={5}
-                      defaultValue={0}
-                      showReset={true}
-                    />
+                  {/* Contrast */}
+                  <div className="flex flex-col items-center flex-1">
+                    <Label className="text-xs font-medium mb-2 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center">
+                      🎛️ Contrast
+                    </Label>
+                    <div className="flex flex-col items-center h-full">
+                      <div className="relative h-20 flex flex-col items-center justify-center">
+                        <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
+                        <SliderWithInput
+                          value={[effectSettings.imageEffects.contrast]}
+                          onValueChange={([contrast]) => updateImageEffects({ contrast })}
+                          min={-100}
+                          max={100}
+                          step={1}
+                          buttonStep={5}
+                          defaultValue={0}
+                          showReset={true}
+                          className="[&_.flex]:flex-col [&_.flex-1]:h-16 [&_.flex-1]:w-6"
+                          sliderClassName="h-16 w-6 [&>*]:w-6 [&>*]:h-16 [&_[role=slider]]:w-4 [&_[role=slider]]:h-4"
+                          showInput={false}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 font-mono">
+                        {effectSettings.imageEffects.contrast}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Vibrance */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  🌈 Vibrance
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
-                    <SliderWithInput
-                      value={[effectSettings.imageEffects.vibrance]}
-                      onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
-                      min={-100}
-                      max={100}
-                      step={1}
-                      buttonStep={5}
-                      defaultValue={0}
-                      showReset={true}
-                    />
+                  {/* Vibrance */}
+                  <div className="flex flex-col items-center flex-1">
+                    <Label className="text-xs font-medium mb-2 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center">
+                      🌈 Vibrance
+                    </Label>
+                    <div className="flex flex-col items-center h-full">
+                      <div className="relative h-20 flex flex-col items-center justify-center">
+                        <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
+                        <SliderWithInput
+                          value={[effectSettings.imageEffects.vibrance]}
+                          onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
+                          min={-100}
+                          max={100}
+                          step={1}
+                          buttonStep={5}
+                          defaultValue={0}
+                          showReset={true}
+                          className="[&_.flex]:flex-col [&_.flex-1]:h-16 [&_.flex-1]:w-6"
+                          sliderClassName="h-16 w-6 [&>*]:w-6 [&>*]:h-16 [&_[role=slider]]:w-4 [&_[role=slider]]:h-4"
+                          showInput={false}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 font-mono">
+                        {-effectSettings.imageEffects.vibrance}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
