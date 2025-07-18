@@ -541,7 +541,7 @@ const Index = () => {
               forceFullscreen={isProcessing}
               onClearAll={handleClearAll}
             />
-          </div>
+           </div>
           
           {/* Right Advertisement Sidebar */}
           <RightSidebar />
