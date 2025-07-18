@@ -542,6 +542,9 @@ const Index = () => {
               onClearAll={handleClearAll}
             />
           </div>
+          
+          {/* Right Advertisement Sidebar */}
+          <RightSidebar />
         </div>
         
         <input
@@ -553,9 +556,6 @@ const Index = () => {
           className="hidden"
         />
       </div>
-      
-      {/* Independent Advertisement Space */}
-      <RightSidebar />
     </div>
   );
 };
