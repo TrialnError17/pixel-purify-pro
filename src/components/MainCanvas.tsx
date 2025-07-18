@@ -674,13 +674,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       hasProcessedData: !!image?.processedData
     });
     
-    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || isProcessing) {
+    if (!originalImageData || !canvasRef.current || isProcessing) {
       console.log('Early return due to missing requirements');
       return;
     }
     
     // Skip auto-processing if we already have processed data and no settings changed
-    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled) {
+    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !effectSettings.imageEffects.enabled) {
       console.log('Skipping processing - no effects enabled');
       return;
     }
@@ -709,13 +709,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
 
-    // Use manual image data if available, otherwise original
-    const baseImageData = manualImageData || originalImageData;
+    // Use manual image data if available and there are manual edits, otherwise original
+    // If color removal or effects are enabled, always process from the base data
+    const baseImageData = (hasManualEditsRef.current && manualImageData) ? manualImageData : originalImageData;
 
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
-      // Only apply if we're still on the same canvas and no manual edits occurred during processing
-      if (canvasRef.current === canvas && !hasManualEditsRef.current) {
+      // Only apply if we're still on the same canvas
+      if (canvasRef.current === canvas) {
         console.log('Applying auto-processed data');
         
         // Apply speckle processing if enabled
