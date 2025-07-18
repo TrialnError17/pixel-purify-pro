@@ -11,6 +11,7 @@ interface SliderWithInputProps {
   min: number
   max: number
   step: number
+  buttonStep?: number
   defaultValue?: number
   className?: string
   sliderClassName?: string
@@ -30,6 +31,7 @@ export const SliderWithInput = React.forwardRef<
   min, 
   max, 
   step, 
+  buttonStep = 10,
   defaultValue = 0,
   className,
   sliderClassName,
@@ -59,14 +61,14 @@ export const SliderWithInput = React.forwardRef<
   }
 
   const increment = () => {
-    const newValue = Math.min(max, currentValue + step)
-    console.log('Increment:', { currentValue, step, newValue, min, max })
+    const newValue = Math.min(max, currentValue + buttonStep)
+    console.log('Increment:', { currentValue, buttonStep, newValue, min, max })
     onValueChange([newValue])
   }
 
   const decrement = () => {
-    const newValue = Math.max(min, currentValue - step)
-    console.log('Decrement:', { currentValue, step, newValue, min, max })
+    const newValue = Math.max(min, currentValue - buttonStep)
+    console.log('Decrement:', { currentValue, buttonStep, newValue, min, max })
     onValueChange([newValue])
   }
 
@@ -85,10 +87,12 @@ export const SliderWithInput = React.forwardRef<
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowUp') {
       e.preventDefault()
-      increment()
+      const newValue = Math.min(max, currentValue + step)
+      onValueChange([newValue])
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
-      decrement()
+      const newValue = Math.max(min, currentValue - step)
+      onValueChange([newValue])
     }
   }
 
@@ -123,35 +127,59 @@ export const SliderWithInput = React.forwardRef<
 
         {showInput && (
           <div className="flex items-center gap-0.5 min-w-0 ml-1">
+            {/* Custom styled number input with always visible arrows */}
+            <div className="relative">
+              <Input
+                type="number"
+                value={currentValue}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                onKeyDown={handleKeyDown}
+                min={min}
+                max={max}
+                step={step}
+                disabled={disabled}
+                className={cn(
+                  "h-8 w-16 text-center text-sm px-2 pr-1",
+                  "[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                  "relative",
+                  inputClassName
+                )}
+                style={{
+                  background: `
+                    linear-gradient(to bottom, hsl(var(--accent-purple)) 0%, hsl(var(--accent-purple)) 50%, transparent 50%, transparent 100%),
+                    linear-gradient(to bottom, transparent 0%, transparent 50%, hsl(var(--accent-blue)) 50%, hsl(var(--accent-blue)) 100%)
+                  `,
+                  backgroundPosition: 'right 2px top 2px, right 2px bottom 2px',
+                  backgroundSize: '8px 12px, 8px 12px',
+                  backgroundRepeat: 'no-repeat'
+                }}
+              />
+              {/* Custom arrow indicators */}
+              <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex flex-col pointer-events-none">
+                <div className="w-0 h-0 border-l-2 border-r-2 border-b-2 border-transparent border-b-accent-purple mb-0.5"></div>
+                <div className="w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-accent-blue"></div>
+              </div>
+            </div>
+            
             <Button
               variant="outline"
               size="sm"
               onClick={decrement}
               disabled={disabled || currentValue <= min}
-              className="h-6 w-6 p-0 flex-shrink-0"
+              className="h-8 w-8 p-0 flex-shrink-0 hover:bg-accent-purple/10 hover:border-accent-purple"
+              title={`-${buttonStep}`}
             >
               <Minus className="h-2.5 w-2.5" />
             </Button>
-            
-            <Input
-              type="number"
-              value={currentValue}
-              onChange={handleInputChange}
-              onBlur={handleInputBlur}
-              onKeyDown={handleKeyDown}
-              min={min}
-              max={max}
-              step={step}
-              disabled={disabled}
-              className={cn("h-6 w-12 text-center text-xs px-1", inputClassName)}
-            />
             
             <Button
               variant="outline"
               size="sm"
               onClick={increment}
               disabled={disabled || currentValue >= max}
-              className="h-6 w-6 p-0 flex-shrink-0"
+              className="h-8 w-8 p-0 flex-shrink-0 hover:bg-accent-blue/10 hover:border-accent-blue"
+              title={`+${buttonStep}`}
             >
               <Plus className="h-2.5 w-2.5" />
             </Button>
