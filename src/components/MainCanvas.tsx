@@ -291,12 +291,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Apply ink stamp effect
     if (effects.inkStamp.enabled) {
+      console.log('Applying ink stamp effect', effects.inkStamp);
       const hex = effects.inkStamp.color.replace('#', '');
       const stampR = parseInt(hex.substr(0, 2), 16);
       const stampG = parseInt(hex.substr(2, 2), 16);
       const stampB = parseInt(hex.substr(4, 2), 16);
       const threshold = (100 - effects.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
 
+      let processedPixels = 0;
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] > 0) { // Only process non-transparent pixels
           const r = data[i];
@@ -312,12 +314,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             data[i + 1] = stampG;
             data[i + 2] = stampB;
             data[i + 3] = 255; // Fully opaque
+            processedPixels++;
           } else {
             // Light areas become transparent
             data[i + 3] = 0;
           }
         }
       }
+      console.log('Ink stamp processed', processedPixels, 'pixels with threshold', threshold);
     }
     }
 
