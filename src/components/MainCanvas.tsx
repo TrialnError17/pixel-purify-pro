@@ -563,6 +563,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
+        setLastProcessedImageData(image.processedData!);
       });
       return;
     }
@@ -573,6 +574,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
+        setLastProcessedImageData(image.processedData!);
       });
       
       // Store as original data if not set
@@ -634,16 +636,26 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image]);
 
-  // Debounced processing to prevent flashing
+  // Debounced processing state to prevent flashing
+  const [debouncedProcessing, setDebouncedProcessing] = useState(false);
+  const [lastProcessedImageData, setLastProcessedImageData] = useState<ImageData | null>(null);
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced processing to prevent flashing - increased to 300ms as requested
   const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
     return new Promise<ImageData>((resolve) => {
-      const timeoutId = setTimeout(() => {
-        const result = processImageData(imageData, colorSettings, effectSettings);
-        resolve(result);
-      }, 50); // 50ms debounce
+      // Clear any existing timeout
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
       
-      // Return cleanup function
-      return () => clearTimeout(timeoutId);
+      setDebouncedProcessing(true);
+      
+      processingTimeoutRef.current = setTimeout(() => {
+        const result = processImageData(imageData, colorSettings, effectSettings);
+        setDebouncedProcessing(false);
+        resolve(result);
+      }, 300); // 300ms debounce as requested
     });
   }, [processImageData]);
 
@@ -664,6 +676,23 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     console.log('Auto-processing triggered');
     setIsProcessing(true);
+
+    // Store the current processed image data before starting new processing
+    // This prevents the original image from flashing during processing
+    if (!debouncedProcessing && !lastProcessedImageData) {
+      const currentCanvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setLastProcessedImageData(currentCanvasData);
+    }
+    
+    // During debounced processing, keep the last processed image visible
+    // Don't allow the canvas to revert to original image
+    if (debouncedProcessing && lastProcessedImageData) {
+      requestAnimationFrame(() => {
+        ctx.putImageData(lastProcessedImageData, 0, 0);
+      });
+      setIsProcessing(false);
+      return;
+    }
 
     // Use manual image data if available, otherwise original
     const baseImageData = manualImageData || originalImageData;
@@ -698,7 +727,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           // Use requestAnimationFrame to ensure smooth canvas update
           requestAnimationFrame(() => {
             ctx.putImageData(processedData, 0, 0);
+            // Update our stored processed image data
+            setLastProcessedImageData(processedData);
           });
+        }
+        
+        // Update the image object with the new processed data
+        if (image) {
+          const updatedImage = { ...image, processedData };
+          onImageUpdate(updatedImage);
         }
       } else {
         console.log('Skipping auto-processed data application');
@@ -709,7 +746,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
+    // Cleanup function to clear timeout on unmount or dependency change
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+        processingTimeoutRef.current = null;
+      }
+    };
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, debouncedProcessing, image, onImageUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
