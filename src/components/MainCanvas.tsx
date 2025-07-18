@@ -738,8 +738,28 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       edgeCleanupEnabled: edgeCleanupSettings.enabled
     });
     
-    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || isProcessing) {
+    if (!originalImageData || !canvasRef.current || isProcessing) {
       console.log('Early return - missing requirements or processing in progress');
+      return;
+    }
+    
+    // Special case: Apply edge cleanup to manual edits
+    if (hasManualEditsRef.current && edgeCleanupSettings.enabled && manualImageData) {
+      console.log('Applying edge cleanup to manual edits');
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      const processedData = processEdgeCleanup(manualImageData, edgeCleanupSettings);
+      ctx.putImageData(processedData, 0, 0);
+      
+      // Update manual image data with edge cleanup applied
+      setManualImageData(processedData);
+      return;
+    }
+    
+    if (hasManualEditsRef.current) {
+      console.log('Early return - has manual edits, no edge cleanup to apply');
       return;
     }
     
