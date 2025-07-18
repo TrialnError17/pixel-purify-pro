@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
-import { VerticalSlider } from '@/components/ui/vertical-slider';
+import { GraphicEQBand } from '@/components/ui/graphic-eq-band';
 import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -608,110 +608,38 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           
           {effectSettings.imageEffects.enabled && (
             <CardContent className="pt-0 space-y-4">
-              {/* Parametric EQ Style Controls */}
-              <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                <div className="flex items-start justify-between gap-6 h-40">
-                  {/* Brightness */}
-                  <div className="flex flex-col items-center flex-1">
-                    <Label className="text-xs font-medium mb-3 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center h-4">
-                      ☀️ Brightness
-                    </Label>
-                    <div className="flex flex-col items-center justify-center flex-1">
-                      <div className="relative h-24 flex items-center justify-center">
-                        <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
-                        <VerticalSlider
-                          value={[effectSettings.imageEffects.brightness]}
-                          onValueChange={([brightness]) => updateImageEffects({ brightness })}
-                          min={-100}
-                          max={70}
-                          step={1}
-                          className="h-24"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 mt-3">
-                      <div className="text-xs text-muted-foreground font-mono h-4 flex items-center">
-                        {effectSettings.imageEffects.brightness}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateImageEffects({ brightness: 0 })}
-                        className="h-5 w-12 p-0 text-xs"
-                        title="Reset to 0"
-                      >
-                        ZERO
-                      </Button>
-                    </div>
-                  </div>
+              {/* Graphic EQ Style Controls */}
+              <div className="p-4 bg-gradient-to-br from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/30 shadow-lg">
+                <div className="flex items-start justify-center gap-8">
+                  {/* Brightness EQ Band */}
+                  <GraphicEQBand
+                    label="☀️ BRIGHT"
+                    value={effectSettings.imageEffects.brightness}
+                    onValueChange={(brightness) => updateImageEffects({ brightness })}
+                    min={-100}
+                    max={70}
+                    step={1}
+                  />
 
-                  {/* Contrast */}
-                  <div className="flex flex-col items-center flex-1">
-                    <Label className="text-xs font-medium mb-3 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center h-4">
-                      🎛️ Contrast
-                    </Label>
-                    <div className="flex flex-col items-center justify-center flex-1">
-                      <div className="relative h-24 flex items-center justify-center">
-                        <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
-                        <VerticalSlider
-                          value={[effectSettings.imageEffects.contrast]}
-                          onValueChange={([contrast]) => updateImageEffects({ contrast })}
-                          min={-100}
-                          max={100}
-                          step={1}
-                          className="h-24"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 mt-3">
-                      <div className="text-xs text-muted-foreground font-mono h-4 flex items-center">
-                        {effectSettings.imageEffects.contrast}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateImageEffects({ contrast: 0 })}
-                        className="h-5 w-12 p-0 text-xs"
-                        title="Reset to 0"
-                      >
-                        ZERO
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Contrast EQ Band */}
+                  <GraphicEQBand
+                    label="🎛️ CONTRAST"
+                    value={effectSettings.imageEffects.contrast}
+                    onValueChange={(contrast) => updateImageEffects({ contrast })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                  />
 
-                  {/* Vibrance */}
-                  <div className="flex flex-col items-center flex-1">
-                    <Label className="text-xs font-medium mb-3 bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent text-center h-4">
-                      🌈 Vibrance
-                    </Label>
-                    <div className="flex flex-col items-center justify-center flex-1">
-                      <div className="relative h-24 flex items-center justify-center">
-                        <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
-                        <VerticalSlider
-                          value={[effectSettings.imageEffects.vibrance]}
-                          onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
-                          min={-100}
-                          max={100}
-                          step={1}
-                          className="h-24"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-1 mt-3">
-                      <div className="text-xs text-muted-foreground font-mono h-4 flex items-center">
-                        {-effectSettings.imageEffects.vibrance}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateImageEffects({ vibrance: 0 })}
-                        className="h-5 w-12 p-0 text-xs"
-                        title="Reset to 0"
-                      >
-                        ZERO
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Vibrance EQ Band */}
+                  <GraphicEQBand
+                    label="🌈 VIBRANCE"
+                    value={-effectSettings.imageEffects.vibrance}
+                    onValueChange={(vibrance) => updateImageEffects({ vibrance: -vibrance })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                  />
                 </div>
               </div>
 
