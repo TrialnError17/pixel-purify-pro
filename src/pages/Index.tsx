@@ -246,7 +246,7 @@ const Index = () => {
   }, [images, selectedImageId, addUndoAction]);
 
   return (
-    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-hidden">
+    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-x-auto overflow-y-hidden" style={{ minWidth: '1280px' }}>
       {/* Main App Content */}
       <div 
         className="flex-1 flex flex-col overflow-hidden"
