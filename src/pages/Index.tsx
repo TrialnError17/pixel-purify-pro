@@ -302,8 +302,9 @@ const Index = () => {
         />
         
         <div className="flex flex-1 min-h-0 overflow-hidden relative">
-          {/* Left Tools Sidebar - Full Height with disabled state */}
-          <LeftSidebar 
+          {/* Left Tools Sidebar - Hidden on mobile, visible on larger screens */}
+          <div className="hidden lg:block">
+            <LeftSidebar
             disabled={isAnyImageProcessing}
             settings={colorSettings}
             onSettingsChange={(newSettings) => {
@@ -397,9 +398,10 @@ const Index = () => {
                 undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
               });
             }}
-            onAddImages={handleFileInput}
-            onAddFolder={handleFolderInput}
-          />
+             onAddImages={handleFileInput}
+             onAddFolder={handleFolderInput}
+           />
+           </div>
           
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
