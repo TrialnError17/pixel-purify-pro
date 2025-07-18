@@ -36,7 +36,7 @@ export const SliderWithInput = React.forwardRef<
   disabled = false,
   ...props 
 }, ref) => {
-  const currentValue = value[0] || min
+  const currentValue = value[0] ?? 0
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value)
@@ -56,11 +56,13 @@ export const SliderWithInput = React.forwardRef<
 
   const increment = () => {
     const newValue = Math.min(max, currentValue + step)
+    console.log('Increment:', { currentValue, step, newValue, min, max })
     onValueChange([newValue])
   }
 
   const decrement = () => {
     const newValue = Math.max(min, currentValue - step)
+    console.log('Decrement:', { currentValue, step, newValue, min, max })
     onValueChange([newValue])
   }
 

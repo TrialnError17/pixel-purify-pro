@@ -614,7 +614,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
                   <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-border transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
                     <SliderWithInput
                       value={[effectSettings.imageEffects.brightness]}
                       onValueChange={([brightness]) => updateImageEffects({ brightness })}
@@ -633,7 +633,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
                   <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-border transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
                     <SliderWithInput
                       value={[effectSettings.imageEffects.contrast]}
                       onValueChange={([contrast]) => updateImageEffects({ contrast })}
@@ -652,7 +652,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
                   <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-border transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
                     <SliderWithInput
                       value={[effectSettings.imageEffects.vibrance]}
                       onValueChange={([vibrance]) => updateImageEffects({ vibrance })}
