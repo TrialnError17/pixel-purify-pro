@@ -451,6 +451,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     min={0}
                     max={10}
                     step={1}
+                    buttonStep={1}
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
                   />
                 </div>
