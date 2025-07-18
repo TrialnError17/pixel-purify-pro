@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { HueSlider } from '@/components/ui/hue-slider';
+import { StudioKnob } from '@/components/ui/studio-knob';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -617,85 +618,82 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </CardHeader>
           
           {effectSettings.imageEffects.enabled && (
-            <CardContent className="pt-0 space-y-4">
-              {/* Brightness */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  ☀️ Brightness
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
-                    <SliderWithInput
-                      value={[effectSettings.imageEffects.brightness]}
-                      onValueChange={([brightness]) => updateImageEffects({ brightness })}
-                      min={-100}
-                      max={70}
-                      step={1}
-                      buttonStep={5}
-                      defaultValue={0}
-                      showReset={true}
-                    />
-                  </div>
+            <CardContent className="pt-0">
+              {/* Studio Control Section */}
+              <div className="bg-gradient-to-br from-card via-muted/30 to-card p-4 rounded-lg border border-accent-blue/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                <div className="text-center mb-6">
+                  <div className="text-sm font-bold text-foreground mb-1">🎚️ STUDIO EFFECTS</div>
+                  <div className="h-px bg-gradient-to-r from-transparent via-accent-blue to-transparent opacity-50"></div>
                 </div>
-              </div>
-
-              {/* Contrast */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  🎛️ Contrast
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
-                    <SliderWithInput
-                      value={[effectSettings.imageEffects.contrast]}
-                      onValueChange={([contrast]) => updateImageEffects({ contrast })}
-                      min={-100}
-                      max={100}
-                      step={1}
-                      buttonStep={5}
-                      defaultValue={0}
-                      showReset={true}
-                    />
-                  </div>
+                
+                {/* Studio knobs grid */}
+                <div className="grid grid-cols-2 gap-6">
+                  <StudioKnob
+                    value={effectSettings.imageEffects.brightness}
+                    onChange={(brightness) => updateImageEffects({ brightness })}
+                    min={-100}
+                    max={70}
+                    step={1}
+                    defaultValue={0}
+                    label="BRIGHT"
+                    icon="☀️"
+                    accentColor="accent-yellow"
+                  />
+                  
+                  <StudioKnob
+                    value={effectSettings.imageEffects.contrast}
+                    onChange={(contrast) => updateImageEffects({ contrast })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    defaultValue={0}
+                    label="CONTRAST"
+                    icon="🎛️"
+                    accentColor="accent-orange"
+                  />
+                  
+                  <StudioKnob
+                    value={effectSettings.imageEffects.vibrance}
+                    onChange={(vibrance) => updateImageEffects({ vibrance: -vibrance })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    defaultValue={0}
+                    label="VIBRANCE"
+                    icon="🌈"
+                    accentColor="accent-purple"
+                  />
+                  
+                  <StudioKnob
+                    value={effectSettings.imageEffects.hue}
+                    onChange={(hue) => updateImageEffects({ hue })}
+                    min={-180}
+                    max={180}
+                    step={1}
+                    defaultValue={0}
+                    label="HUE"
+                    icon="🎨"
+                    accentColor="accent-cyan"
+                  />
                 </div>
-              </div>
-
-              {/* Vibrance */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  🌈 Vibrance
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-foreground/30 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
-                    <SliderWithInput
-                      value={[effectSettings.imageEffects.vibrance]}
-                      onValueChange={([vibrance]) => updateImageEffects({ vibrance: -vibrance })}
-                      min={-100}
-                      max={100}
-                      step={1}
-                      buttonStep={5}
-                      defaultValue={0}
-                      showReset={true}
-                    />
+                
+                {/* Studio status lights */}
+                <div className="flex justify-center items-center mt-6 gap-3">
+                  <div className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.brightness !== 0 ? 'bg-accent-yellow shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
+                    <span className="text-xs text-muted-foreground">BRIGHT</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Hue */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
-                  🎨 Hue Shift
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <div className="relative">
-                    <HueSlider
-                      value={[effectSettings.imageEffects.hue]}
-                      onValueChange={([hue]) => updateImageEffects({ hue })}
-                      defaultValue={0}
-                    />
+                  <div className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.contrast !== 0 ? 'bg-accent-orange shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
+                    <span className="text-xs text-muted-foreground">CONT</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.vibrance !== 0 ? 'bg-accent-purple shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
+                    <span className="text-xs text-muted-foreground">VIB</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className={`w-2 h-2 rounded-full ${effectSettings.imageEffects.hue !== 0 ? 'bg-accent-cyan shadow-[0_0_6px_currentColor]' : 'bg-muted/30'} transition-all duration-200`}></div>
+                    <span className="text-xs text-muted-foreground">HUE</span>
                   </div>
                 </div>
               </div>
