@@ -1010,8 +1010,26 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
       
+      // Get the image data after magic wand removal
+      let newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // If speckle tools are enabled, apply speckle processing to clean up new speckles
+      if (speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks)) {
+        console.log('Running speckle processing after magic wand removal');
+        const speckleResult = processSpecks(newImageData, speckleSettings);
+        newImageData = speckleResult.processedData;
+        
+        // Update speck count
+        if (onSpeckCountUpdate) {
+          onSpeckCountUpdate(speckleResult.speckCount);
+        }
+        
+        // Apply the speckle-processed data back to canvas
+        ctx.putImageData(newImageData, 0, 0);
+        console.log('Speckle processing completed after magic wand');
+      }
+      
       // Store the manually edited result as base for future operations
-      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setManualImageData(newImageData);
       console.log('Stored manual image data');
       
