@@ -152,7 +152,7 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 2
+    trimRadius: 1
   });
 
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
