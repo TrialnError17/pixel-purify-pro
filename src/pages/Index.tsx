@@ -50,6 +50,21 @@ export interface EffectSettings {
     color: string;
     threshold: number;
   };
+  imageEffects: {
+    enabled: boolean;
+    brightness: number;
+    contrast: number;
+    vibrance: number;
+    hue: number;
+    colorize: {
+      enabled: boolean;
+      hue: number;
+      lightness: number;
+      saturation: number;
+    };
+    blackAndWhite: boolean;
+    invert: boolean;
+  };
   download: {
     trimTransparentPixels: boolean;
   };
@@ -103,16 +118,31 @@ const Index = () => {
     background: {
       enabled: false,
       color: '#ffffff',
-      saveWithBackground: false
+      saveWithBackground: false,
     },
     inkStamp: {
       enabled: false,
       color: '#000000',
-      threshold: 50
+      threshold: 50,
+    },
+    imageEffects: {
+      enabled: false,
+      brightness: 0,
+      contrast: 0,
+      vibrance: 0,
+      hue: 0,
+      colorize: {
+        enabled: false,
+        hue: 0,
+        lightness: 50,
+        saturation: 50,
+      },
+      blackAndWhite: false,
+      invert: false,
     },
     download: {
-      trimTransparentPixels: false
-    }
+      trimTransparentPixels: false,
+    },
   });
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
