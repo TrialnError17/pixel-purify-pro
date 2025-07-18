@@ -890,6 +890,36 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         console.log('Ink stamp and/or image effects applied to manual edits');
       }
       
+      // Handle edge cleanup
+      if (needsEdgeCleanup) {
+        console.log('Manual edits detected, applying edge cleanup');
+        
+        // Get the current canvas data after all previous processing
+        currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Store pre-edge-cleanup state if we haven't already
+        if (!preEdgeCleanupImageData) {
+          setPreEdgeCleanupImageData(currentImageData);
+          console.log('Stored pre-edge-cleanup state');
+        }
+        
+        // Apply edge cleanup to the pre-edge-cleanup data (original manual edits)
+        const baseData = preEdgeCleanupImageData || currentImageData;
+        const edgeCleanedData = processEdgeCleanup(baseData, edgeCleanupSettings);
+        
+        // Apply the result back to canvas
+        ctx.putImageData(edgeCleanedData, 0, 0);
+        console.log('Edge cleanup applied to manual edits');
+      } else if (needsEdgeRestore) {
+        console.log('Edge cleanup disabled, restoring pre-edge-cleanup state');
+        
+        // Restore the pre-edge-cleanup state if available
+        if (preEdgeCleanupImageData) {
+          ctx.putImageData(preEdgeCleanupImageData, 0, 0);
+          console.log('Restored pre-edge-cleanup state');
+        }
+      }
+      
       setIsProcessing(false);
       isProcessingEdgeCleanupRef.current = false;
       return;
