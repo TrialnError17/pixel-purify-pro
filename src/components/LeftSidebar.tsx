@@ -722,17 +722,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                           }}
                           className="w-8 h-6 rounded border border-accent-purple cursor-pointer"
                         />
-                        <SliderWithInput
-                          value={[effectSettings.imageEffects.colorize.hue]}
-                          onValueChange={([hue]) => updateImageEffects({ 
-                            colorize: { ...effectSettings.imageEffects.colorize, hue }
-                          })}
-                          min={0}
-                          max={360}
-                          step={1}
-                          className="flex-1"
-                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
-                        />
+                         <HueSlider
+                           value={[effectSettings.imageEffects.colorize.hue]}
+                           onValueChange={([hue]) => updateImageEffects({ 
+                             colorize: { ...effectSettings.imageEffects.colorize, hue }
+                           })}
+                           defaultValue={0}
+                           className="flex-1"
+                         />
                       </div>
                     </div>
                     
