@@ -1415,10 +1415,18 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           onSpeckCountUpdate(speckleResult.speckCount);
         }
         
-        // Apply the speckle-processed data back to canvas
-        ctx.putImageData(newImageData, 0, 0);
         console.log('Speckle processing completed after magic wand');
       }
+      
+      // Apply edge cleanup if enabled
+      if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
+        console.log('Running edge cleanup after magic wand removal');
+        newImageData = processEdgeCleanup(newImageData, edgeCleanupSettings);
+        console.log('Edge cleanup completed after magic wand');
+      }
+      
+      // Apply the processed data back to canvas
+      ctx.putImageData(newImageData, 0, 0);
       
       // Store the manually edited result as base for future operations
       setManualImageData(newImageData);
