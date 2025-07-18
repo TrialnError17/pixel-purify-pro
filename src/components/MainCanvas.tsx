@@ -315,8 +315,145 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
     }
 
+    // Apply image effects at the end of the processing chain
+    if (effects.imageEffects.enabled) {
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) continue; // Skip transparent pixels
+        
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
+
+        // Apply brightness
+        if (effects.imageEffects.brightness !== 0) {
+          const brightness = effects.imageEffects.brightness * 2.55; // Scale to 0-255
+          r = Math.max(0, Math.min(255, r + brightness));
+          g = Math.max(0, Math.min(255, g + brightness));
+          b = Math.max(0, Math.min(255, b + brightness));
+        }
+
+        // Apply contrast
+        if (effects.imageEffects.contrast !== 0) {
+          const contrast = (effects.imageEffects.contrast + 100) / 100; // Convert to multiplier
+          r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
+          g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
+          b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
+        }
+
+        // Apply vibrance (enhance muted colors)
+        if (effects.imageEffects.vibrance !== 0) {
+          const max = Math.max(r, g, b);
+          const avg = (r + g + b) / 3;
+          const amt = ((Math.abs(max - avg) * 2 / 255) * (effects.imageEffects.vibrance / 100));
+          
+          if (r !== max) r += (max - r) * amt;
+          if (g !== max) g += (max - g) * amt;
+          if (b !== max) b += (max - b) * amt;
+          
+          r = Math.max(0, Math.min(255, r));
+          g = Math.max(0, Math.min(255, g));
+          b = Math.max(0, Math.min(255, b));
+        }
+
+        // Apply hue shift
+        if (effects.imageEffects.hue !== 0) {
+          const [h, s, l] = rgbToHsl(r, g, b);
+          const newHue = (h + effects.imageEffects.hue) % 360;
+          [r, g, b] = hslToRgb(newHue, s, l);
+        }
+
+        // Apply colorize
+        if (effects.imageEffects.colorize.enabled) {
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          const [colorR, colorG, colorB] = hslToRgb(
+            effects.imageEffects.colorize.hue,
+            effects.imageEffects.colorize.saturation / 100,
+            effects.imageEffects.colorize.lightness / 100
+          );
+          
+          // Blend with original based on lightness
+          const blend = 0.5;
+          r = Math.max(0, Math.min(255, gray * (1 - blend) + colorR * blend));
+          g = Math.max(0, Math.min(255, gray * (1 - blend) + colorG * blend));
+          b = Math.max(0, Math.min(255, gray * (1 - blend) + colorB * blend));
+        }
+
+        // Apply black and white
+        if (effects.imageEffects.blackAndWhite) {
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          r = g = b = gray;
+        }
+
+        // Apply invert
+        if (effects.imageEffects.invert) {
+          r = 255 - r;
+          g = 255 - g;
+          b = 255 - b;
+        }
+
+        data[i] = Math.round(r);
+        data[i + 1] = Math.round(g);
+        data[i + 2] = Math.round(b);
+      }
+    }
+
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
+
+  // Helper functions for HSL conversion
+  const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+    
+    if (diff !== 0) {
+      s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+      
+      switch (max) {
+        case r: h = (g - b) / diff + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / diff + 2; break;
+        case b: h = (r - g) / diff + 4; break;
+      }
+      h /= 6;
+    }
+    
+    return [h * 360, s, l];
+  };
+
+  const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+    h /= 360;
+    
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    
+    if (s === 0) {
+      const gray = l * 255;
+      return [gray, gray, gray];
+    }
+    
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    
+    const r = hue2rgb(p, q, h + 1/3) * 255;
+    const g = hue2rgb(p, q, h) * 255;
+    const b = hue2rgb(p, q, h - 1/3) * 255;
+    
+    return [r, g, b];
+  };
 
   // Edge cleanup processing function
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {

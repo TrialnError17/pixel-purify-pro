@@ -663,19 +663,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
                   <div className="relative">
-                    <div 
-                      className="h-3 rounded-full mb-3"
-                      style={{
-                        background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)'
-                      }}
-                    />
                     <SliderWithInput
                       value={[effectSettings.imageEffects.hue]}
                       onValueChange={([hue]) => updateImageEffects({ hue })}
                       min={0}
                       max={360}
                       step={1}
-                      sliderClassName="[&_.slider-track]:bg-transparent [&_.slider-range]:bg-transparent [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-lg"
+                      sliderClassName="[&_.slider-track]:h-4 [&_.slider-track]:bg-gradient-to-r [&_.slider-track]:from-red-500 [&_.slider-track]:via-yellow-500 [&_.slider-track]:via-green-500 [&_.slider-track]:via-cyan-500 [&_.slider-track]:via-blue-500 [&_.slider-track]:via-purple-500 [&_.slider-track]:to-red-500 [&_.slider-range]:bg-transparent [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-white [&_[role=slider]]:shadow-lg [&_[role=slider]]:w-6 [&_[role=slider]]:h-6"
                     />
                   </div>
                 </div>
