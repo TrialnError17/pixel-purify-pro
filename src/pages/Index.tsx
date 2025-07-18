@@ -365,7 +365,7 @@ const Index = () => {
             onAddFolder={handleFolderInput}
           />
           
-          {/* Main Content Area */}
+          {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
             <MainCanvas 
               image={selectedImage}
@@ -408,103 +408,103 @@ const Index = () => {
               addUndoAction={addUndoAction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
-          </div>
-          
-          {/* Image Queue - Between sidebars */}
-          <ImageQueue 
-            images={images}
-            selectedImageId={selectedImageId}
-            visible={queueVisible}
-            onToggleVisible={() => setQueueVisible(!queueVisible)}
-            onSelectImage={setSelectedImageId}
-            singleImageProgress={singleImageProgress}
-            processingProgress={
-              isProcessing 
-                  ? {
-                    current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                    total: images.filter(img => img.status !== 'error').length
-                  }
-                : undefined
-            }
-            isFullscreen={isQueueFullscreen}
-            onSetFullscreen={setIsQueueFullscreen}
-            onRemoveImage={(imageId) => {
-              const targetImage = images.find(img => img.id === imageId);
-              if (!targetImage) return;
-              
-              const prevImages = [...images];
-              const prevSelectedId = selectedImageId;
-              
-              // Remove the image
-              setImages(prev => prev.filter(img => img.id !== imageId));
-              
-              // If removing selected image, select the next one or previous one
-              if (selectedImageId === imageId) {
-                const currentIndex = images.findIndex(img => img.id === imageId);
-                const remainingImages = images.filter(img => img.id !== imageId);
-                
-                if (remainingImages.length > 0) {
-                  // Select next image, or previous if we're at the end
-                  const nextIndex = currentIndex < remainingImages.length ? currentIndex : currentIndex - 1;
-                  setSelectedImageId(remainingImages[nextIndex]?.id || null);
-                } else {
-                  setSelectedImageId(null);
-                }
+            
+            {/* Image Queue - At bottom between sidebars */}
+            <ImageQueue 
+              images={images}
+              selectedImageId={selectedImageId}
+              visible={queueVisible}
+              onToggleVisible={() => setQueueVisible(!queueVisible)}
+              onSelectImage={setSelectedImageId}
+              singleImageProgress={singleImageProgress}
+              processingProgress={
+                isProcessing 
+                    ? {
+                      current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
+                      total: images.filter(img => img.status !== 'error').length
+                    }
+                  : undefined
               }
-              
-              // Add undo action
-              addUndoAction({
-                type: 'canvas_edit',
-                description: `Remove ${targetImage.name}`,
-                undo: () => {
-                  setImages(prevImages);
-                  setSelectedImageId(prevSelectedId);
+              isFullscreen={isQueueFullscreen}
+              onSetFullscreen={setIsQueueFullscreen}
+              onRemoveImage={(imageId) => {
+                const targetImage = images.find(img => img.id === imageId);
+                if (!targetImage) return;
+                
+                const prevImages = [...images];
+                const prevSelectedId = selectedImageId;
+                
+                // Remove the image
+                setImages(prev => prev.filter(img => img.id !== imageId));
+                
+                // If removing selected image, select the next one or previous one
+                if (selectedImageId === imageId) {
+                  const currentIndex = images.findIndex(img => img.id === imageId);
+                  const remainingImages = images.filter(img => img.id !== imageId);
+                  
+                  if (remainingImages.length > 0) {
+                    // Select next image, or previous if we're at the end
+                    const nextIndex = currentIndex < remainingImages.length ? currentIndex : currentIndex - 1;
+                    setSelectedImageId(remainingImages[nextIndex]?.id || null);
+                  } else {
+                    setSelectedImageId(null);
+                  }
                 }
-              });
-            }}
-            onProcessAll={() => {
-              const prevImages = [...images];
-              
-              // Add undo action for batch processing
-              addUndoAction({
-                type: 'batch_operation',
-                description: `Process ${images.length} image${images.length !== 1 ? 's' : ''}`,
-                undo: () => {
-                  setImages(prevImages);
-                }
-              });
-              
-              setIsProcessing(true);
-              processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
-                setIsProcessing(false);
-              });
-            }}
-            onProcessImage={(image) => {
-              setIsProcessing(true);
-              processImage(image, colorSettings, effectSettings, setImages).then(() => {
-                // After processing is complete, automatically download the image
-                // Find the processed image in the updated state
-                setImages(currentImages => {
-                  const processedImage = currentImages.find(img => img.id === image.id);
-                   if (processedImage && processedImage.status === 'completed') {
-                     // Trigger download
-                     downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
-                   }
-                  return currentImages;
+                
+                // Add undo action
+                addUndoAction({
+                  type: 'canvas_edit',
+                  description: `Remove ${targetImage.name}`,
+                  undo: () => {
+                    setImages(prevImages);
+                    setSelectedImageId(prevSelectedId);
+                  }
                 });
-              }).finally(() => {
+              }}
+              onProcessAll={() => {
+                const prevImages = [...images];
+                
+                // Add undo action for batch processing
+                addUndoAction({
+                  type: 'batch_operation',
+                  description: `Process ${images.length} image${images.length !== 1 ? 's' : ''}`,
+                  undo: () => {
+                    setImages(prevImages);
+                  }
+                });
+                
+                setIsProcessing(true);
+                processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
+                  setIsProcessing(false);
+                });
+              }}
+              onProcessImage={(image) => {
+                setIsProcessing(true);
+                processImage(image, colorSettings, effectSettings, setImages).then(() => {
+                  // After processing is complete, automatically download the image
+                  // Find the processed image in the updated state
+                  setImages(currentImages => {
+                    const processedImage = currentImages.find(img => img.id === image.id);
+                     if (processedImage && processedImage.status === 'completed') {
+                       // Trigger download
+                       downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
+                     }
+                    return currentImages;
+                  });
+                }).finally(() => {
+                  setIsProcessing(false);
+                });
+              }}
+              onCancelProcessing={() => {
+                cancelProcessing();
                 setIsProcessing(false);
-              });
-            }}
-            onCancelProcessing={() => {
-              cancelProcessing();
-              setIsProcessing(false);
-              // Removed cancel toast
-            }}
-            isProcessing={isProcessing}
-            forceFullscreen={isProcessing}
-            onClearAll={handleClearAll}
-          />
+                // Removed cancel toast
+              }}
+              isProcessing={isProcessing}
+              forceFullscreen={isProcessing}
+              onClearAll={handleClearAll}
+            />
+          </div>
         </div>
         
         <input
