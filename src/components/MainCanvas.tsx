@@ -81,6 +81,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  
+  // Triple-click detection state
+  const [clickCount, setClickCount] = useState(0);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Color processing functions
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -620,12 +624,49 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [undoStack, redoStack]);
 
+  // Define handleFitToScreen before it's used in handleCanvasClick
+  const handleFitToScreen = useCallback(() => {
+    if (!containerRef.current || !canvasRef.current) return;
+    
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const scaleX = (containerRect.width - 40) / canvas.width;
+    const scaleY = (containerRect.height - 40) / canvas.height;
+    const scale = Math.min(scaleX, scaleY, 1);
+    
+    // Calculate center position
+    const centerX = (containerRect.width - canvas.width * scale) / 2;
+    const centerY = (containerRect.height - canvas.height * scale) / 2;
+    
+    setZoom(scale);
+    setPan({ x: 0, y: 0 });
+    setCenterOffset({ x: centerX, y: centerY });
+  }, []);
+
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Handle triple-click for fit to screen
+    setClickCount(prev => prev + 1);
+    
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+    
+    clickTimeoutRef.current = setTimeout(() => {
+      if (clickCount + 1 >= 3) {
+        // Triple-click detected - fit to screen
+        handleFitToScreen();
+        setClickCount(0);
+        return;
+      }
+      setClickCount(0);
+    }, 400); // 400ms timeout for triple-click detection
 
     // Get container bounds for proper coordinate calculation
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -783,7 +824,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }, 100);
       }
     }
-  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction]);
+  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1056,24 +1097,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     onImageUpdate(updatedImage);
   }, [redoStack, image, onImageUpdate]);
 
-  const handleFitToScreen = useCallback(() => {
-    if (!containerRef.current || !canvasRef.current) return;
-    
-    const container = containerRef.current;
-    const canvas = canvasRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const scaleX = (containerRect.width - 40) / canvas.width;
-    const scaleY = (containerRect.height - 40) / canvas.height;
-    const scale = Math.min(scaleX, scaleY, 1);
-    
-    // Calculate center position
-    const centerX = (containerRect.width - canvas.width * scale) / 2;
-    const centerY = (containerRect.height - canvas.height * scale) / 2;
-    
-    setZoom(scale);
-    setPan({ x: 0, y: 0 });
-    setCenterOffset({ x: centerX, y: centerY });
-  }, []);
 
   const handleReset = useCallback(() => {
     if (!originalImageData || !canvasRef.current) return;
