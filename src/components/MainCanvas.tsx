@@ -625,7 +625,41 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (settings.softening.enabled && settings.softening.iterations > 0) {
       console.log('Processing edge softening with iterations:', settings.softening.iterations);
       
-      // Helper function to calculate average color of neighboring pixels
+      // Helper function to check if a pixel is at an edge (has transparent neighbors)
+      const isEdgePixel = (x: number, y: number): boolean => {
+        const currentIndex = (y * width + x) * 4;
+        const currentAlpha = data[currentIndex + 3];
+        
+        // If current pixel is transparent, it's not an edge we want to soften
+        if (currentAlpha === 0) return false;
+        
+        // Check 3x3 neighborhood for transparency transitions
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue; // Skip center pixel
+            
+            const checkX = x + dx;
+            const checkY = y + dy;
+            
+            // Check bounds - treat out of bounds as transparent
+            if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+              return true;
+            }
+            
+            const neighborIndex = (checkY * width + checkX) * 4;
+            const neighborAlpha = data[neighborIndex + 3];
+            
+            // If we find a transparent neighbor, this is an edge pixel
+            if (neighborAlpha === 0) {
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      };
+      
+      // Helper function to calculate average color of neighboring opaque pixels
       const getNeighborAverage = (x: number, y: number): { r: number; g: number; b: number } => {
         let r = 0, g = 0, b = 0;
         let count = 0;
@@ -641,10 +675,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             // Bounds check
             if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
               const neighborIndex = (checkY * width + checkX) * 4;
-              r += data[neighborIndex];
-              g += data[neighborIndex + 1];
-              b += data[neighborIndex + 2];
-              count++;
+              const neighborAlpha = data[neighborIndex + 3];
+              
+              // Only include opaque neighbors in the average
+              if (neighborAlpha > 0) {
+                r += data[neighborIndex];
+                g += data[neighborIndex + 1];
+                b += data[neighborIndex + 2];
+                count++;
+              }
             }
           }
         }
@@ -660,23 +699,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       for (let iteration = 0; iteration < settings.softening.iterations; iteration++) {
         // Create a copy for this iteration
         const iterationData = new Uint8ClampedArray(data);
+        let edgePixelsProcessed = 0;
         
         for (let y = 1; y < height - 1; y++) {
           for (let x = 1; x < width - 1; x++) {
             const index = (y * width + x) * 4;
             
-            // Only process pixels that have some opacity
-            if (iterationData[index + 3] > 0) {
+            // Only process pixels that are at edges and have some opacity
+            if (iterationData[index + 3] > 0 && isEdgePixel(x, y)) {
               const neighbors = getNeighborAverage(x, y);
               
-              // Apply averaging to RGB channels
-              data[index] = neighbors.r;
-              data[index + 1] = neighbors.g;
-              data[index + 2] = neighbors.b;
-              // Alpha remains unchanged for edge softening
+              // Apply averaging to RGB channels only if we have neighbor data
+              if (neighbors.r > 0 || neighbors.g > 0 || neighbors.b > 0) {
+                data[index] = neighbors.r;
+                data[index + 1] = neighbors.g;
+                data[index + 2] = neighbors.b;
+                // Alpha remains unchanged for edge softening
+                edgePixelsProcessed++;
+              }
             }
           }
         }
+        
+        console.log(`Edge softening iteration ${iteration + 1} processed ${edgePixelsProcessed} edge pixels`);
       }
       
       console.log('Edge softening completed with', settings.softening.iterations, 'iterations');
