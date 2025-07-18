@@ -743,7 +743,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         min={0}
                         max={100}
                         step={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                        sliderClassName="[&>span:first-child]:bg-gradient-effect [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
                       />
                     </div>
                     
@@ -757,7 +757,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         min={0}
                         max={100}
                         step={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                        sliderClassName="[&>span:first-child]:bg-gradient-effect [&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
                       />
                     </div>
                   </div>
