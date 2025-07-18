@@ -435,11 +435,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Switch
-                    checked={edgeCleanupSettings.enabled}
-                    onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
-                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
-                  />
                   <Scissors className="w-4 h-4 text-accent-purple" />
                   <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
                     Edge Cleanup
@@ -447,32 +442,71 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </CardTitle>
               </CardHeader>
               
-              {edgeCleanupSettings.enabled && (
-                <CardContent className="pt-0 space-y-4">
-                  <div className="text-xs text-muted-foreground p-2 bg-accent-purple/5 rounded border border-accent-purple/20">
-                    ✂️ Removes residual color pixels along edges of non-transparent areas
-                  </div>
-
-                  {/* Edge Trim Radius Slider */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
-                      📏 Edge Trim Radius
+              <CardContent className="pt-0 space-y-4">
+                {/* Alpha Feathering */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={edgeCleanupSettings.enabled}
+                      onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                    />
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Alpha Feathering
                     </Label>
-                    <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
-                      <SliderWithInput
-                        value={[edgeCleanupSettings.trimRadius]}
-                        onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
-                        min={0}
-                        max={10}
-                        step={1}
-                        buttonStep={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
-                      />
-                    </div>
                   </div>
+                  {edgeCleanupSettings.enabled && (
+                    <div className="space-y-2 ml-6">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                        Feather Radius: {edgeCleanupSettings.trimRadius}px
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.trimRadius]}
+                          onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
+                          min={1}
+                          max={10}
+                          step={1}
+                          buttonStep={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                </CardContent>
-              )}
+                {/* Legacy Edge Smoothing */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={edgeCleanupSettings.legacyEnabled}
+                      onCheckedChange={(legacyEnabled) => updateEdgeCleanupSettings({ legacyEnabled })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                    />
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Legacy Smoothing
+                    </Label>
+                  </div>
+                  {edgeCleanupSettings.legacyEnabled && (
+                    <div className="space-y-2 ml-6">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                        Smooth Radius: {edgeCleanupSettings.legacyRadius}px
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.legacyRadius]}
+                          onValueChange={([legacyRadius]) => updateEdgeCleanupSettings({ legacyRadius })}
+                          min={1}
+                          max={5}
+                          step={1}
+                          buttonStep={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">

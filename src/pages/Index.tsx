@@ -76,6 +76,8 @@ export interface EffectSettings {
 export interface EdgeCleanupSettings {
   enabled: boolean;
   trimRadius: number;
+  legacyEnabled: boolean;
+  legacyRadius: number;
 }
 
 export interface ContiguousToolSettings {
@@ -153,7 +155,9 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 1
+    trimRadius: 3,
+    legacyEnabled: false,
+    legacyRadius: 2,
   });
 
   // Track if edge trim was auto-disabled by ink stamp

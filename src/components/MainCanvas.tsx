@@ -271,7 +271,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
 
     // Apply edge cleanup after color removal but before effects
-    if (edgeCleanupSettings.enabled) {
+    if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled) {
       const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
       data.set(edgeCleanupResult.data);
     }
@@ -471,10 +471,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Edge cleanup processing function
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
-    console.log('processEdgeCleanup called:', { enabled: settings.enabled, trimRadius: settings.trimRadius });
+    console.log('processEdgeCleanup called:', { 
+      alphaFeathering: settings.enabled, 
+      trimRadius: settings.trimRadius,
+      legacyEnabled: settings.legacyEnabled,
+      legacyRadius: settings.legacyRadius 
+    });
     
-    if (!settings.enabled) {
-      console.log('Edge cleanup disabled, returning original data');
+    if (!settings.enabled && !settings.legacyEnabled) {
+      console.log('Both edge cleanup methods disabled, returning original data');
       return imageData;
     }
 
@@ -482,8 +487,71 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
 
-    // Step 1: Alpha feathering (if radius > 0)
-    if (settings.trimRadius > 0) {
+    // Step 1: Legacy edge trimming (if enabled and radius > 0)
+    if (settings.legacyEnabled && settings.legacyRadius > 0) {
+      console.log('Processing legacy edge trimming with radius:', settings.legacyRadius);
+      const radius = settings.legacyRadius;
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = (y * width + x) * 4;
+          
+          if (data[index + 3] > 0) { // Only process non-transparent pixels
+            let hasTransparentNeighbor = false;
+            
+            // Check if pixel is near transparency
+            for (let dy = -radius; dy <= radius && !hasTransparentNeighbor; dy++) {
+              for (let dx = -radius; dx <= radius && !hasTransparentNeighbor; dx++) {
+                const checkX = x + dx;
+                const checkY = y + dy;
+                
+                if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+                  hasTransparentNeighbor = true;
+                } else {
+                  const checkIndex = (checkY * width + checkX) * 4;
+                  if (data[checkIndex + 3] === 0) {
+                    hasTransparentNeighbor = true;
+                  }
+                }
+              }
+            }
+            
+            if (hasTransparentNeighbor) {
+              // Average neighboring colors
+              let r = 0, g = 0, b = 0, count = 0;
+              
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  if (dx === 0 && dy === 0) continue;
+                  
+                  const neighborX = x + dx;
+                  const neighborY = y + dy;
+                  
+                  if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height) {
+                    const neighborIndex = (neighborY * width + neighborX) * 4;
+                    if (data[neighborIndex + 3] > 0) {
+                      r += data[neighborIndex];
+                      g += data[neighborIndex + 1];
+                      b += data[neighborIndex + 2];
+                      count++;
+                    }
+                  }
+                }
+              }
+              
+              if (count > 0) {
+                data[index] = r / count;
+                data[index + 1] = g / count;
+                data[index + 2] = b / count;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Step 2: Alpha feathering (if enabled and radius > 0)
+    if (settings.enabled && settings.trimRadius > 0) {
       console.log('Processing alpha feathering with radius:', settings.trimRadius);
       const radius = settings.trimRadius;
 
