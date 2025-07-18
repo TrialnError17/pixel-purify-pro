@@ -157,17 +157,19 @@ const Index = () => {
     },
   });
 
-  // Permanent edge cleanup settings - always enabled with optimal values
-  const [edgeCleanupSettings] = useState<EdgeCleanupSettings>({
-    enabled: true,      // Alpha feathering permanently enabled
-    trimRadius: 5,      // Max feathering radius for best quality
+  const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
+    enabled: false,
+    trimRadius: 3,
     legacyEnabled: false,
     legacyRadius: 2,
     softening: {
-      enabled: true,    // Edge softening permanently enabled
-      iterations: 5,    // Max iterations for best quality
+      enabled: false,
+      iterations: 1,
     },
   });
+
+  // Track if edge trim was auto-disabled by ink stamp
+  const [edgeTrimAutoDisabled, setEdgeTrimAutoDisabled] = useState(false);
 
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
   const { processSpecks } = useSpeckleTools();
@@ -377,6 +379,27 @@ const Index = () => {
             effectSettings={effectSettings}
             onEffectSettingsChange={(newEffectSettings) => {
               const prevEffectSettings = { ...effectSettings };
+              const prevEdgeCleanupSettings = { ...edgeCleanupSettings };
+              const prevEdgeTrimAutoDisabled = edgeTrimAutoDisabled;
+              
+              // Check if ink stamp is being turned on
+              if (!effectSettings.inkStamp.enabled && newEffectSettings.inkStamp.enabled) {
+                // Ink stamp is being turned ON
+                if (edgeCleanupSettings.enabled) {
+                  // Edge trim is currently enabled, auto-disable it
+                  setEdgeCleanupSettings(prev => ({ ...prev, enabled: false }));
+                  setEdgeTrimAutoDisabled(true);
+                }
+              }
+              // Check if ink stamp is being turned off
+              else if (effectSettings.inkStamp.enabled && !newEffectSettings.inkStamp.enabled) {
+                // Ink stamp is being turned OFF
+                if (edgeTrimAutoDisabled) {
+                  // We auto-disabled edge trim, so re-enable it
+                  setEdgeCleanupSettings(prev => ({ ...prev, enabled: true }));
+                  setEdgeTrimAutoDisabled(false);
+                }
+              }
               
               setEffectSettings(newEffectSettings);
               
@@ -386,6 +409,8 @@ const Index = () => {
                 description: 'Change effect settings',
                 undo: () => {
                   setEffectSettings(prevEffectSettings);
+                  setEdgeCleanupSettings(prevEdgeCleanupSettings);
+                  setEdgeTrimAutoDisabled(prevEdgeTrimAutoDisabled);
                 }
               });
             }}
@@ -402,6 +427,17 @@ const Index = () => {
               });
             }}
             edgeCleanupSettings={edgeCleanupSettings}
+            onEdgeCleanupSettingsChange={(newEdgeCleanupSettings) => {
+              const prevEdgeCleanupSettings = { ...edgeCleanupSettings };
+              setEdgeCleanupSettings(newEdgeCleanupSettings);
+              
+              // Add undo action for edge cleanup settings changes
+              addUndoAction({
+                type: 'settings',
+                description: 'Change edge cleanup settings',
+                undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
+              });
+            }}
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}

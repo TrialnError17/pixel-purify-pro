@@ -23,6 +23,7 @@ interface LeftSidebarProps {
   contiguousSettings: ContiguousToolSettings;
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
   edgeCleanupSettings: EdgeCleanupSettings;
+  onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
   currentTool: 'pan' | 'color-stack' | 'magic-wand';
   onAddImages: () => void;
   onAddFolder: () => void;
@@ -39,6 +40,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   contiguousSettings,
   onContiguousSettingsChange,
   edgeCleanupSettings,
+  onEdgeCleanupSettingsChange,
   currentTool,
   onAddImages,
   onAddFolder
@@ -104,6 +106,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     onContiguousSettingsChange({ ...contiguousSettings, ...updates });
   };
 
+  const updateEdgeCleanupSettings = (updates: Partial<EdgeCleanupSettings>) => {
+    onEdgeCleanupSettingsChange({ ...edgeCleanupSettings, ...updates });
+  };
 
   return (
     <div className="w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
@@ -426,7 +431,119 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </>
         )}
 
-        {/* Speckle Tools Section */}
+        {/* Edge Cleanup Section */}
+            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Scissors className="w-4 h-4 text-accent-purple" />
+                  <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
+                    Edge Cleanup
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              
+              <CardContent className="pt-0 space-y-4">
+                {/* Alpha Feathering */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={edgeCleanupSettings.enabled}
+                      onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                    />
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Alpha Feathering
+                    </Label>
+                  </div>
+                  {edgeCleanupSettings.enabled && (
+                    <div className="space-y-2 ml-6">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                        Feather Radius: {edgeCleanupSettings.trimRadius}px
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.trimRadius]}
+                          onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
+                          min={1}
+                          max={10}
+                          step={1}
+                          buttonStep={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Legacy Edge Smoothing */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={edgeCleanupSettings.legacyEnabled}
+                      onCheckedChange={(legacyEnabled) => updateEdgeCleanupSettings({ legacyEnabled })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                    />
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Edge Trimming
+                    </Label>
+                  </div>
+                  {edgeCleanupSettings.legacyEnabled && (
+                    <div className="space-y-2 ml-6">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                        Trim Radius: {edgeCleanupSettings.legacyRadius}px
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.legacyRadius]}
+                          onValueChange={([legacyRadius]) => updateEdgeCleanupSettings({ legacyRadius })}
+                          min={1}
+                          max={5}
+                          step={1}
+                          buttonStep={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Edge Softening */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={edgeCleanupSettings.softening.enabled}
+                      onCheckedChange={(enabled) => updateEdgeCleanupSettings({ 
+                        softening: { ...edgeCleanupSettings.softening, enabled }
+                      })}
+                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-orange data-[state=checked]:to-accent-yellow"
+                    />
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Edge Softening
+                    </Label>
+                  </div>
+                  {edgeCleanupSettings.softening.enabled && (
+                    <div className="space-y-2 ml-6">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-orange to-accent-yellow bg-clip-text text-transparent">
+                        Iterations: {edgeCleanupSettings.softening.iterations}
+                      </Label>
+                      <div className="p-3 bg-gradient-to-r from-accent-orange/5 to-accent-yellow/5 rounded-lg border border-accent-orange/20">
+                        <SliderWithInput
+                          value={[edgeCleanupSettings.softening.iterations]}
+                          onValueChange={([iterations]) => updateEdgeCleanupSettings({ 
+                            softening: { ...edgeCleanupSettings.softening, iterations }
+                          })}
+                          min={1}
+                          max={5}
+                          step={1}
+                          buttonStep={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-orange [&_[role=slider]]:to-accent-yellow [&_[role=slider]]:border-accent-orange"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
