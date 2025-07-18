@@ -759,20 +759,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
     
-    // Special case: Apply edge cleanup to manual edits (but only if it hasn't been applied yet)
-    if (hasManualEditsRef.current && edgeCleanupSettings.enabled && manualImageData) {
-      console.log('Applying edge cleanup to manual edits');
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      
-      const processedData = processEdgeCleanup(manualImageData, edgeCleanupSettings);
-      ctx.putImageData(processedData, 0, 0);
-      
-      // Don't update manualImageData to prevent infinite loop
-      // The edge cleanup is applied directly to the canvas
-      return;
-    }
+    // Remove the special case for edge cleanup to manual edits
+    // Edge cleanup should only be applied in the normal processing flow
     
     if (hasManualEditsRef.current) {
       console.log('Early return - has manual edits, no edge cleanup to apply');
