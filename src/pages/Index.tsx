@@ -246,10 +246,11 @@ const Index = () => {
   }, [images, selectedImageId, addUndoAction]);
 
   return (
-    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-x-auto overflow-y-hidden" style={{ minWidth: '1280px' }}>
-      {/* Main App Content */}
+    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-hidden">
+      {/* Scrollable Main App Content */}
       <div 
-        className="flex-1 flex flex-col overflow-hidden"
+        className="flex-1 flex flex-col overflow-x-auto overflow-y-hidden"
+        style={{ minWidth: '900px' }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
@@ -301,7 +302,7 @@ const Index = () => {
           }
         />
         
-        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+        <div className="flex flex-1 min-h-0 overflow-hidden" style={{ minWidth: '900px' }}>
           {/* Left Tools Sidebar - Full Height with disabled state */}
           <LeftSidebar
             disabled={isAnyImageProcessing}
@@ -542,9 +543,6 @@ const Index = () => {
               onClearAll={handleClearAll}
             />
            </div>
-          
-          {/* Right Advertisement Sidebar */}
-          <RightSidebar />
         </div>
         
         <input
@@ -556,6 +554,9 @@ const Index = () => {
           className="hidden"
         />
       </div>
+      
+      {/* Fixed Right Advertisement Sidebar */}
+      <RightSidebar />
     </div>
   );
 };
