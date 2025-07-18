@@ -426,6 +426,7 @@ const Index = () => {
                 undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
               });
             }}
+            currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
           />

@@ -24,6 +24,7 @@ interface LeftSidebarProps {
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
   edgeCleanupSettings: EdgeCleanupSettings;
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
+  currentTool: 'pan' | 'color-stack' | 'magic-wand';
   onAddImages: () => void;
   onAddFolder: () => void;
 }
@@ -40,6 +41,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onContiguousSettingsChange,
   edgeCleanupSettings,
   onEdgeCleanupSettingsChange,
+  currentTool,
   onAddImages,
   onAddFolder
 }) => {
@@ -201,30 +203,32 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </>
         )}
 
-        {/* Magic Wand Tool Settings */}
-        <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30 shadow-colorful">
-          <CardHeader className="pt-2 pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Wand className="w-4 h-4 text-accent-cyan" />
-              <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
-                🎯 Magic Wand Tool
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 pb-2 space-y-2">
-            <div className="p-2 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
-              <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
-              <SliderWithInput
-                value={[contiguousSettings.threshold]}
-                onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
-                min={1}
-                max={100}
-                step={1}
-                sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Magic Wand Tool Settings - only shown when magic wand tool is selected */}
+        {currentTool === 'magic-wand' && (
+          <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30 shadow-colorful">
+            <CardHeader className="pt-2 pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Wand className="w-4 h-4 text-accent-cyan" />
+                <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
+                  🎯 Magic Wand Tool
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 pb-2 space-y-2">
+              <div className="p-2 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
+                <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
+                <SliderWithInput
+                  value={[contiguousSettings.threshold]}
+                  onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
+                  min={1}
+                  max={100}
+                  step={1}
+                  sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Color Removal Section */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30 shadow-colorful">
