@@ -343,165 +343,11 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, []);
 
-  // Apply image effects (brightness, contrast, etc.)
-  const applyImageEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
-    if (!settings.imageEffects.enabled) return imageData;
-    
+  // Apply effects for display only (non-destructive background)
+  const applyDisplayEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
-
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] === 0) continue; // Skip transparent pixels
-      
-      let r = data[i];
-      let g = data[i + 1];
-      let b = data[i + 2];
-
-      // Apply brightness
-      if (settings.imageEffects.brightness !== 0) {
-        const brightness = settings.imageEffects.brightness * 2.55; // Scale to 0-255
-        r = Math.max(0, Math.min(255, r + brightness));
-        g = Math.max(0, Math.min(255, g + brightness));
-        b = Math.max(0, Math.min(255, b + brightness));
-      }
-
-      // Apply contrast
-      if (settings.imageEffects.contrast !== 0) {
-        const contrast = (settings.imageEffects.contrast + 100) / 100; // Convert to multiplier
-        r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
-        g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
-        b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
-      }
-
-      // Apply vibrance (enhance muted colors)
-      if (settings.imageEffects.vibrance !== 0) {
-        const max = Math.max(r, g, b);
-        const avg = (r + g + b) / 3;
-        const amt = ((Math.abs(max - avg) * 2 / 255) * (settings.imageEffects.vibrance / 100));
-        
-        if (r !== max) r += (max - r) * amt;
-        if (g !== max) g += (max - g) * amt;
-        if (b !== max) b += (max - b) * amt;
-        
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
-      }
-
-      // Apply hue shift
-      if (settings.imageEffects.hue !== 0) {
-        const [h, s, l] = rgbToHsl(r, g, b);
-        const newHue = (h + settings.imageEffects.hue) % 360;
-        [r, g, b] = hslToRgb(newHue, s, l);
-      }
-
-      // Apply colorize
-      if (settings.imageEffects.colorize.enabled) {
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-        const [colorR, colorG, colorB] = hslToRgb(
-          settings.imageEffects.colorize.hue,
-          settings.imageEffects.colorize.saturation / 100,
-          settings.imageEffects.colorize.lightness / 100
-        );
-        
-        // Blend with original based on lightness
-        const blend = 0.5;
-        r = Math.max(0, Math.min(255, gray * (1 - blend) + colorR * blend));
-        g = Math.max(0, Math.min(255, gray * (1 - blend) + colorG * blend));
-        b = Math.max(0, Math.min(255, gray * (1 - blend) + colorB * blend));
-      }
-
-      // Apply black and white
-      if (settings.imageEffects.blackAndWhite) {
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-        r = g = b = gray;
-      }
-
-      // Apply invert
-      if (settings.imageEffects.invert) {
-        r = 255 - r;
-        g = 255 - g;
-        b = 255 - b;
-      }
-
-      data[i] = Math.round(r);
-      data[i + 1] = Math.round(g);
-      data[i + 2] = Math.round(b);
-    }
-
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Helper functions for HSL conversion
-  const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const diff = max - min;
-    
-    let h = 0;
-    let s = 0;
-    const l = (max + min) / 2;
-    
-    if (diff !== 0) {
-      s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
-      
-      switch (max) {
-        case r: h = (g - b) / diff + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / diff + 2; break;
-        case b: h = (r - g) / diff + 4; break;
-      }
-      h /= 6;
-    }
-    
-    return [h * 360, s, l];
-  };
-
-  const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
-    h /= 360;
-    
-    const hue2rgb = (p: number, q: number, t: number): number => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    
-    let r, g, b;
-    
-    if (s === 0) {
-      r = g = b = l;
-    } else {
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1/3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
-    }
-    
-    return [r * 255, g * 255, b * 255];
-  };
-
-  // Apply effects for display only (non-destructive background)
-  const applyDisplayEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
-    let processedData = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height
-    );
-
-    // Apply image effects at the end of the processing chain
-    processedData = applyImageEffects(processedData, settings);
-
-    const data = processedData.data;
-    const width = processedData.width;
-    const height = processedData.height;
 
     // Apply background color for preview only (regardless of saveWithBackground setting)
     if (settings.background.enabled) {
@@ -552,22 +398,13 @@ export const useImageProcessor = () => {
     }
 
     return new ImageData(data, width, height);
-  }, [applyImageEffects]);
+  }, []);
 
   // Apply effects for download (only applies background if saveWithBackground is true)
   const applyDownloadEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
-    let processedData = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height
-    );
-
-    // Apply image effects at the end of the processing chain
-    processedData = applyImageEffects(processedData, settings);
-
-    const data = processedData.data;
-    const width = processedData.width;
-    const height = processedData.height;
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
 
     // Only apply background for download if explicitly requested
     if (settings.background.enabled && settings.background.saveWithBackground) {
@@ -618,7 +455,7 @@ export const useImageProcessor = () => {
     }
 
     return new ImageData(data, width, height);
-  }, [applyImageEffects]);
+  }, []);
 
   // Process a single image
   const processImage = useCallback(async (
