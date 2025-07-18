@@ -302,7 +302,7 @@ const Index = () => {
           }
         />
         
-        <div className="flex flex-1 min-h-0 overflow-hidden" style={{ minWidth: '900px' }}>
+        <div className="flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden" style={{ minWidth: '1000px' }}>
           {/* Left Tools Sidebar - Full Height with disabled state */}
           <LeftSidebar
             disabled={isAnyImageProcessing}
