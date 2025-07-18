@@ -65,6 +65,38 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     });
   };
 
+  const updateImageEffects = (updates: Partial<EffectSettings['imageEffects']>) => {
+    updateEffectSettings({
+      imageEffects: { ...effectSettings.imageEffects, ...updates }
+    });
+  };
+
+  // Helper function to convert RGB to hue
+  const rgbToHue = (r: number, g: number, b: number): number => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    
+    if (diff === 0) return 0;
+    
+    let hue = 0;
+    if (max === r) {
+      hue = ((g - b) / diff) % 6;
+    } else if (max === g) {
+      hue = (b - r) / diff + 2;
+    } else {
+      hue = (r - g) / diff + 4;
+    }
+    
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+    
+    return hue;
+  };
+
   const updateContiguousSettings = (updates: Partial<ContiguousToolSettings>) => {
     onContiguousSettingsChange({ ...contiguousSettings, ...updates });
   };
@@ -550,6 +582,211 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
                 </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Image Effects */}
+        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30">
+          <CardHeader className="pt-2 pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Switch
+                checked={effectSettings.imageEffects.enabled}
+                onCheckedChange={(enabled) => updateImageEffects({ enabled })}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-blue"
+              />
+              <Palette className="w-4 h-4 text-accent-purple" />
+              <span className="bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent font-semibold">
+                Image Effects
+              </span>
+            </CardTitle>
+          </CardHeader>
+          
+          {effectSettings.imageEffects.enabled && (
+            <CardContent className="pt-0 space-y-4">
+              {/* Brightness */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  ☀️ Brightness
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <SliderWithInput
+                    value={[effectSettings.imageEffects.brightness]}
+                    onValueChange={([brightness]) => updateImageEffects({ brightness })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                  />
+                </div>
+              </div>
+
+              {/* Contrast */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🎛️ Contrast
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <SliderWithInput
+                    value={[effectSettings.imageEffects.contrast]}
+                    onValueChange={([contrast]) => updateImageEffects({ contrast })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                  />
+                </div>
+              </div>
+
+              {/* Vibrance */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🌈 Vibrance
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <SliderWithInput
+                    value={[effectSettings.imageEffects.vibrance]}
+                    onValueChange={([vibrance]) => updateImageEffects({ vibrance })}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                  />
+                </div>
+              </div>
+
+              {/* Hue */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🎨 Hue Shift
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
+                  <div 
+                    className="h-3 rounded-full mb-3"
+                    style={{
+                      background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)'
+                    }}
+                  />
+                  <SliderWithInput
+                    value={[effectSettings.imageEffects.hue]}
+                    onValueChange={([hue]) => updateImageEffects({ hue })}
+                    min={0}
+                    max={360}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                  />
+                </div>
+              </div>
+
+              {/* Colorize */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Checkbox
+                    checked={effectSettings.imageEffects.colorize.enabled}
+                    onCheckedChange={(enabled) => updateImageEffects({ 
+                      colorize: { ...effectSettings.imageEffects.colorize, enabled: !!enabled }
+                    })}
+                    className="data-[state=checked]:bg-accent-purple"
+                  />
+                  <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                    🎨 Colorize
+                  </Label>
+                </div>
+                
+                {effectSettings.imageEffects.colorize.enabled && (
+                  <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20 space-y-3">
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Hue</Label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={`hsl(${effectSettings.imageEffects.colorize.hue}, 50%, 50%)`}
+                          onChange={(e) => {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.style.color = e.target.value;
+                            document.body.appendChild(tempDiv);
+                            const computedColor = window.getComputedStyle(tempDiv).color;
+                            document.body.removeChild(tempDiv);
+                            
+                            const rgb = computedColor.match(/\d+/g);
+                            if (rgb) {
+                              const [r, g, b] = rgb.map(Number);
+                              const hue = rgbToHue(r, g, b);
+                              updateImageEffects({ 
+                                colorize: { ...effectSettings.imageEffects.colorize, hue }
+                              });
+                            }
+                          }}
+                          className="w-8 h-6 rounded border border-accent-purple cursor-pointer"
+                        />
+                        <SliderWithInput
+                          value={[effectSettings.imageEffects.colorize.hue]}
+                          onValueChange={([hue]) => updateImageEffects({ 
+                            colorize: { ...effectSettings.imageEffects.colorize, hue }
+                          })}
+                          min={0}
+                          max={360}
+                          step={1}
+                          className="flex-1"
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Lightness</Label>
+                      <SliderWithInput
+                        value={[effectSettings.imageEffects.colorize.lightness]}
+                        onValueChange={([lightness]) => updateImageEffects({ 
+                          colorize: { ...effectSettings.imageEffects.colorize, lightness }
+                        })}
+                        min={0}
+                        max={100}
+                        step={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Saturation</Label>
+                      <SliderWithInput
+                        value={[effectSettings.imageEffects.colorize.saturation]}
+                        onValueChange={([saturation]) => updateImageEffects({ 
+                          colorize: { ...effectSettings.imageEffects.colorize, saturation }
+                        })}
+                        min={0}
+                        max={100}
+                        step={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Black and White */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={effectSettings.imageEffects.blackAndWhite}
+                  onCheckedChange={(enabled) => updateImageEffects({ blackAndWhite: !!enabled })}
+                  className="data-[state=checked]:bg-accent-purple"
+                />
+                <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  ⚫ Black & White
+                </Label>
+              </div>
+
+              {/* Invert */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={effectSettings.imageEffects.invert}
+                  onCheckedChange={(enabled) => updateImageEffects({ invert: !!enabled })}
+                  className="data-[state=checked]:bg-accent-purple"
+                />
+                <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
+                  🔄 Invert Colors
+                </Label>
               </div>
             </CardContent>
           )}
