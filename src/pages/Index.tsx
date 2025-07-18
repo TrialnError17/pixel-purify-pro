@@ -246,11 +246,11 @@ const Index = () => {
   }, [images, selectedImageId, addUndoAction]);
 
   return (
-    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-hidden">
-      {/* Scrollable Main App Content */}
+    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-x-auto overflow-y-hidden">
+      {/* Main App Content with minimum width to force scrolling */}
       <div 
-        className="flex-shrink-0 flex flex-col overflow-x-auto overflow-y-hidden"
-        style={{ minWidth: '1000px', width: 'calc(100vw - 192px)' }}
+        className="flex flex-col flex-shrink-0"
+        style={{ minWidth: '1200px' }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
