@@ -1313,6 +1313,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 imageRendering: zoom > 2 ? 'pixelated' : 'auto'
               }}
               onClick={handleCanvasClick}
+              onDoubleClick={handleFitToScreen}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
