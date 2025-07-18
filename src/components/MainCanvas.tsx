@@ -718,9 +718,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsSpeckleRestore = (!speckleSettings.enabled || (!speckleSettings.highlightSpecks && !speckleSettings.removeSpecks)) && preSpeckleImageData;
       const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
+      const needsInkStamp = effectSettings.inkStamp.enabled;
+      const needsImageEffects = effectSettings.imageEffects.enabled;
       
-      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore) {
-        console.log('Early return - no speckle or edge cleanup needed');
+      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects) {
+        console.log('Early return - no processing needed');
         return;
       }
       
@@ -781,31 +783,111 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
       
-      // Handle edge cleanup
-      if (needsEdgeCleanup) {
-        console.log('Manual edits detected, applying edge cleanup');
+      // Handle ink stamp and image effects
+      if (needsInkStamp || needsImageEffects) {
+        console.log('Manual edits detected, applying ink stamp and/or image effects');
         
-        // Store pre-edge-cleanup state if we haven't already
-        if (!preEdgeCleanupImageData) {
-          setPreEdgeCleanupImageData(currentImageData);
-          console.log('Stored pre-edge-cleanup state');
+        // Get the current canvas data after speckle processing
+        currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Apply ink stamp effect if enabled
+        if (needsInkStamp) {
+          console.log('Applying ink stamp effect');
+          const data = currentImageData.data;
+          const threshold = effectSettings.inkStamp.threshold === 1 ? 255 : (100 - effectSettings.inkStamp.threshold) * 2.55;
+          
+          for (let i = 0; i < data.length; i += 4) {
+            const alpha = data[i + 3];
+            if (alpha > 0 && alpha < threshold) {
+              data[i + 3] = 0; // Make transparent
+            } else if (alpha >= threshold) {
+              data[i + 3] = 255; // Make fully opaque
+            }
+          }
         }
         
-        // Apply edge cleanup to the pre-edge-cleanup data (original manual edits)
-        const baseData = preEdgeCleanupImageData || currentImageData;
-        const edgeCleanedData = processEdgeCleanup(baseData, edgeCleanupSettings);
-        
-        // Apply the result back to canvas
-        ctx.putImageData(edgeCleanedData, 0, 0);
-        console.log('Edge cleanup applied to manual edits');
-      } else if (needsEdgeRestore) {
-        console.log('Edge cleanup disabled, restoring pre-edge-cleanup state');
-        
-        // Restore the pre-edge-cleanup state if available
-        if (preEdgeCleanupImageData) {
-          ctx.putImageData(preEdgeCleanupImageData, 0, 0);
-          console.log('Restored pre-edge-cleanup state');
+        // Apply image effects if enabled
+        if (needsImageEffects) {
+          console.log('Applying image effects');
+          const data = currentImageData.data;
+          
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] === 0) continue; // Skip transparent pixels
+            
+            let r = data[i];
+            let g = data[i + 1];
+            let b = data[i + 2];
+            
+            // Apply brightness
+            r += effectSettings.imageEffects.brightness * 2.55;
+            g += effectSettings.imageEffects.brightness * 2.55;
+            b += effectSettings.imageEffects.brightness * 2.55;
+            
+            // Apply contrast
+            const contrast = (effectSettings.imageEffects.contrast + 100) / 100;
+            r = ((r - 128) * contrast) + 128;
+            g = ((g - 128) * contrast) + 128;
+            b = ((b - 128) * contrast) + 128;
+            
+            // Apply vibrance/saturation
+            if (effectSettings.imageEffects.vibrance !== 0) {
+              const gray = r * 0.299 + g * 0.587 + b * 0.114;
+              const saturation = 1 + (effectSettings.imageEffects.vibrance / 100);
+              r = gray + (r - gray) * saturation;
+              g = gray + (g - gray) * saturation;
+              b = gray + (b - gray) * saturation;
+            }
+            
+            // Apply hue shift
+            if (effectSettings.imageEffects.hue !== 0) {
+              // Convert RGB to HSL, shift hue, convert back to RGB
+              const hsl = rgbToHsl(r, g, b);
+              hsl[0] = (hsl[0] + effectSettings.imageEffects.hue) % 360;
+              const rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+              r = rgb[0];
+              g = rgb[1];
+              b = rgb[2];
+            }
+            
+            // Apply colorize if enabled
+            if (effectSettings.imageEffects.colorize.enabled) {
+              const colorizeHsl = [
+                effectSettings.imageEffects.colorize.hue,
+                effectSettings.imageEffects.colorize.saturation / 100,
+                effectSettings.imageEffects.colorize.lightness / 100
+              ];
+              const colorizeRgb = hslToRgb(colorizeHsl[0], colorizeHsl[1], colorizeHsl[2]);
+              
+              // Blend with original
+              const blendFactor = 0.5;
+              r = r * (1 - blendFactor) + colorizeRgb[0] * blendFactor;
+              g = g * (1 - blendFactor) + colorizeRgb[1] * blendFactor;
+              b = b * (1 - blendFactor) + colorizeRgb[2] * blendFactor;
+            }
+            
+            // Apply black and white
+            if (effectSettings.imageEffects.blackAndWhite) {
+              const gray = r * 0.299 + g * 0.587 + b * 0.114;
+              r = g = b = gray;
+            }
+            
+            // Apply invert
+            if (effectSettings.imageEffects.invert) {
+              r = 255 - r;
+              g = 255 - g;
+              b = 255 - b;
+            }
+            
+            // Clamp values
+            data[i] = Math.max(0, Math.min(255, r));
+            data[i + 1] = Math.max(0, Math.min(255, g));
+            data[i + 2] = Math.max(0, Math.min(255, b));
+          }
         }
+        
+        // Apply the processed data back to canvas
+        ctx.putImageData(currentImageData, 0, 0);
+        console.log('Ink stamp and/or image effects applied to manual edits');
       }
       
       setIsProcessing(false);
