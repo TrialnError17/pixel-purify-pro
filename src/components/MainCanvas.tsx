@@ -487,62 +487,46 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
 
-    // Step 1: Legacy edge trimming (if enabled and radius > 0)
+    // Step 1: Legacy edge trimming (if enabled and radius > 0) - removes pixels layer by layer
     if (settings.legacyEnabled && settings.legacyRadius > 0) {
       console.log('Processing legacy edge trimming with radius:', settings.legacyRadius);
       const radius = settings.legacyRadius;
       
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const index = (y * width + x) * 4;
-          
-          if (data[index + 3] > 0) { // Only process non-transparent pixels
-            let hasTransparentNeighbor = false;
+      // Apply trimming layer by layer
+      for (let layer = 0; layer < radius; layer++) {
+        // Create a copy to work from for this layer
+        const layerData = new Uint8ClampedArray(data);
+        
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4;
             
-            // Check if pixel is near transparency
-            for (let dy = -radius; dy <= radius && !hasTransparentNeighbor; dy++) {
-              for (let dx = -radius; dx <= radius && !hasTransparentNeighbor; dx++) {
-                const checkX = x + dx;
-                const checkY = y + dy;
-                
-                if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
-                  hasTransparentNeighbor = true;
-                } else {
-                  const checkIndex = (checkY * width + checkX) * 4;
-                  if (data[checkIndex + 3] === 0) {
-                    hasTransparentNeighbor = true;
-                  }
-                }
-              }
-            }
-            
-            if (hasTransparentNeighbor) {
-              // Average neighboring colors
-              let r = 0, g = 0, b = 0, count = 0;
+            if (layerData[index + 3] > 0) { // Only process non-transparent pixels
+              let hasTransparentNeighbor = false;
               
-              for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                  if (dx === 0 && dy === 0) continue;
+              // Check immediate neighbors (8-connected)
+              for (let dy = -1; dy <= 1 && !hasTransparentNeighbor; dy++) {
+                for (let dx = -1; dx <= 1 && !hasTransparentNeighbor; dx++) {
+                  if (dx === 0 && dy === 0) continue; // Skip center pixel
                   
-                  const neighborX = x + dx;
-                  const neighborY = y + dy;
+                  const checkX = x + dx;
+                  const checkY = y + dy;
                   
-                  if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height) {
-                    const neighborIndex = (neighborY * width + neighborX) * 4;
-                    if (data[neighborIndex + 3] > 0) {
-                      r += data[neighborIndex];
-                      g += data[neighborIndex + 1];
-                      b += data[neighborIndex + 2];
-                      count++;
+                  if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+                    // Out of bounds = transparent
+                    hasTransparentNeighbor = true;
+                  } else {
+                    const checkIndex = (checkY * width + checkX) * 4;
+                    if (layerData[checkIndex + 3] === 0) {
+                      hasTransparentNeighbor = true;
                     }
                   }
                 }
               }
               
-              if (count > 0) {
-                data[index] = r / count;
-                data[index + 1] = g / count;
-                data[index + 2] = b / count;
+              // If this pixel is on the edge, remove it
+              if (hasTransparentNeighbor) {
+                data[index + 3] = 0; // Make transparent
               }
             }
           }

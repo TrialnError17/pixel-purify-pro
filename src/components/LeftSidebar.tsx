@@ -484,13 +484,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
                     />
                     <Label className="text-sm font-medium cursor-pointer">
-                      Legacy Smoothing
+                      Edge Trimming
                     </Label>
                   </div>
                   {edgeCleanupSettings.legacyEnabled && (
                     <div className="space-y-2 ml-6">
                       <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
-                        Smooth Radius: {edgeCleanupSettings.legacyRadius}px
+                        Trim Radius: {edgeCleanupSettings.legacyRadius}px
                       </Label>
                       <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
                         <SliderWithInput
