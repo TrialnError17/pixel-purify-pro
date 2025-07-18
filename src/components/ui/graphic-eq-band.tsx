@@ -2,7 +2,7 @@ import * as React from "react"
 import { VerticalSlider } from "@/components/ui/vertical-slider"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ChevronUp, ChevronDown } from "lucide-react"
+import { ChevronUp, ChevronDown, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface GraphicEQBandProps {
@@ -77,7 +77,7 @@ export const GraphicEQBand = React.forwardRef<
   return (
     <div ref={ref} className={cn("flex flex-col items-center", className)} {...props}>
       {/* Label */}
-      <div className="text-xs font-bold mb-3 text-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-accent-purple/20 text-center h-6 flex items-center justify-center min-w-0 shadow-sm">
+      <div className="text-xs font-bold mb-3 text-foreground text-center h-6 flex items-center justify-center min-w-0">
         {label}
       </div>
       
@@ -127,10 +127,10 @@ export const GraphicEQBand = React.forwardRef<
           size="sm"
           onClick={resetToZero}
           disabled={disabled}
-          className="h-6 w-12 p-0 text-xs bg-gradient-to-b from-background to-muted border-accent-purple/30 hover:bg-accent-purple/10"
+          className="h-6 w-6 p-0 bg-gradient-to-b from-background to-muted border-accent-purple/30"
           title="Reset to 0"
         >
-          ZERO
+          <RotateCcw className="h-3 w-3" />
         </Button>
         
         <Input
