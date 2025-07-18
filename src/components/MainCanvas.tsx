@@ -270,9 +270,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Apply permanent alpha feathering and edge softening, plus optional edge trimming
-    const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
-    data.set(edgeCleanupResult.data);
+    // Apply edge cleanup after color removal but before effects
+    if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
+      const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
+      data.set(edgeCleanupResult.data);
+    }
 
     // Apply background color for preview only (regardless of saveWithBackground setting)
     if (effects.background.enabled) {
@@ -469,89 +471,28 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Edge cleanup processing function
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
-    console.log('processEdgeCleanup called with permanent alpha feathering (10) and edge softening (5), plus optional trimming:', { 
-      edgeTrimmingEnabled: settings.enabled, 
-      trimRadius: settings.trimRadius
+    console.log('processEdgeCleanup called:', { 
+      alphaFeathering: settings.enabled, 
+      trimRadius: settings.trimRadius,
+      legacyEnabled: settings.legacyEnabled,
+      legacyRadius: settings.legacyRadius,
+      softeningEnabled: settings.softening.enabled,
+      softeningIterations: settings.softening.iterations
     });
+    
+    if (!settings.enabled && !settings.legacyEnabled && !settings.softening.enabled) {
+      console.log('All edge cleanup methods disabled, returning original data');
+      return imageData;
+    }
 
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
 
-    // Step 1: Permanent Alpha feathering with value 10
-    console.log('Applying permanent alpha feathering with radius 10');
-    const alphaFeatherRadius = 10;
-
-    // Helper function to get distance to nearest transparent pixel
-    const getDistanceToTransparent = (x: number, y: number, maxDistance: number): number => {
-      // Check if current pixel is already transparent
-      const currentIndex = (y * width + x) * 4;
-      if (data[currentIndex + 3] === 0) return 0;
-
-      let minDistance = maxDistance + 1;
-      
-      // Search in expanding squares around the pixel
-      for (let searchRadius = 1; searchRadius <= maxDistance; searchRadius++) {
-        let foundTransparent = false;
-        
-        // Check all pixels in the square border at this radius
-        for (let dy = -searchRadius; dy <= searchRadius; dy++) {
-          for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-            // Only check the border of the square, not the interior
-            if (Math.abs(dx) !== searchRadius && Math.abs(dy) !== searchRadius) continue;
-            
-            const checkX = x + dx;
-            const checkY = y + dy;
-            
-            // Out of bounds = transparent
-            if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
-              foundTransparent = true;
-              break;
-            }
-            
-            const checkIndex = (checkY * width + checkX) * 4;
-            if (data[checkIndex + 3] === 0) {
-              foundTransparent = true;
-              break;
-            }
-          }
-          if (foundTransparent) break;
-        }
-        
-        if (foundTransparent) {
-          minDistance = searchRadius;
-          break;
-        }
-      }
-      
-      return minDistance > maxDistance ? maxDistance + 1 : minDistance;
-    };
-
-    // Apply alpha feathering to all pixels
-    let featherProcessedPixels = 0;
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const index = (y * width + x) * 4;
-        const originalAlpha = data[index + 3];
-        
-        if (originalAlpha > 0) {
-          const distance = getDistanceToTransparent(x, y, alphaFeatherRadius);
-          
-          if (distance <= alphaFeatherRadius) {
-            // Calculate feathered alpha based on distance
-            const alpha = Math.round((distance / alphaFeatherRadius) * originalAlpha);
-            data[index + 3] = Math.max(0, Math.min(255, alpha));
-            featherProcessedPixels++;
-          }
-        }
-      }
-    }
-    console.log('Permanent alpha feathering processed', featherProcessedPixels, 'pixels');
-
-    // Step 2: Optional edge trimming (if enabled and radius > 0)
-    if (settings.enabled && settings.trimRadius > 0) {
-      console.log('Processing edge trimming with radius:', settings.trimRadius);
-      const radius = settings.trimRadius;
+    // Step 1: Legacy edge trimming (if enabled and radius > 0) - removes pixels layer by layer
+    if (settings.legacyEnabled && settings.legacyRadius > 0) {
+      console.log('Processing legacy edge trimming with radius:', settings.legacyRadius);
+      const radius = settings.legacyRadius;
       
       // Apply trimming layer by layer
       for (let layer = 0; layer < radius; layer++) {
@@ -595,110 +536,196 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Step 3: Permanent Edge softening with 5 iterations
-    console.log('Applying permanent edge softening with 5 iterations');
-    const edgeSofteningIterations = 5;
-    
-    // Helper function to check if a pixel is at an edge (has transparent neighbors)
-    const isEdgePixel = (x: number, y: number): boolean => {
-      const currentIndex = (y * width + x) * 4;
-      const currentAlpha = data[currentIndex + 3];
-      
-      // If current pixel is transparent, it's not an edge we want to soften
-      if (currentAlpha === 0) return false;
-      
-      // Check 3x3 neighborhood for transparency transitions
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue; // Skip center pixel
+    // Step 2: Alpha feathering (if enabled and radius > 0)
+    if (settings.enabled && settings.trimRadius > 0) {
+      console.log('Processing alpha feathering with radius:', settings.trimRadius);
+      const radius = settings.trimRadius;
+
+      // Helper function to get distance to nearest transparent pixel
+      const getDistanceToTransparent = (x: number, y: number, maxDistance: number): number => {
+        // Check if current pixel is already transparent
+        const currentIndex = (y * width + x) * 4;
+        if (data[currentIndex + 3] === 0) return 0;
+
+        let minDistance = maxDistance + 1;
+        
+        // Search in expanding squares around the pixel
+        for (let searchRadius = 1; searchRadius <= maxDistance; searchRadius++) {
+          let foundTransparent = false;
           
-          const checkX = x + dx;
-          const checkY = y + dy;
-          
-          // Check bounds - treat out of bounds as transparent
-          if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
-            return true;
+          // Check all pixels in the square border at this radius
+          for (let dy = -searchRadius; dy <= searchRadius; dy++) {
+            for (let dx = -searchRadius; dx <= searchRadius; dx++) {
+              // Only check the border of the square, not the interior
+              if (Math.abs(dx) !== searchRadius && Math.abs(dy) !== searchRadius) continue;
+              
+              const checkX = x + dx;
+              const checkY = y + dy;
+              
+              // Bounds check
+              if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+                // Treat out-of-bounds as transparent
+                foundTransparent = true;
+                minDistance = Math.min(minDistance, searchRadius);
+                continue;
+              }
+              
+              const checkIndex = (checkY * width + checkX) * 4;
+              if (data[checkIndex + 3] === 0) {
+                foundTransparent = true;
+                minDistance = Math.min(minDistance, searchRadius);
+              }
+            }
           }
           
-          const neighborIndex = (checkY * width + checkX) * 4;
-          const neighborAlpha = data[neighborIndex + 3];
+          // If we found transparent pixels at this radius, we can stop searching
+          if (foundTransparent) {
+            break;
+          }
+        }
+        
+        return Math.min(minDistance, maxDistance);
+      };
+
+      // Apply alpha feathering
+      let processedPixels = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = (y * width + x) * 4;
+          const alpha = data[index + 3];
           
-          // If we find a transparent neighbor, this is an edge pixel
-          if (neighborAlpha === 0) {
-            return true;
+          // Only process pixels that are not fully transparent
+          if (alpha > 0) {
+            const distanceToTransparent = getDistanceToTransparent(x, y, radius);
+            
+            // Apply feathering if we're within the feather radius
+            if (distanceToTransparent <= radius) {
+              // Create smooth falloff - closer to transparent = more faded
+              const featherFactor = distanceToTransparent / radius;
+              
+              // Apply smooth curve for more natural transition
+              const smoothFactor = Math.pow(featherFactor, 0.7); // Gamma correction for natural look
+              
+              // Apply the feathering to alpha channel
+              const newAlpha = alpha * smoothFactor;
+              data[index + 3] = Math.max(0, Math.min(255, newAlpha));
+              
+              if (newAlpha < alpha) {
+                processedPixels++;
+              }
+            }
           }
         }
       }
+
+      console.log('Alpha feathering processed', processedPixels, 'pixels');
+    }
+
+    // Step 3: Edge softening (if enabled and iterations > 0)
+    if (settings.softening.enabled && settings.softening.iterations > 0) {
+      console.log('Processing edge softening with iterations:', settings.softening.iterations);
       
-      return false;
-    };
-    
-    // Helper function to calculate average color of neighboring opaque pixels
-    const getNeighborAverage = (x: number, y: number): { r: number; g: number; b: number } => {
-      let r = 0, g = 0, b = 0;
-      let count = 0;
-      
-      // 3x3 neighborhood (excluding current pixel)
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue; // Skip center pixel
-          
-          const checkX = x + dx;
-          const checkY = y + dy;
-          
-          // Bounds check
-          if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
+      // Helper function to check if a pixel is at an edge (has transparent neighbors)
+      const isEdgePixel = (x: number, y: number): boolean => {
+        const currentIndex = (y * width + x) * 4;
+        const currentAlpha = data[currentIndex + 3];
+        
+        // If current pixel is transparent, it's not an edge we want to soften
+        if (currentAlpha === 0) return false;
+        
+        // Check 3x3 neighborhood for transparency transitions
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue; // Skip center pixel
+            
+            const checkX = x + dx;
+            const checkY = y + dy;
+            
+            // Check bounds - treat out of bounds as transparent
+            if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+              return true;
+            }
+            
             const neighborIndex = (checkY * width + checkX) * 4;
             const neighborAlpha = data[neighborIndex + 3];
             
-            // Only include opaque neighbors in the average
-            if (neighborAlpha > 0) {
-              r += data[neighborIndex];
-              g += data[neighborIndex + 1];
-              b += data[neighborIndex + 2];
-              count++;
+            // If we find a transparent neighbor, this is an edge pixel
+            if (neighborAlpha === 0) {
+              return true;
             }
           }
         }
-      }
+        
+        return false;
+      };
       
-      return count > 0 ? {
-        r: r / count,
-        g: g / count,
-        b: b / count
-      } : { r: 0, g: 0, b: 0 };
-    };
-    
-    // Apply edge softening for 5 iterations
-    for (let iteration = 0; iteration < edgeSofteningIterations; iteration++) {
-      // Create a copy for this iteration
-      const iterationData = new Uint8ClampedArray(data);
-      let edgePixelsProcessed = 0;
-      
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const index = (y * width + x) * 4;
-          
-          // Only process pixels that are at edges and have some opacity
-          if (iterationData[index + 3] > 0 && isEdgePixel(x, y)) {
-            const neighbors = getNeighborAverage(x, y);
+      // Helper function to calculate average color of neighboring opaque pixels
+      const getNeighborAverage = (x: number, y: number): { r: number; g: number; b: number } => {
+        let r = 0, g = 0, b = 0;
+        let count = 0;
+        
+        // 3x3 neighborhood (excluding current pixel)
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue; // Skip center pixel
             
-            // Apply averaging to RGB channels only if we have neighbor data
-            if (neighbors.r > 0 || neighbors.g > 0 || neighbors.b > 0) {
-              data[index] = neighbors.r;
-              data[index + 1] = neighbors.g;
-              data[index + 2] = neighbors.b;
-              // Alpha remains unchanged for edge softening
-              edgePixelsProcessed++;
+            const checkX = x + dx;
+            const checkY = y + dy;
+            
+            // Bounds check
+            if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
+              const neighborIndex = (checkY * width + checkX) * 4;
+              const neighborAlpha = data[neighborIndex + 3];
+              
+              // Only include opaque neighbors in the average
+              if (neighborAlpha > 0) {
+                r += data[neighborIndex];
+                g += data[neighborIndex + 1];
+                b += data[neighborIndex + 2];
+                count++;
+              }
             }
           }
         }
+        
+        return count > 0 ? {
+          r: r / count,
+          g: g / count,
+          b: b / count
+        } : { r: 0, g: 0, b: 0 };
+      };
+      
+      // Apply edge softening for specified iterations
+      for (let iteration = 0; iteration < settings.softening.iterations; iteration++) {
+        // Create a copy for this iteration
+        const iterationData = new Uint8ClampedArray(data);
+        let edgePixelsProcessed = 0;
+        
+        for (let y = 1; y < height - 1; y++) {
+          for (let x = 1; x < width - 1; x++) {
+            const index = (y * width + x) * 4;
+            
+            // Only process pixels that are at edges and have some opacity
+            if (iterationData[index + 3] > 0 && isEdgePixel(x, y)) {
+              const neighbors = getNeighborAverage(x, y);
+              
+              // Apply averaging to RGB channels only if we have neighbor data
+              if (neighbors.r > 0 || neighbors.g > 0 || neighbors.b > 0) {
+                data[index] = neighbors.r;
+                data[index + 1] = neighbors.g;
+                data[index + 2] = neighbors.b;
+                // Alpha remains unchanged for edge softening
+                edgePixelsProcessed++;
+              }
+            }
+          }
+        }
+        
+        console.log(`Edge softening iteration ${iteration + 1} processed ${edgePixelsProcessed} edge pixels`);
       }
       
-      console.log(`Permanent edge softening iteration ${iteration + 1} processed ${edgePixelsProcessed} edge pixels`);
+      console.log('Edge softening completed with', settings.softening.iterations, 'iterations');
     }
-    
-    console.log('Permanent edge softening completed with', edgeSofteningIterations, 'iterations');
 
     const result = new ImageData(data, width, height);
     console.log('processEdgeCleanup completed');
@@ -1105,10 +1132,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           trimRadius: edgeCleanupSettings.trimRadius
         });
         
-        // Always apply edge cleanup (permanent alpha feathering + edge softening, plus optional trimming)
-        console.log('Calling processEdgeCleanup...');
-        processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
-        console.log('processEdgeCleanup completed');
+        if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
+          console.log('Calling processEdgeCleanup...');
+          processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
+          console.log('processEdgeCleanup completed');
+        } else {
+          console.log('Edge cleanup is disabled, skipping');
+        }
         
         // Only update canvas if the processed data is different
         const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1388,10 +1418,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         console.log('Speckle processing completed after magic wand');
       }
       
-      // Always apply edge cleanup after magic wand (permanent alpha feathering + edge softening, plus optional trimming)
-      console.log('Running edge cleanup after magic wand removal');
-      newImageData = processEdgeCleanup(newImageData, edgeCleanupSettings);
-      console.log('Edge cleanup completed after magic wand');
+      // Apply edge cleanup if enabled
+      if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
+        console.log('Running edge cleanup after magic wand removal');
+        newImageData = processEdgeCleanup(newImageData, edgeCleanupSettings);
+        console.log('Edge cleanup completed after magic wand');
+      }
       
       // Apply the processed data back to canvas
       ctx.putImageData(newImageData, 0, 0);
