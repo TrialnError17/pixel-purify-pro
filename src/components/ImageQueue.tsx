@@ -133,9 +133,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen
-        ? "fixed top-14 bottom-0 left-96 right-96 z-40" // Full height between both sidebars
+        ? "fixed inset-0 z-40 md:top-14 md:left-80 lg:md:left-96 md:right-96" // Responsive fullscreen with sidebar width
         : visible 
-          ? "h-48" 
+          ? "h-32 sm:h-40 md:h-48" 
           : "h-12"
     )}>
       {/* Header */}
@@ -266,8 +266,8 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
         <div className={cn(
           "overflow-y-auto",
           isFullscreen 
-            ? "h-[calc(100vh-8rem)]" // Full height minus header and queue header
-            : "h-36"
+            ? "h-[calc(100vh-8rem)] md:h-[calc(100vh-8rem)]" // Full height minus header and queue header
+            : "h-20 sm:h-28 md:h-36"
         )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
