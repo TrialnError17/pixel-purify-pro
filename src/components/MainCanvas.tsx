@@ -458,7 +458,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Edge cleanup processing function
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
+    console.log('processEdgeCleanup called:', { enabled: settings.enabled, trimRadius: settings.trimRadius, minRegionSize: settings.minRegionSize });
+    
     if (!settings.enabled) {
+      console.log('Edge cleanup disabled, returning original data');
       return imageData;
     }
 
@@ -468,6 +471,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Step 1: Edge trimming (if radius > 0)
     if (settings.trimRadius > 0) {
+      console.log('Processing edge trimming with radius:', settings.trimRadius);
       const radius = settings.trimRadius;
       const toTransparent = new Set<number>();
 
@@ -538,10 +542,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const dataIndex = pixelIndex * 4;
         data[dataIndex + 3] = 0; // Make transparent
       });
+      console.log('Edge trimming processed', toTransparent.size, 'pixels');
     }
 
     // Step 2: Min region size cleanup (if enabled and contiguous is not active)
     if (settings.minRegionSize.enabled && settings.minRegionSize.value > 0) {
+      console.log('Processing min region size cleanup with value:', settings.minRegionSize.value);
+      let removedRegions = 0;
       const alphaData = new Uint8ClampedArray(width * height);
       
       // Extract alpha channel
@@ -598,13 +605,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               for (const pixelIndex of regionPixels) {
                 data[pixelIndex * 4 + 3] = 0; // Make transparent
               }
+              removedRegions++;
             }
           }
         }
       }
+      console.log('Min region size cleanup processed, removed', removedRegions, 'small regions');
     }
 
-    return new ImageData(data, width, height);
+    const result = new ImageData(data, width, height);
+    console.log('processEdgeCleanup completed');
+    return result;
   }, []);
 
   // Load original image and store image data
