@@ -715,7 +715,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Check if we need to do any processing
       const needsSpeckleProcessing = speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks);
-      const needsSpeckleRestore = !speckleSettings.enabled && preSpeckleImageData;
+      const needsSpeckleRestore = (!speckleSettings.enabled || (!speckleSettings.highlightSpecks && !speckleSettings.removeSpecks)) && preSpeckleImageData;
       const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       
