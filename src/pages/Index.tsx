@@ -302,9 +302,8 @@ const Index = () => {
         />
         
         <div className="flex flex-1 min-h-0 overflow-hidden relative">
-          {/* Left Tools Sidebar - Hidden on mobile, visible on larger screens */}
-          <div className="hidden lg:block">
-            <LeftSidebar
+          {/* Left Tools Sidebar - Full Height with disabled state */}
+          <LeftSidebar
             disabled={isAnyImageProcessing}
             settings={colorSettings}
             onSettingsChange={(newSettings) => {
@@ -401,7 +400,6 @@ const Index = () => {
              onAddImages={handleFileInput}
              onAddFolder={handleFolderInput}
            />
-           </div>
           
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
