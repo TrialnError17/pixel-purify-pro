@@ -763,8 +763,18 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
         
         // Apply edge cleanup processing if enabled
+        console.log('Edge cleanup check:', { 
+          enabled: edgeCleanupSettings.enabled, 
+          trimRadius: edgeCleanupSettings.trimRadius,
+          minRegionSize: edgeCleanupSettings.minRegionSize 
+        });
+        
         if (edgeCleanupSettings.enabled) {
+          console.log('Calling processEdgeCleanup...');
           processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
+          console.log('processEdgeCleanup completed');
+        } else {
+          console.log('Edge cleanup is disabled, skipping');
         }
         
         // Only update canvas if the processed data is different
