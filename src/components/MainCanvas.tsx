@@ -80,6 +80,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
+  const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -714,10 +715,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Check if we need to do any processing
       const needsSpeckleProcessing = speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks);
+      const needsSpeckleRestore = !speckleSettings.enabled && preSpeckleImageData;
       const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       
-      if (!needsSpeckleProcessing && !needsEdgeCleanup && !needsEdgeRestore) {
+      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore) {
         console.log('Early return - no speckle or edge cleanup needed');
         return;
       }
@@ -748,7 +750,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Handle speckle processing first if needed
       if (needsSpeckleProcessing) {
         console.log('Manual edits detected, applying speckle processing');
-        const speckleResult = processSpecks(currentImageData, speckleSettings);
+        
+        // Store pre-speckle state if we haven't already
+        if (!preSpeckleImageData) {
+          setPreSpeckleImageData(currentImageData);
+          console.log('Stored pre-speckle state');
+        }
+        
+        // Apply speckle processing to the pre-speckle data
+        const baseData = preSpeckleImageData || currentImageData;
+        const speckleResult = processSpecks(baseData, speckleSettings);
         currentImageData = speckleResult.processedData;
         
         // Update speck count
@@ -759,6 +770,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         // Apply speckle result to canvas
         ctx.putImageData(currentImageData, 0, 0);
         console.log('Speckle processing applied to manual edits');
+      } else if (needsSpeckleRestore) {
+        console.log('Speckle disabled, restoring pre-speckle state');
+        
+        // Restore the pre-speckle state if available
+        if (preSpeckleImageData) {
+          currentImageData = preSpeckleImageData;
+          ctx.putImageData(currentImageData, 0, 0);
+          console.log('Restored pre-speckle state');
+        }
       }
       
       // Handle edge cleanup
@@ -1027,8 +1047,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Mark that we have manual edits
       hasManualEditsRef.current = true;
       
-      // Clear any stored pre-edge-cleanup state since we're making new manual edits  
+      // Clear any stored pre-edge-cleanup and pre-speckle state since we're making new manual edits  
       setPreEdgeCleanupImageData(null);
+      setPreSpeckleImageData(null);
       
       // Store the result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1043,8 +1064,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
       hasManualEditsRef.current = true;
       
-      // Clear any stored pre-edge-cleanup state since we're making new manual edits
+      // Clear any stored pre-edge-cleanup and pre-speckle state since we're making new manual edits
       setPreEdgeCleanupImageData(null);
+      setPreSpeckleImageData(null);
       
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
