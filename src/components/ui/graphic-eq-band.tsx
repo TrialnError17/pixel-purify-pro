@@ -97,6 +97,7 @@ export const GraphicEQBand = React.forwardRef<
       <div className="relative h-32 flex items-center justify-center mb-2 bg-gradient-to-b from-muted/30 to-muted/50 rounded-lg border border-accent-purple/20 px-2 py-1">
         <div className="absolute w-px h-1 bg-foreground/30 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none" />
         <VerticalSlider
+          key={`slider-${value}`}
           value={[value]}
           onValueChange={([newValue]) => onValueChange(newValue)}
           min={min}
