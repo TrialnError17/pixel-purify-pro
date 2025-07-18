@@ -77,6 +77,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const hasManualEditsRef = useRef(false);
+  const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
@@ -705,21 +706,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Allow edge cleanup to run even with manual edits, but skip other auto-processing
     if (hasManualEditsRef.current) {
       // If we have manual edits, only proceed if edge cleanup is specifically enabled
-      if (!edgeCleanupSettings.enabled) {
-        console.log('Early return - has manual edits, no edge cleanup enabled');
+      if (!edgeCleanupSettings.enabled || isProcessingEdgeCleanupRef.current) {
+        console.log('Early return - has manual edits, no edge cleanup enabled or already processing edge cleanup');
         return;
       }
       
       // For manual edits with edge cleanup, use a different processing path
       console.log('Manual edits detected, applying edge cleanup only');
+      
+      // Set flag to prevent re-triggering
+      isProcessingEdgeCleanupRef.current = true;
+      
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!ctx) {
+        isProcessingEdgeCleanupRef.current = false;
+        return;
+      }
       
-      // Prevent infinite loop by temporarily disabling the manual edits flag during processing
+      // Prevent infinite loop by checking if already processing
       const wasProcessing = isProcessing;
       if (wasProcessing) {
         console.log('Already processing, skipping to prevent loop');
+        isProcessingEdgeCleanupRef.current = false;
         return;
       }
       
@@ -734,13 +743,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Apply the result back to canvas
       ctx.putImageData(edgeCleanedData, 0, 0);
       
-      // Update the manual image data cache
-      setManualImageData(edgeCleanedData);
-      
-      // DON'T call onImageUpdate here as it causes infinite loop
+      // DON'T update manualImageData here as it causes the loop
       // The canvas update is sufficient for display
       
       setIsProcessing(false);
+      isProcessingEdgeCleanupRef.current = false;
       console.log('Edge cleanup applied to manual edits');
       return;
     }
