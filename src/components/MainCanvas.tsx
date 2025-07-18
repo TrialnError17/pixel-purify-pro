@@ -663,12 +663,25 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
+    console.log('Processing useEffect triggered:', {
+      hasOriginalImageData: !!originalImageData,
+      hasCanvas: !!canvasRef.current,
+      hasManualEdits: hasManualEditsRef.current,
+      isProcessing,
+      colorSettingsEnabled: colorSettings.enabled,
+      backgroundEnabled: effectSettings.background.enabled,
+      inkStampEnabled: effectSettings.inkStamp.enabled,
+      hasProcessedData: !!image?.processedData
+    });
+    
     if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || isProcessing) {
+      console.log('Early return due to missing requirements');
       return;
     }
     
     // Skip auto-processing if we already have processed data and no settings changed
     if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled) {
+      console.log('Skipping processing - no effects enabled');
       return;
     }
     
