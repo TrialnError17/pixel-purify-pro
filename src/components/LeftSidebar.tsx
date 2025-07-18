@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
+import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -66,6 +67,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   const updateImageEffects = (updates: Partial<EffectSettings['imageEffects']>) => {
+    console.log('Updating image effects:', updates);
     updateEffectSettings({
       imageEffects: { ...effectSettings.imageEffects, ...updates }
     });
@@ -611,15 +613,16 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   ☀️ Brightness
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <SliderWithInput
-                    value={[effectSettings.imageEffects.brightness]}
-                    onValueChange={([brightness]) => updateImageEffects({ brightness })}
-                    min={-100}
-                    max={100}
-                    step={1}
-                    className="[&_.slider-track]:relative [&_.slider-track]:before:content-[''] [&_.slider-track]:before:absolute [&_.slider-track]:before:left-1/2 [&_.slider-track]:before:top-0 [&_.slider-track]:before:bottom-0 [&_.slider-track]:before:w-px [&_.slider-track]:before:bg-border [&_.slider-track]:before:transform [&_.slider-track]:before:-translate-x-1/2"
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
-                  />
+                  <div className="relative">
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-border transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <SliderWithInput
+                      value={[effectSettings.imageEffects.brightness]}
+                      onValueChange={([brightness]) => updateImageEffects({ brightness })}
+                      min={-100}
+                      max={100}
+                      step={1}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -629,15 +632,16 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   🎛️ Contrast
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <SliderWithInput
-                    value={[effectSettings.imageEffects.contrast]}
-                    onValueChange={([contrast]) => updateImageEffects({ contrast })}
-                    min={-100}
-                    max={100}
-                    step={1}
-                    className="[&_.slider-track]:relative [&_.slider-track]:before:content-[''] [&_.slider-track]:before:absolute [&_.slider-track]:before:left-1/2 [&_.slider-track]:before:top-0 [&_.slider-track]:before:bottom-0 [&_.slider-track]:before:w-px [&_.slider-track]:before:bg-border [&_.slider-track]:before:transform [&_.slider-track]:before:-translate-x-1/2"
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
-                  />
+                  <div className="relative">
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-border transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <SliderWithInput
+                      value={[effectSettings.imageEffects.contrast]}
+                      onValueChange={([contrast]) => updateImageEffects({ contrast })}
+                      min={-100}
+                      max={100}
+                      step={1}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -647,15 +651,16 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   🌈 Vibrance
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
-                  <SliderWithInput
-                    value={[effectSettings.imageEffects.vibrance]}
-                    onValueChange={([vibrance]) => updateImageEffects({ vibrance })}
-                    min={-100}
-                    max={100}
-                    step={1}
-                    className="[&_.slider-track]:relative [&_.slider-track]:before:content-[''] [&_.slider-track]:before:absolute [&_.slider-track]:before:left-1/2 [&_.slider-track]:before:top-0 [&_.slider-track]:before:bottom-0 [&_.slider-track]:before:w-px [&_.slider-track]:before:bg-border [&_.slider-track]:before:transform [&_.slider-track]:before:-translate-x-1/2"
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-purple"
-                  />
+                  <div className="relative">
+                    <div className="absolute left-1/2 top-1/2 w-px h-2 bg-border transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none" />
+                    <SliderWithInput
+                      value={[effectSettings.imageEffects.vibrance]}
+                      onValueChange={([vibrance]) => updateImageEffects({ vibrance })}
+                      min={-100}
+                      max={100}
+                      step={1}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -666,13 +671,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </Label>
                 <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/20">
                   <div className="relative">
-                    <SliderWithInput
+                    <HueSlider
                       value={[effectSettings.imageEffects.hue]}
                       onValueChange={([hue]) => updateImageEffects({ hue })}
-                      min={0}
-                      max={360}
-                      step={1}
-                      sliderClassName="[&_.slider-track]:h-4 [&_.slider-track]:rounded-full [&_.slider-track]:bg-gradient-to-r [&_.slider-track]:from-red-500 [&_.slider-track]:via-yellow-500 [&_.slider-track]:via-green-500 [&_.slider-track]:via-cyan-500 [&_.slider-track]:via-blue-500 [&_.slider-track]:via-purple-500 [&_.slider-track]:to-red-500 [&_.slider-range]:bg-transparent [&_[role=slider]]:bg-white [&_[role=slider]]:border-2 [&_[role=slider]]:border-gray-400 [&_[role=slider]]:shadow-lg [&_[role=slider]]:w-6 [&_[role=slider]]:h-6 [&_[role=slider]]:z-10"
                     />
                   </div>
                 </div>

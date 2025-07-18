@@ -317,6 +317,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Apply image effects at the end of the processing chain
     if (effects.imageEffects.enabled) {
+      console.log('Applying image effects:', effects.imageEffects);
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) continue; // Skip transparent pixels
         
