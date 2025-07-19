@@ -84,6 +84,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
+  const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -699,9 +700,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       const needsInkStamp = effectSettings.inkStamp.enabled;
-      const needsImageEffects = effectSettings.imageEffects.enabled; // Re-enable image effects for preview
+      const needsImageEffects = effectSettings.imageEffects.enabled;
+      const needsImageEffectsRestore = !effectSettings.imageEffects.enabled && preImageEffectsImageData;
       
-      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects) {
+      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects && !needsImageEffectsRestore) {
         console.log('Early return - no processing needed');
         return;
       }
@@ -766,6 +768,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
       
+      // Handle image effects restoration
+      if (needsImageEffectsRestore) {
+        console.log('Image effects disabled, restoring pre-image-effects state');
+        
+        // Restore the pre-image-effects state if available
+        if (preImageEffectsImageData) {
+          currentImageData = preImageEffectsImageData;
+          ctx.putImageData(currentImageData, 0, 0);
+          console.log('Restored pre-image-effects state');
+          
+          // Clear the pre-image-effects state since we're done with it
+          setPreImageEffectsImageData(null);
+        }
+      }
+      
       // Handle ink stamp and image effects
       if (needsInkStamp || needsImageEffects) {
         console.log('Manual edits detected, applying ink stamp and/or image effects');
@@ -787,6 +804,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               data[i + 3] = 255; // Make fully opaque
             }
           }
+        }
+        
+        // Store pre-image-effects state if we haven't already and image effects are enabled
+        if (needsImageEffects && !preImageEffectsImageData) {
+          setPreImageEffectsImageData(new ImageData(
+            new Uint8ClampedArray(currentImageData.data),
+            currentImageData.width,
+            currentImageData.height
+          ));
+          console.log('Stored pre-image-effects state');
         }
         
         // Apply image effects if enabled
