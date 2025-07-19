@@ -263,25 +263,30 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     if (e) e.preventDefault();
   }, [options.onImageChange, options.manualImageDataRef, options.erasingInProgressRef]);
 
-  // Get brush cursor style - FIXED to match erasing radius exactly
-  const getBrushCursor = useCallback(() => {
+  // Get brush cursor style - NOW ZOOM-RESPONSIVE
+  const getBrushCursor = useCallback((zoom: number = 1) => {
     // Use the same radius calculation as erasing: Math.floor(brushSize / 2)
     const radius = Math.floor(options.brushSize / 2);
-    const size = Math.max(4, radius * 2); // Minimum 4px for visibility
+    
+    // Scale cursor size by zoom level
+    const scaledSize = Math.max(4, Math.min(100, radius * 2 * zoom));
+    const size = Math.ceil(scaledSize); // Ensure integer size
     
     // Dynamic stroke width for better visibility
     const strokeWidth = Math.max(1, Math.min(2, options.brushSize / 20));
     
-    console.log('Cursor calculation:', {
+    console.log('Zoom-responsive cursor calculation:', {
       brushSize: options.brushSize,
       radius,
+      zoom,
+      scaledSize,
       size,
       strokeWidth
     });
     
     const svg = `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${size/2}" cy="${size/2}" r="${radius - strokeWidth/2}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
+        <circle cx="${size/2}" cy="${size/2}" r="${Math.max(1, (radius * zoom) - strokeWidth/2)}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
         <circle cx="${size/2}" cy="${size/2}" r="1" fill="rgba(255, 0, 0, 0.8)"/>
       </svg>
     `;
