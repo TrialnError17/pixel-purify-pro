@@ -735,13 +735,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       if (needsSpeckleProcessing) {
         console.log('Manual edits detected, applying speckle processing');
         
-        // Store pre-speckle state if we haven't already
+        // Store pre-speckle state if we haven't already (BEFORE any effects are applied)
         if (!preSpeckleImageData) {
-          setPreSpeckleImageData(currentImageData);
-          console.log('Stored pre-speckle state');
+          // Make sure we store the truly clean data, not data with any effects
+          const cleanData = manualImageData || ctx.getImageData(0, 0, canvas.width, canvas.height);
+          setPreSpeckleImageData(cleanData);
+          console.log('Stored pre-speckle state (clean data)');
         }
         
-        // Apply speckle processing to the pre-speckle data
+        // Apply speckle processing to the clean pre-speckle data (no effects applied)
         const baseData = preSpeckleImageData || currentImageData;
         const speckleResult = processSpecks(baseData, speckleSettings);
         currentImageData = speckleResult.processedData;
