@@ -755,6 +755,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           currentImageData = preSpeckleImageData;
           ctx.putImageData(currentImageData, 0, 0);
           console.log('Restored pre-speckle state');
+          
+          // Clear the pre-speckle state since we're done with it
+          setPreSpeckleImageData(null);
         }
       }
       
@@ -1211,19 +1214,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Get the image data after magic wand removal
       let newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // If speckle tools are enabled, apply speckle processing to clean up new speckles
-      if (speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks)) {
-        console.log('Running speckle processing after magic wand removal');
-        const speckleResult = processSpecks(newImageData, speckleSettings);
-        newImageData = speckleResult.processedData;
-        
-        // Update speck count
-        if (onSpeckCountUpdate) {
-          onSpeckCountUpdate(speckleResult.speckCount);
-        }
-        
-        console.log('Speckle processing completed after magic wand');
-      }
+      // Store the image data after magic wand removal for potential speckle processing later
+      setManualImageData(newImageData);
+      
+      // DON'T run speckle processing here - let the main effect handle it to avoid threshold corruption
+      console.log('Magic wand removal completed, manual edits stored');
       
       // Apply edge cleanup if enabled
       if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
