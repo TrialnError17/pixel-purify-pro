@@ -703,6 +703,35 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, []);
 
+  // Trim semi-transparent edge pixels created by feathering
+  const trimSemiTransparentEdges = useCallback((imageData: ImageData, layers: number): ImageData => {
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+    
+    for (let layer = 0; layer < layers; layer++) {
+      // Check all edge pixels and remove semi-transparent ones
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          // Only process pixels on the current layer's edge
+          const isEdge = (x <= layer || x >= width - 1 - layer || y <= layer || y >= height - 1 - layer);
+          
+          if (isEdge) {
+            const index = (y * width + x) * 4;
+            const alpha = data[index + 3];
+            
+            // Remove pixels that are semi-transparent (not fully opaque)
+            if (alpha > 0 && alpha < 255) {
+              data[index + 3] = 0; // Make fully transparent
+            }
+          }
+        }
+      }
+    }
+    
+    return new ImageData(data, width, height);
+  }, []);
+
   // Process a single image
   const processImage = useCallback(async (
     image: ImageItem, 
@@ -1064,7 +1093,10 @@ export const useImageProcessor = () => {
     console.log('Applying automatic alpha feathering and edge softening for download...');
     imageDataToDownload = applyAlphaFeathering(imageDataToDownload, 2); // Reduced from 3 to 2
     imageDataToDownload = applyEdgeSoftening(imageDataToDownload, 1);    // Reduced from 2 to 1
-    console.log('Applied automatic edge enhancement for download');
+    
+    // Trim 1 pixel of semi-transparent edges created by feathering
+    imageDataToDownload = trimSemiTransparentEdges(imageDataToDownload, 1);
+    console.log('Trimmed semi-transparent edge pixels');
     
     // Apply download effects if provided
     if (effectSettings) {
@@ -1133,7 +1165,7 @@ export const useImageProcessor = () => {
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified, applyAlphaFeathering, applyEdgeSoftening]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified, applyAlphaFeathering, applyEdgeSoftening, trimSemiTransparentEdges]);
 
 
   return {
