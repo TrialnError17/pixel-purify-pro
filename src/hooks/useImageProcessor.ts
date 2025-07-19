@@ -620,6 +620,89 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [applyImageEffects]);
 
+  // Alpha feathering function
+  const applyAlphaFeathering = useCallback((imageData: ImageData, radius: number): ImageData => {
+    const data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+    
+    // Create a copy for reading from
+    const originalData = new Uint8ClampedArray(imageData.data);
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        
+        if (originalData[index + 3] > 0) { // Only process non-transparent pixels
+          let minDistance = radius + 1;
+          
+          // Find distance to nearest transparent pixel
+          for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                const nIndex = (ny * width + nx) * 4;
+                if (originalData[nIndex + 3] === 0) {
+                  const distance = Math.sqrt(dx * dx + dy * dy);
+                  minDistance = Math.min(minDistance, distance);
+                }
+              }
+            }
+          }
+          
+          // Apply feathering based on distance
+          if (minDistance <= radius) {
+            const alpha = Math.max(0, Math.min(255, (minDistance / radius) * originalData[index + 3]));
+            data[index + 3] = alpha;
+          }
+        }
+      }
+    }
+    
+    return new ImageData(data, width, height);
+  }, []);
+
+  // Edge softening function
+  const applyEdgeSoftening = useCallback((imageData: ImageData, iterations: number): ImageData => {
+    let data = new Uint8ClampedArray(imageData.data);
+    const width = imageData.width;
+    const height = imageData.height;
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      const tempData = new Uint8ClampedArray(data);
+      
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const index = (y * width + x) * 4;
+          
+          if (tempData[index + 3] > 0) { // Only process non-transparent pixels
+            let avgAlpha = 0;
+            let count = 0;
+            
+            // Sample neighboring pixels
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                const nIndex = (ny * width + nx) * 4;
+                avgAlpha += tempData[nIndex + 3];
+                count++;
+              }
+            }
+            
+            // Apply smoothing to alpha channel
+            const smoothedAlpha = avgAlpha / count;
+            data[index + 3] = Math.round(smoothedAlpha * 0.7 + tempData[index + 3] * 0.3);
+          }
+        }
+      }
+    }
+    
+    return new ImageData(data, width, height);
+  }, []);
+
   // Process a single image
   const processImage = useCallback(async (
     image: ImageItem, 
@@ -977,6 +1060,12 @@ export const useImageProcessor = () => {
     
     let imageDataToDownload = processedData;
     
+    // Apply automatic alpha feathering (radius 10) and edge softening (5 iterations) before download
+    console.log('Applying automatic alpha feathering and edge softening for download...');
+    imageDataToDownload = applyAlphaFeathering(imageDataToDownload, 10); // Fixed radius 10
+    imageDataToDownload = applyEdgeSoftening(imageDataToDownload, 5);    // Fixed 5 iterations
+    console.log('Applied automatic edge enhancement for download');
+    
     // Apply download effects if provided
     if (effectSettings) {
       imageDataToDownload = applyDownloadEffects(imageDataToDownload, effectSettings);
@@ -1044,7 +1133,7 @@ export const useImageProcessor = () => {
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified, applyAlphaFeathering, applyEdgeSoftening]);
 
 
   return {
