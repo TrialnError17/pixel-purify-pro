@@ -306,7 +306,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen
-        ? "fixed top-14 bottom-0 left-80 right-80 lg:left-96 lg:right-96 z-40" // Match exact sidebar widths: w-80 lg:w-96
+        ? "fixed top-14 bottom-0 left-0 right-0 z-40 mx-80 lg:mx-96" // Use margins to position between sidebars
         : visible 
           ? "h-48" 
           : "h-12"
