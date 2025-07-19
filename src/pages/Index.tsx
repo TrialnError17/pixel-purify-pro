@@ -130,6 +130,9 @@ const Index = () => {
   const [speckCount, setSpeckCount] = useState<number | undefined>(undefined);
   const [isProcessingSpeckles, setIsProcessingSpeckles] = useState(false);
   
+  // Track last interacted feature for Learning Center
+  const [lastInteractedFeature, setLastInteractedFeature] = useState<string | null>(null);
+  
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
       enabled: false,
@@ -604,6 +607,8 @@ const Index = () => {
               speckleSettings={speckleSettings}
               effectSettings={effectSettings}
               edgeCleanupSettings={edgeCleanupSettings}
+              lastInteractedFeature={lastInteractedFeature}
+              onFeatureInteraction={setLastInteractedFeature}
             />
           </div>
           
@@ -627,6 +632,8 @@ const Index = () => {
                   speckleSettings={speckleSettings}
                   effectSettings={effectSettings}
                   edgeCleanupSettings={edgeCleanupSettings}
+                  lastInteractedFeature={lastInteractedFeature}
+                  onFeatureInteraction={setLastInteractedFeature}
                 />
               </SheetContent>
             </Sheet>

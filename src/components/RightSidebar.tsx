@@ -8,6 +8,8 @@ export interface RightSidebarProps {
   speckleSettings: SpeckleSettings;
   effectSettings: EffectSettings;
   edgeCleanupSettings: EdgeCleanupSettings;
+  lastInteractedFeature: string | null;
+  onFeatureInteraction: (feature: string) => void;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({ 
@@ -15,11 +17,18 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   colorSettings, 
   speckleSettings, 
   effectSettings, 
-  edgeCleanupSettings 
+  edgeCleanupSettings,
+  lastInteractedFeature,
+  onFeatureInteraction
 }) => {
-  // Determine which tool to show based on priority (most recently enabled)
-  const getActiveToolForDisplay = () => {
-    // Priority order: most specific to least specific
+  // Determine which feature to show based on priority and last interaction
+  const getActiveFeatureForDisplay = () => {
+    // If user recently interacted with a specific feature, show that
+    if (lastInteractedFeature) {
+      return lastInteractedFeature;
+    }
+    
+    // Otherwise use tool priority system
     if (effectSettings.inkStamp.enabled) return 'ink-stamp';
     if (effectSettings.imageEffects.enabled) return 'image-effects';
     if (speckleSettings.enabled) return 'speckle-tools';
@@ -28,13 +37,21 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
     if (colorSettings.enabled) return 'color-removal';
     if (currentTool === 'magic-wand') return 'magic-wand';
     if (currentTool === 'color-stack') return 'color-stack';
-    return currentTool; // defaults to 'pan' or whatever current tool is
+    return currentTool; // defaults to 'pan'
   };
 
-  const activeDisplayTool = getActiveToolForDisplay();
+  const activeDisplayFeature = getActiveFeatureForDisplay();
 
   const getDisplayTitle = () => {
-    switch (activeDisplayTool) {
+    // Feature-specific titles (more granular)
+    switch (activeDisplayFeature) {
+      case 'color-threshold': return '🎚️ Threshold Control Guide';
+      case 'magic-wand-threshold': return '✨ Magic Wand Threshold Guide';
+      case 'speckle-size': return '🔧 Speckle Size Guide';
+      case 'background-color': return '🎨 Background Color Guide';
+      case 'ink-threshold': return '🖋️ Ink Stamp Threshold Guide';
+      case 'edge-radius': return '✂️ Edge Cleanup Radius Guide';
+      // Tool-level titles (fallback)
       case 'color-removal': return '🎨 Color Removal Guide';
       case 'background': return '🖼️ Background Guide';
       case 'speckle-tools': return '🔧 Speckle Tools Guide';
@@ -49,8 +66,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   };
 
   return (
-    <div className="w-80 lg:w-96 bg-gradient-panel border-l border-border flex flex-col">
-      <div className="p-4 border-b border-border">
+    <div className="w-80 lg:w-96 bg-gradient-panel border-l border-border flex flex-col h-full">
+      <div className="p-4 border-b border-border flex-shrink-0">
         <h2 className="text-lg font-semibold text-foreground">
           📚 Learning Center
         </h2>
@@ -60,25 +77,281 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       </div>
       
       <ToolSpecificContent 
-        activeDisplayTool={activeDisplayTool}
-        colorSettings={colorSettings}
-        speckleSettings={speckleSettings}
-        effectSettings={effectSettings}
-        edgeCleanupSettings={edgeCleanupSettings}
+        activeDisplayFeature={activeDisplayFeature}
+        onFeatureInteraction={onFeatureInteraction}
       />
     </div>
   );
 };
 
-// Tool-specific content that adapts based on active tools
+// Tool-specific content that adapts based on active tools and specific features
 const ToolSpecificContent: React.FC<{ 
-  activeDisplayTool: string;
-  colorSettings: ColorRemovalSettings;
-  speckleSettings: SpeckleSettings;
-  effectSettings: EffectSettings;
-  edgeCleanupSettings: EdgeCleanupSettings;
-}> = ({ activeDisplayTool }) => {
+  activeDisplayFeature: string;
+  onFeatureInteraction: (feature: string) => void;
+}> = ({ activeDisplayFeature }) => {
   
+  // Feature-specific instructions (most granular level)
+  const featureInstructions: Record<string, any> = {
+    'color-threshold': {
+      sections: [
+        {
+          icon: "🎚️",
+          title: "Threshold Control Mastery",
+          gradient: "from-accent-orange/10 to-accent-yellow/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          tips: [
+            "Precision Range (1-20): For exact color matching and fine details",
+            "Balanced Range (21-50): Good starting point for most images",
+            "Broad Range (51-80): Includes color variations and gradients",
+            "Maximum Range (81-100): Removes very different colors"
+          ]
+        },
+        {
+          icon: "🔬",
+          title: "Color Science Deep Dive",
+          gradient: "from-accent-purple/10 to-accent-indigo/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          tips: [
+            "LAB Color Space: Uses perceptually uniform color difference",
+            "Delta E Calculation: Industry standard color difference metric",
+            "Threshold Scaling: Non-linear scaling matches human perception",
+            "Anti-aliasing Handling: Smoothly handles edge pixel variations"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Strategic Threshold Usage",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "Start Conservative: Begin with low values, increase gradually",
+            "Monitor Preview: Watch for over-selection in real-time",
+            "Edge Awareness: Lower thresholds near important subject details",
+            "Multiple Passes: Use different thresholds for different areas"
+          ]
+        }
+      ]
+    },
+    'magic-wand-threshold': {
+      sections: [
+        {
+          icon: "✨",
+          title: "Magic Wand Threshold Precision",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Ultra-Precise (1-10): Select only exact matching colors",
+            "Fine Selection (11-25): Include slight color variations",
+            "Standard Selection (26-45): Good for most contiguous areas",
+            "Broad Selection (46-80): Include significant color changes"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Contiguous Selection Strategy",
+          gradient: "from-accent-cyan/10 to-accent-teal/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "8-Way Connectivity: Algorithm checks all surrounding pixels",
+            "Flood Fill Behavior: Spreads from click point to similar colors",
+            "Edge Detection: Automatically stops at significant color changes",
+            "Performance Optimization: Efficient for large connected areas"
+          ]
+        },
+        {
+          icon: "🧠",
+          title: "Advanced Wand Techniques",
+          gradient: "from-accent-green/10 to-accent-emerald/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          tips: [
+            "Click Positioning: Center clicks work better than edge clicks",
+            "Progressive Selection: Start low, increase if selection too small",
+            "Multiple Zones: Use separate clicks for disconnected areas",
+            "Threshold Testing: Try different values for optimal coverage"
+          ]
+        }
+      ]
+    },
+    'speckle-size': {
+      sections: [
+        {
+          icon: "🔧",
+          title: "Speckle Size Optimization",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          tips: [
+            "Micro Specks (1-25): Remove dust, scanner artifacts, noise",
+            "Small Specks (26-100): Clean isolated pixels and tiny spots",
+            "Medium Specks (101-500): Remove unwanted small objects",
+            "Large Specks (501+): Delete significant unwanted areas"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Connected Component Analysis",
+          gradient: "from-accent-cyan/10 to-accent-teal/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "8-Way Connectivity: Counts diagonally connected pixels",
+            "Pixel Counting: Measures actual pixels, not bounding box",
+            "Shape Independence: Works regardless of speck shape",
+            "Transparency Analysis: Only processes non-transparent areas"
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Speckle Removal Strategy",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Progressive Approach: Start small, increase size gradually",
+            "Preview First: Use highlight mode to see what will be removed",
+            "Combine with Edge Cleanup: Apply speckle removal then edge cleanup",
+            "Performance Impact: Larger thresholds process faster"
+          ]
+        }
+      ]
+    },
+    'background-color': {
+      sections: [
+        {
+          icon: "🎨",
+          title: "Background Color Theory",
+          gradient: "from-accent-blue/10 to-accent-cyan/10",
+          border: "border-accent-blue/30",
+          textColor: "text-accent-blue",
+          tips: [
+            "Color Harmony: Choose colors that complement your subject",
+            "Contrast Considerations: Ensure subject visibility and pop",
+            "Brand Consistency: Match corporate or project color schemes",
+            "Mood Creation: Warm colors = energy, cool colors = calm"
+          ]
+        },
+        {
+          icon: "🖼️",
+          title: "Professional Applications",
+          gradient: "from-accent-green/10 to-accent-lime/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          tips: [
+            "Product Photography: White (#FFFFFF) for clean, professional look",
+            "Portrait Work: Subtle grays or skin-tone complements",
+            "Logo Design: High contrast colors for maximum impact",
+            "Web Graphics: Colors that match website design system"
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Technical Implementation",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          tips: [
+            "Non-destructive Process: Original transparency always preserved",
+            "Real-time Preview: See changes instantly as you adjust",
+            "Save Options: Toggle background on/off for download",
+            "Color Space: Uses RGB color space for accurate rendering"
+          ]
+        }
+      ]
+    },
+    'ink-threshold': {
+      sections: [
+        {
+          icon: "🖋️",
+          title: "Ink Stamp Threshold Control",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "High Detail (1-25): Preserves fine details and textures",
+            "Balanced (26-50): Good compromise between detail and simplicity",
+            "Simplified (51-75): Creates cleaner, more graphic results",
+            "Minimal (76-100): Ultra-simplified silhouettes"
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Artistic Effect Control",
+          gradient: "from-accent-rose/10 to-accent-pink/10",
+          border: "border-accent-rose/30",
+          textColor: "text-accent-rose",
+          tips: [
+            "Luminance Analysis: Algorithm analyzes pixel brightness values",
+            "Threshold Boundary: Dark areas become ink, light areas transparent",
+            "Color Independence: Works regardless of original image colors",
+            "High Contrast Sources: Best results with well-lit subjects"
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Technical Optimization",
+          gradient: "from-accent-yellow/10 to-accent-orange/10",
+          border: "border-accent-yellow/30",
+          textColor: "text-accent-yellow",
+          tips: [
+            "Edge Preservation: Edge cleanup automatically disabled",
+            "Color Selection: Choose any ink color for artistic effect",
+            "Processing Order: Applied after color removal, before effects",
+            "Performance: Efficient single-pass luminance conversion"
+          ]
+        }
+      ]
+    },
+    'edge-radius': {
+      sections: [
+        {
+          icon: "✂️",
+          title: "Edge Cleanup Radius Control",
+          gradient: "from-accent-teal/10 to-accent-cyan/10",
+          border: "border-accent-teal/30",
+          textColor: "text-accent-teal",
+          tips: [
+            "Minimal (1-2px): Gentle cleanup, preserves fine details",
+            "Standard (3-4px): Good balance for most images",
+            "Aggressive (5px+): Strong cleanup, may remove small details",
+            "Image Scale: Adjust radius based on image resolution"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Edge Quality Control",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          tips: [
+            "Conservative Approach: Start with smaller radius values",
+            "Subject Protection: Algorithm preserves important subject details",
+            "Zoom Testing: Check results at 100% zoom for accuracy",
+            "Iterative Process: Apply multiple times with small radius"
+          ]
+        },
+        {
+          icon: "🧪",
+          title: "Algorithm Deep Dive",
+          gradient: "from-accent-indigo/10 to-accent-blue/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Morphological Operations: Uses erosion and dilation techniques",
+            "Alpha Channel Focus: Works exclusively on transparency data",
+            "Gradient Analysis: Detects smooth vs sharp edge transitions",
+            "Performance Optimization: Minimal computational overhead"
+          ]
+        }
+      ]
+    }
+  };
+
   // Comprehensive tool-specific instructions for ALL tools
   const allToolInstructions: Record<string, any> = {
     'color-removal': {
@@ -457,10 +730,16 @@ const ToolSpecificContent: React.FC<{
     }
   };
 
-  // Get current tool instructions or fall back to random general tips
+  // Get current content based on active feature or tool
   const getCurrentContent = () => {
-    if (allToolInstructions[activeDisplayTool]) {
-      return allToolInstructions[activeDisplayTool];
+    // Check if we have feature-specific instructions first
+    if (featureInstructions[activeDisplayFeature]) {
+      return featureInstructions[activeDisplayFeature];
+    }
+    
+    // Fall back to tool-specific instructions
+    if (allToolInstructions[activeDisplayFeature]) {
+      return allToolInstructions[activeDisplayFeature];
     }
     
     // Fall back to original random tips when no specific tool is active
@@ -569,11 +848,11 @@ const ToolSpecificContent: React.FC<{
 
   const selectedBonusTip = React.useMemo(() => {
     return bonusTips[Math.floor(Math.random() * bonusTips.length)];
-  }, [activeDisplayTool]);
+  }, [activeDisplayFeature]);
 
   return (
-    <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-      {/* Tool-specific or general instructions */}
+    <div className="flex-1 p-4 space-y-4 overflow-y-auto min-h-0">
+      {/* Feature-specific, tool-specific, or general instructions */}
       <div className="space-y-4 animate-fade-in">
         {currentContent.sections.map((section: any, index: number) => (
           <div key={`section-${index}`} className={`bg-gradient-to-br ${section.gradient} border ${section.border} rounded-lg p-4`}>
@@ -594,24 +873,26 @@ const ToolSpecificContent: React.FC<{
         ))}
       </div>
 
-      {/* Bonus tip to fill remaining space */}
-      <div className="animate-fade-in">
-        <div className={`bg-gradient-to-br ${selectedBonusTip.gradient} border ${selectedBonusTip.border} rounded-lg p-4`}>
-          <div className={`font-medium ${selectedBonusTip.textColor} mb-3 flex items-center gap-2`}>
-            {selectedBonusTip.icon} <span>{selectedBonusTip.title}</span>
-          </div>
-          <div className="text-xs text-muted-foreground space-y-2">
-            {selectedBonusTip.tips.map((tip, tipIndex) => {
-              const [title, description] = tip.split(': ');
-              return (
-                <div key={tipIndex}>
-                  • <strong>{title}:</strong> {description}
-                </div>
-              );
-            })}
+      {/* Bonus tip to fill remaining space (only show for feature-specific content to save space) */}
+      {!featureInstructions[activeDisplayFeature] && (
+        <div className="animate-fade-in">
+          <div className={`bg-gradient-to-br ${selectedBonusTip.gradient} border ${selectedBonusTip.border} rounded-lg p-4`}>
+            <div className={`font-medium ${selectedBonusTip.textColor} mb-3 flex items-center gap-2`}>
+              {selectedBonusTip.icon} <span>{selectedBonusTip.title}</span>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-2">
+              {selectedBonusTip.tips.map((tip, tipIndex) => {
+                const [title, description] = tip.split(': ');
+                return (
+                  <div key={tipIndex}>
+                    • <strong>{title}:</strong> {description}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
