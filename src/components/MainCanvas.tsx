@@ -22,6 +22,210 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Random tip sets for Main Canvas empty state
+const MainCanvasTips: React.FC = () => {
+  const tipSets = [
+    // Set 1: Getting Started & Best Results
+    {
+      tips: [
+        {
+          icon: "🎯",
+          title: "Getting Started",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          items: [
+            { text: "Drag & Drop:", desc: "Simply drop image files here" },
+            { text: "Upload Button:", desc: "Use \"Add Images\" in the header" },
+            { text: "Batch Processing:", desc: "Add multiple images to the queue" }
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Best Results",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          items: [
+            { text: "High Resolution:", desc: "Better precision for color removal" },
+            { text: "Good Contrast:", desc: "Clear distinction between colors" },
+            { text: "Even Lighting:", desc: "Reduces color variation issues" }
+          ]
+        }
+      ]
+    },
+    // Set 2: Tool Selection & Workflow
+    {
+      tips: [
+        {
+          icon: "🛠️",
+          title: "Choose Your Tool",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          items: [
+            { text: "Magic Wand:", desc: "For precise, connected selections" },
+            { text: "Color Stack:", desc: "Remove multiple colors at once" },
+            { text: "Pan Tool:", desc: "Navigate and zoom around images" }
+          ]
+        },
+        {
+          icon: "📋",
+          title: "Efficient Workflow",
+          gradient: "from-accent-green/10 to-accent-lime/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          items: [
+            { text: "Start Simple:", desc: "Begin with auto mode for backgrounds" },
+            { text: "Refine Settings:", desc: "Adjust thresholds for precision" },
+            { text: "Apply Effects:", desc: "Add backgrounds or enhance images" }
+          ]
+        }
+      ]
+    },
+    // Set 3: Pro Techniques & Navigation
+    {
+      tips: [
+        {
+          icon: "🎨",
+          title: "Pro Techniques",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          items: [
+            { text: "Layer Effects:", desc: "Combine color removal with backgrounds" },
+            { text: "Threshold Tuning:", desc: "Lower = precise, higher = broad" },
+            { text: "Edge Cleanup:", desc: "Smooth rough edges automatically" }
+          ]
+        },
+        {
+          icon: "🗺️",
+          title: "Navigation Tips",
+          gradient: "from-accent-rose/10 to-accent-pink/10",
+          border: "border-accent-rose/30",
+          textColor: "text-accent-rose",
+          items: [
+            { text: "Mouse Wheel:", desc: "Zoom in and out smoothly" },
+            { text: "Space + Drag:", desc: "Pan around large images" },
+            { text: "Triple Click:", desc: "Auto-fit image to screen" }
+          ]
+        }
+      ]
+    },
+    // Set 4: File Formats & Quality
+    {
+      tips: [
+        {
+          icon: "📁",
+          title: "File Format Guide",
+          gradient: "from-accent-yellow/10 to-accent-orange/10",
+          border: "border-accent-yellow/30",
+          textColor: "text-accent-yellow",
+          items: [
+            { text: "PNG Files:", desc: "Best for preserving transparency" },
+            { text: "JPEG Files:", desc: "Smaller size, good for solid backgrounds" },
+            { text: "High DPI:", desc: "Better detail preservation" }
+          ]
+        },
+        {
+          icon: "🎛️",
+          title: "Quality Control",
+          gradient: "from-accent-teal/10 to-accent-cyan/10",
+          border: "border-accent-teal/30",
+          textColor: "text-accent-teal",
+          items: [
+            { text: "Preview First:", desc: "Check results before downloading" },
+            { text: "Adjust Settings:", desc: "Fine-tune for perfect results" },
+            { text: "Save Originals:", desc: "Keep backups of source files" }
+          ]
+        }
+      ]
+    },
+    // Set 5: Advanced Features & Shortcuts
+    {
+      tips: [
+        {
+          icon: "🚀",
+          title: "Advanced Features",
+          gradient: "from-accent-violet/10 to-accent-purple/10",
+          border: "border-accent-violet/30",
+          textColor: "text-accent-violet",
+          items: [
+            { text: "Speckle Removal:", desc: "Clean up small unwanted spots" },
+            { text: "Ink Stamp Effect:", desc: "Create stylized silhouettes" },
+            { text: "Image Effects:", desc: "Adjust brightness, contrast, hue" }
+          ]
+        },
+        {
+          icon: "⌨️",
+          title: "Power User Shortcuts",
+          gradient: "from-accent-emerald/10 to-accent-green/10",
+          border: "border-accent-emerald/30",
+          textColor: "text-accent-emerald",
+          items: [
+            { text: "Ctrl+Z:", desc: "Undo last action" },
+            { text: "Ctrl+Y:", desc: "Redo action" },
+            { text: "Escape:", desc: "Exit fullscreen mode" }
+          ]
+        }
+      ]
+    },
+    // Set 6: Troubleshooting & Performance
+    {
+      tips: [
+        {
+          icon: "🔧",
+          title: "Common Issues",
+          gradient: "from-accent-red/10 to-accent-rose/10",
+          border: "border-accent-red/30",
+          textColor: "text-accent-red",
+          items: [
+            { text: "Colors Not Removing:", desc: "Try different color spaces or thresholds" },
+            { text: "Jagged Edges:", desc: "Enable edge cleanup for smoother results" },
+            { text: "Too Much Removed:", desc: "Lower threshold or use manual mode" }
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Performance Tips",
+          gradient: "from-accent-blue/10 to-accent-indigo/10",
+          border: "border-accent-blue/30",
+          textColor: "text-accent-blue",
+          items: [
+            { text: "Large Images:", desc: "May process slower but with better quality" },
+            { text: "Batch Mode:", desc: "Process multiple similar images efficiently" },
+            { text: "Simple Backgrounds:", desc: "Use auto mode for faster processing" }
+          ]
+        }
+      ]
+    }
+  ];
+
+  // Select random tip set on component mount
+  const selectedTipSet = React.useMemo(() => {
+    return tipSets[Math.floor(Math.random() * tipSets.length)];
+  }, []);
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {selectedTipSet.tips.map((tip, index) => (
+        <div key={index} className={`bg-gradient-to-r ${tip.gradient} border ${tip.border} rounded-lg p-4`}>
+          <div className={`font-medium ${tip.textColor} mb-3`}>
+            {tip.icon} <span>{tip.title}</span>
+          </div>
+          <div className="text-sm text-muted-foreground space-y-2">
+            {tip.items.map((item, itemIndex) => (
+              <div key={itemIndex}>
+                • <strong>{item.text}</strong> {item.desc}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 interface MainCanvasProps {
   image: ImageItem | undefined;
   tool: 'pan' | 'color-stack' | 'magic-wand';
@@ -2058,24 +2262,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <div className="text-center max-w-lg mx-auto px-6">
               <div className="text-4xl mb-4">🖼️</div>
               <h3 className="text-lg font-medium text-foreground mb-4">No Image Selected</h3>
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-accent-purple/10 to-accent-pink/10 border border-accent-purple/30 rounded-lg p-4">
-                  <div className="font-medium text-accent-purple mb-3">🎯 Getting Started</div>
-                  <div className="text-sm text-muted-foreground space-y-2">
-                    <div>• <strong>Drag & Drop:</strong> Simply drop image files here</div>
-                    <div>• <strong>Upload Button:</strong> Use "Add Images" in the header</div>
-                    <div>• <strong>Batch Processing:</strong> Add multiple images to the queue</div>
-                  </div>
-                </div>
-                <div className="bg-gradient-to-r from-accent-orange/10 to-accent-red/10 border border-accent-orange/30 rounded-lg p-4">
-                  <div className="font-medium text-accent-orange mb-3">⚡ Best Results</div>
-                  <div className="text-sm text-muted-foreground space-y-2">
-                    <div>• <strong>High Resolution:</strong> Better precision for color removal</div>
-                    <div>• <strong>Good Contrast:</strong> Clear distinction between colors</div>
-                    <div>• <strong>Even Lighting:</strong> Reduces color variation issues</div>
-                  </div>
-                </div>
-              </div>
+              <MainCanvasTips />
             </div>
           </Card>
         )}
