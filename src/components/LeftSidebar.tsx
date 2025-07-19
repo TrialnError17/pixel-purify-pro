@@ -135,27 +135,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </h2>
           </div>
           
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddImages}
-              className="flex items-center gap-1"
-            >
-              <ImagePlus className="w-3 h-3" />
-              Images
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddFolder}
-              className="flex items-center gap-1"
-            >
-              <FolderPlus className="w-3 h-3" />
-              Folder
-            </Button>
-          </div>
         </div>
       </div>
       
