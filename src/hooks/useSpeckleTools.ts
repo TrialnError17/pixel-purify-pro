@@ -167,7 +167,11 @@ export const useSpeckleTools = () => {
 
   // Remove specks by making them transparent, and highlight remaining smaller specks
   const removeSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
+    console.log('🗑️ removeSpecks function called with minSpeckSize:', settings.minSpeckSize);
+    
     const { components, speckCount, largestSpeck } = findConnectedComponents(imageData);
+    console.log(`📊 Found ${components.length} components with sizes:`, components.map(c => c.length).sort((a, b) => a - b));
+    
     const processedData = new ImageData(
       new Uint8ClampedArray(imageData.data),
       imageData.width,
@@ -177,19 +181,27 @@ export const useSpeckleTools = () => {
     const data = processedData.data;
     const width = imageData.width;
     let removedSpecks = 0;
+    let totalPixelsRemoved = 0;
 
     // Simple removal: remove components smaller than threshold
     components.forEach(component => {
       if (component.length <= settings.minSpeckSize) {
+        console.log(`🗑️ Removing speck of size ${component.length} pixels`);
         component.forEach(index => {
           const pixelIndex = index * 4;
-          data[pixelIndex + 3] = 0; // Make transparent
+          // Check if pixel is actually non-transparent before removing
+          if (data[pixelIndex + 3] > 0) {
+            data[pixelIndex + 3] = 0; // Make transparent
+            totalPixelsRemoved++;
+          }
         });
         removedSpecks++;
+      } else {
+        console.log(`✅ Keeping component of size ${component.length} pixels (larger than ${settings.minSpeckSize})`);
       }
     });
 
-    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels)`);
+    console.log(`🗑️ Removed ${removedSpecks} specks (${totalPixelsRemoved} total pixels) with threshold ${settings.minSpeckSize}`);
 
     return {
       processedData,
