@@ -376,6 +376,7 @@ const Index = () => {
                 undo: () => setSpeckleSettings(prevSpeckleSettings)
               });
             }}
+            speckCount={speckCount}
             effectSettings={effectSettings}
             onEffectSettingsChange={(newEffectSettings) => {
               const prevEffectSettings = { ...effectSettings };
