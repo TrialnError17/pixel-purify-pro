@@ -2240,7 +2240,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               ref={canvasRef}
               className={cn(
                 "absolute cursor-crosshair",
-                effectSettings.background.enabled ? "" : "border border-canvas-border",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'color-stack' && 'cursor-crosshair',
                 tool === 'magic-wand' && 'cursor-crosshair'
