@@ -500,12 +500,10 @@ const Index = () => {
                 isProcessing 
                     ? {
                       current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                      total: images.filter(img => img.status !== 'error').length
+                      total: images.length
                     }
                   : undefined
               }
-              isFullscreen={isQueueFullscreen}
-              onSetFullscreen={setIsQueueFullscreen}
               onRemoveImage={(imageId) => {
                 const targetImage = images.find(img => img.id === imageId);
                 if (!targetImage) return;
@@ -584,6 +582,11 @@ const Index = () => {
               onClearAll={handleClearAll}
             />
           </div>
+          
+          {/* Right Learning Sidebar - Hidden on mobile */}
+          <div className="hidden lg:block">
+            <RightSidebar />
+          </div>
         </div>
         
         <input
@@ -595,9 +598,6 @@ const Index = () => {
           className="hidden"
         />
       </div>
-      
-      {/* Independent Advertisement Space */}
-      <RightSidebar />
     </div>
   );
 };
