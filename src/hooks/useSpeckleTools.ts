@@ -183,41 +183,37 @@ export const useSpeckleTools = () => {
     let removedSpecks = 0;
     let remainingSpecks = 0;
 
-    // Find the largest component size to distinguish main subject from specks
-    const largestComponentSize = Math.max(...components.map(comp => comp.length));
-    const speckThreshold = Math.min(settings.minSpeckSize * 10, largestComponentSize * 0.1); // Only highlight specks up to 10x threshold or 10% of largest component
-    
-    console.log('Largest component size:', largestComponentSize, 'speckThreshold:', speckThreshold, 'minSpeckSize:', settings.minSpeckSize);
-
     // Process all components
     components.forEach(component => {
       if (component.length <= settings.minSpeckSize) {
         // Remove small components (specks) by making them transparent
+        console.log('Removing speck of size:', component.length);
         component.forEach(index => {
           const pixelIndex = index * 4;
           data[pixelIndex + 3] = 0; // Make transparent
         });
         removedSpecks++;
-      } else if (component.length <= speckThreshold) {
-        // Highlight remaining medium-sized specks in red (but not the main subject)
+      } else if (component.length <= settings.minSpeckSize * 5) {
+        // Only highlight medium-sized specks (up to 5x the threshold) so we don't highlight the main subject
+        console.log('Highlighting remaining speck of size:', component.length);
         component.forEach(index => {
           const x = index % width;
           const y = Math.floor(index / width);
           
           // Add red glow around the remaining speck
-          for (let dy = -2; dy <= 2; dy++) {
-            for (let dx = -2; dx <= 2; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
               const nx = x + dx;
               const ny = y + dy;
               if (nx >= 0 && nx < width && ny >= 0 && ny < imageData.height) {
                 const nIndex = (ny * width + nx) * 4;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance <= 2) {
-                  const intensity = Math.max(0, 1 - distance / 2);
+                if (distance <= 1) {
+                  const intensity = Math.max(0, 1 - distance);
                   data[nIndex] = Math.min(255, data[nIndex] + intensity * 255); // Red
-                  data[nIndex + 1] = Math.max(0, data[nIndex + 1] * (1 - intensity * 0.8)); // Reduce green
-                  data[nIndex + 2] = Math.max(0, data[nIndex + 2] * (1 - intensity * 0.8)); // Reduce blue
-                  data[nIndex + 3] = Math.max(data[nIndex + 3], intensity * 200); // Ensure visibility
+                  data[nIndex + 1] = Math.max(0, data[nIndex + 1] * (1 - intensity * 0.5)); // Reduce green
+                  data[nIndex + 2] = Math.max(0, data[nIndex + 2] * (1 - intensity * 0.5)); // Reduce blue
+                  data[nIndex + 3] = Math.max(data[nIndex + 3], intensity * 150); // Ensure visibility
                 }
               }
             }
@@ -228,7 +224,7 @@ export const useSpeckleTools = () => {
       // Large components (main subject) are left untouched
     });
 
-    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels), highlighted ${remainingSpecks} remaining medium specks (threshold: ${speckThreshold})`);
+    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels), highlighted ${remainingSpecks} remaining medium specks`);
 
     return {
       processedData,
