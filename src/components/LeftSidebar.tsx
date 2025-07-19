@@ -273,6 +273,26 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
         {settings.enabled && (
           <>
+            <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
+                  🎚️ Threshold Sensitivity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <SliderWithInput
+                    value={[settings.threshold]}
+                    onValueChange={([threshold]) => updateSettings({ threshold })}
+                    min={1}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="py-1">
               <Label className="text-xs font-medium text-muted-foreground mb-1 block">Mode Selection</Label>
               <RadioGroup
@@ -382,25 +402,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </Card>
             )}
 
-            <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
-              <CardHeader className="pt-2 pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
-                  🎚️ Threshold Sensitivity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <SliderWithInput
-                    value={[settings.threshold]}
-                    onValueChange={([threshold]) => updateSettings({ threshold })}
-                    min={1}
-                    max={100}
-                    step={1}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
-                  />
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Min Region Size Widget - only shown when color removal is enabled */}
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-cyan/10 border-accent-blue/30 shadow-colorful">
