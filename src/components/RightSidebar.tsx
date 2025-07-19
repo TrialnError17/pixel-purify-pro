@@ -349,6 +349,247 @@ const ToolSpecificContent: React.FC<{
           ]
         }
       ]
+    },
+    
+    // All Image Effects Controls
+    'brightness': {
+      sections: [
+        {
+          icon: "☀️",
+          title: "Brightness Control Mastery",
+          gradient: "from-accent-yellow/10 to-accent-orange/10",
+          border: "border-accent-yellow/30",
+          textColor: "text-accent-yellow",
+          tips: [
+            "Positive Values (+1 to +100): Make image brighter",
+            "Negative Values (-1 to -100): Make image darker",
+            "Linear Adjustment: Affects all pixels equally",
+            "Start Small: ±10-20 for subtle, natural adjustments"
+          ]
+        },
+        {
+          icon: "🔬",
+          title: "Technical Details",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          tips: [
+            "RGB Channel Impact: Adds/subtracts value from R, G, B channels",
+            "Clipping Protection: Values clamped to 0-255 range",
+            "Shadow Recovery: Positive values reveal hidden shadow detail",
+            "Highlight Protection: Negative values prevent blown highlights"
+          ]
+        }
+      ]
+    },
+    
+    'contrast': {
+      sections: [
+        {
+          icon: "⚫",
+          title: "Contrast Enhancement",
+          gradient: "from-accent-gray/10 to-accent-slate/10",
+          border: "border-accent-gray/30",
+          textColor: "text-accent-gray",
+          tips: [
+            "Positive Values: Increase difference between light/dark",
+            "Negative Values: Reduce contrast for softer look",
+            "Midpoint Anchoring: 128 gray stays unchanged",
+            "Dynamic Range: Expands or compresses tonal range"
+          ]
+        },
+        {
+          icon: "📈",
+          title: "Professional Applications",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Portrait Enhancement: +10 to +25 for skin definition",
+            "Landscape Drama: +30 to +50 for sky and cloud detail",
+            "Vintage Look: -20 to -40 for soft, dreamy effects",
+            "Product Photography: +15 to +30 for crisp, defined edges"
+          ]
+        }
+      ]
+    },
+    
+    'vibrance': {
+      sections: [
+        {
+          icon: "✨",
+          title: "Vibrance Intelligence",
+          gradient: "from-accent-cyan/10 to-accent-teal/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "Smart Saturation: Protects already-saturated colors",
+            "Skin Tone Aware: Preserves natural skin colors",
+            "Muted Color Focus: Enhances dull colors more than vivid ones",
+            "Perceptual Algorithm: Based on human color perception"
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Creative Control",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          tips: [
+            "Portrait Work: +20 to +40 enhances without oversaturation",
+            "Landscape: +30 to +60 brings nature colors to life",
+            "Architecture: +15 to +25 enhances building materials",
+            "Negative Values: Create unique desaturated artistic effects"
+          ]
+        }
+      ]
+    },
+    
+    'hue-shift': {
+      sections: [
+        {
+          icon: "🎨",
+          title: "Color Wheel Mastery",
+          gradient: "from-accent-rainbow-start/10 to-accent-rainbow-end/10",
+          border: "border-accent-rainbow-start/30",
+          textColor: "text-accent-rainbow-start",
+          tips: [
+            "Full Spectrum: -180° to +180° covers entire color wheel",
+            "60° Intervals: Major color family shifts (red→yellow)",
+            "180° Flip: Creates complementary color schemes",
+            "Creative Grading: Transform mood with color shifts"
+          ]
+        },
+        {
+          icon: "🌈",
+          title: "Artistic Applications",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Autumn Effect: +30° to +60° (greens become yellows/oranges)",
+            "Cool Mood: +120° to +180° (warm tones become cool)",
+            "Fantasy Colors: ±90° to ±150° for otherworldly looks",
+            "Color Correction: Small adjustments (±15°) fix white balance"
+          ]
+        }
+      ]
+    },
+    
+    'colorize': {
+      sections: [
+        {
+          icon: "🎭",
+          title: "Colorize Effect Control",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Two-Step Process: Desaturate then apply color tint",
+            "Hue Selection: Choose base color (0-360°)",
+            "Lightness Control: Adjust overall brightness (0-100%)",
+            "Saturation Control: Color intensity (0-100%)"
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Creative Techniques",
+          gradient: "from-accent-rose/10 to-accent-pink/10",
+          border: "border-accent-rose/30",
+          textColor: "text-accent-rose",
+          tips: [
+            "Sepia Effect: Warm hues (30-45°) with moderate saturation",
+            "Blue Hour: Cool blues (210-240°) for dramatic mood",
+            "Vintage Look: Warm yellows (45-60°) with low saturation",
+            "Artistic Tinting: High saturation (80-100%) for bold effects"
+          ]
+        }
+      ]
+    },
+    
+    'colorize-hue': {
+      sections: [
+        {
+          icon: "🌈",
+          title: "Hue Selection Guide",
+          gradient: "from-accent-rainbow-start/10 to-accent-rainbow-end/10",
+          border: "border-accent-rainbow-start/30",
+          textColor: "text-accent-rainbow-start",
+          tips: [
+            "Red (0°): Dramatic, passionate, warm energy",
+            "Orange (30°): Cozy, autumn, vintage warmth",
+            "Yellow (60°): Bright, cheerful, optimistic feel",
+            "Green (120°): Natural, fresh, calming effect"
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Cool Tone Options",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "Cyan (180°): Fresh, modern, clean aesthetic",
+            "Blue (240°): Professional, calm, trustworthy",
+            "Purple (270°): Creative, mysterious, artistic",
+            "Magenta (300°): Bold, creative, contemporary"
+          ]
+        }
+      ]
+    },
+    
+    'colorize-lightness': {
+      sections: [
+        {
+          icon: "💡",
+          title: "Lightness Control",
+          gradient: "from-accent-yellow/10 to-accent-white/10",
+          border: "border-accent-yellow/30",
+          textColor: "text-accent-yellow",
+          tips: [
+            "50% Default: Preserves original luminance values",
+            "Lower Values (0-49%): Creates darker, moody effects",
+            "Higher Values (51-100%): Brighter, ethereal appearance",
+            "Extreme Values: 0% = black, 100% = white tinting"
+          ]
+        }
+      ]
+    },
+    
+    'colorize-saturation': {
+      sections: [
+        {
+          icon: "🎨",
+          title: "Saturation Control",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          tips: [
+            "Low (0-30%): Subtle tinting, natural appearance",
+            "Medium (31-60%): Noticeable color cast, artistic",
+            "High (61-100%): Bold color transformation",
+            "0% Saturation: Pure grayscale conversion"
+          ]
+        }
+      ]
+    },
+    
+    'black-and-white': {
+      sections: [
+        {
+          icon: "⚫",
+          title: "Grayscale Conversion",
+          gradient: "from-accent-gray/10 to-accent-black/10",
+          border: "border-accent-gray/30",
+          textColor: "text-accent-gray",
+          tips: [
+            "Weighted Conversion: Uses perceptual luminance formula",
+            "Professional Quality: Better than simple desaturation",
+            "Timeless Appeal: Classic black and white photography",
+            "Emphasis on Form: Removes color distractions"
+          ]
+        }
+      ]
     }
   };
 

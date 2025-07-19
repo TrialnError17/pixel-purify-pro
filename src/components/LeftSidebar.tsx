@@ -27,6 +27,7 @@ interface LeftSidebarProps {
   currentTool: 'pan' | 'color-stack' | 'magic-wand';
   onAddImages: () => void;
   onAddFolder: () => void;
+  onFeatureInteraction: (feature: string) => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -43,7 +44,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onEdgeCleanupSettingsChange,
   currentTool,
   onAddImages,
-  onAddFolder
+  onAddFolder,
+  onFeatureInteraction
 }) => {
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
@@ -353,10 +355,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </CardHeader>
           <CardContent className="pt-0 pb-2 space-y-3">
             <div className="flex items-center gap-3 p-2 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
-              <input
-                type="color"
+                <input
+                  type="color"
                     value={effectSettings.background.color}
-                    onChange={(e) => updateBackground({ color: e.target.value })}
+                    onChange={(e) => {
+                      updateBackground({ color: e.target.value });
+                      onFeatureInteraction('background-color');
+                    }}
+                    onClick={() => onFeatureInteraction('background-color')}
                     className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
                   />
                   <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
@@ -369,7 +375,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <span className="text-sm font-medium text-accent-green">💾 Save with BG</span>
                   <Switch
                     checked={effectSettings.background.saveWithBackground}
-                    onCheckedChange={(saveWithBackground) => updateBackground({ saveWithBackground })}
+                    onCheckedChange={(saveWithBackground) => {
+                      updateBackground({ saveWithBackground });
+                      onFeatureInteraction('save-with-background');
+                    }}
                     className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
                   />
                 </div>
@@ -394,7 +403,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
                 <SliderWithInput
                   value={[contiguousSettings.threshold]}
-                  onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
+                  onValueChange={([threshold]) => {
+                    updateContiguousSettings({ threshold });
+                    onFeatureInteraction('threshold-wand');
+                  }}
                   min={1}
                   max={100}
                   step={1}
@@ -632,7 +644,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
                       <SliderWithInput
                         value={[edgeCleanupSettings.trimRadius]}
-                        onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
+                        onValueChange={([trimRadius]) => {
+                          updateEdgeCleanupSettings({ trimRadius });
+                          onFeatureInteraction('edge-radius');
+                        }}
                         min={1}
                         max={10}
                         step={1}
@@ -682,7 +697,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <div className="w-20 flex justify-center">
                         <Switch
                           checked={speckleSettings.removeSpecks}
-                          onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks })}
+                          onCheckedChange={(removeSpecks) => {
+                            updateSpeckleSettings({ removeSpecks });
+                            onFeatureInteraction('speckle-remove');
+                          }}
                           className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
                         />
                       </div>
@@ -690,7 +708,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                         <div className="p-2 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded border border-accent-blue/20">
                           <SliderWithInput
                             value={[speckleSettings.minSpeckSize]}
-                            onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
+                            onValueChange={([minSpeckSize]) => {
+                              updateSpeckleSettings({ minSpeckSize });
+                              onFeatureInteraction('speckle-size');
+                            }}
                             min={1}
                             max={2000}
                             step={1}
@@ -747,7 +768,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <input
                     type="color"
                     value={effectSettings.inkStamp.color}
-                    onChange={(e) => updateInkStamp({ color: e.target.value })}
+                    onChange={(e) => {
+                      updateInkStamp({ color: e.target.value });
+                      onFeatureInteraction('ink-stamp-color');
+                    }}
+                    onClick={() => onFeatureInteraction('ink-stamp-color')}
                     className="w-12 h-8 rounded-lg border-2 border-accent-red cursor-pointer shadow-lg"
                   />
                   <span className="text-sm text-accent-red font-mono font-bold bg-accent-red/10 px-2 py-1 rounded">
@@ -763,7 +788,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
                   <SliderWithInput
                     value={[effectSettings.inkStamp.threshold]}
-                    onValueChange={([threshold]) => updateInkStamp({ threshold })}
+                    onValueChange={([threshold]) => {
+                      updateInkStamp({ threshold });
+                      onFeatureInteraction('ink-stamp-intensity');
+                    }}
                     min={1}
                     max={100}
                     step={1}
@@ -797,30 +825,39 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <div className="p-4 bg-gradient-to-br from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/30 shadow-lg">
                 <div className="flex items-start justify-center gap-8">
                   {/* Brightness EQ Band */}
-                  <GraphicEQBand
+                   <GraphicEQBand
                     label="☀️ BRIGHT"
                     value={effectSettings.imageEffects.brightness}
-                    onValueChange={(brightness) => updateImageEffects({ brightness })}
+                    onValueChange={(brightness) => {
+                      updateImageEffects({ brightness });
+                      onFeatureInteraction('brightness');
+                    }}
                     min={-100}
                     max={100}
                     step={1}
                   />
 
                   {/* Contrast EQ Band */}
-                  <GraphicEQBand
+                   <GraphicEQBand
                     label="🎛️ CONTRAST"
                     value={effectSettings.imageEffects.contrast}
-                    onValueChange={(contrast) => updateImageEffects({ contrast })}
+                    onValueChange={(contrast) => {
+                      updateImageEffects({ contrast });
+                      onFeatureInteraction('contrast');
+                    }}
                     min={-100}
                     max={100}
                     step={1}
                   />
 
                   {/* Vibrance EQ Band */}
-                  <GraphicEQBand
+                   <GraphicEQBand
                     label="🌈 VIBRANCE"
                     value={-effectSettings.imageEffects.vibrance}
-                    onValueChange={(vibrance) => updateImageEffects({ vibrance: -vibrance })}
+                    onValueChange={(vibrance) => {
+                      updateImageEffects({ vibrance: -vibrance });
+                      onFeatureInteraction('vibrance');
+                    }}
                     min={-100}
                     max={100}
                     step={1}
@@ -837,7 +874,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <div className="relative">
                     <HueSlider
                       value={[effectSettings.imageEffects.hue]}
-                      onValueChange={([hue]) => updateImageEffects({ hue })}
+                      onValueChange={([hue]) => {
+                        updateImageEffects({ hue });
+                        onFeatureInteraction('hue-shift');
+                      }}
                       defaultValue={0}
                     />
                   </div>
@@ -849,9 +889,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 <div className="flex items-center gap-2 mb-2">
                   <Checkbox
                     checked={effectSettings.imageEffects.colorize.enabled}
-                    onCheckedChange={(enabled) => updateImageEffects({ 
-                      colorize: { ...effectSettings.imageEffects.colorize, enabled: !!enabled }
-                    })}
+                    onCheckedChange={(enabled) => {
+                      updateImageEffects({ 
+                        colorize: { ...effectSettings.imageEffects.colorize, enabled: !!enabled }
+                      });
+                      onFeatureInteraction('colorize');
+                    }}
                     className="data-[state=checked]:bg-accent-purple"
                   />
                   <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
@@ -881,15 +924,20 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                               updateImageEffects({ 
                                 colorize: { ...effectSettings.imageEffects.colorize, hue }
                               });
+                              onFeatureInteraction('colorize-hue');
                             }
                           }}
+                          onClick={() => onFeatureInteraction('colorize-hue')}
                           className="w-8 h-6 rounded border border-accent-purple cursor-pointer"
                         />
-                         <HueSlider
+                          <HueSlider
                            value={[effectSettings.imageEffects.colorize.hue]}
-                           onValueChange={([hue]) => updateImageEffects({ 
-                             colorize: { ...effectSettings.imageEffects.colorize, hue }
-                           })}
+                           onValueChange={([hue]) => {
+                             updateImageEffects({ 
+                               colorize: { ...effectSettings.imageEffects.colorize, hue }
+                             });
+                             onFeatureInteraction('colorize-hue');
+                           }}
                            defaultValue={0}
                            className="flex-1"
                          />
@@ -900,9 +948,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <Label className="text-xs text-muted-foreground mb-1 block">Lightness</Label>
                       <SliderWithInput
                         value={[effectSettings.imageEffects.colorize.lightness]}
-                        onValueChange={([lightness]) => updateImageEffects({ 
-                          colorize: { ...effectSettings.imageEffects.colorize, lightness }
-                        })}
+                        onValueChange={([lightness]) => {
+                          updateImageEffects({ 
+                            colorize: { ...effectSettings.imageEffects.colorize, lightness }
+                          });
+                          onFeatureInteraction('colorize-lightness');
+                        }}
                         min={0}
                         max={100}
                         step={1}
@@ -914,9 +965,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <Label className="text-xs text-muted-foreground mb-1 block">Saturation</Label>
                       <SliderWithInput
                         value={[effectSettings.imageEffects.colorize.saturation]}
-                        onValueChange={([saturation]) => updateImageEffects({ 
-                          colorize: { ...effectSettings.imageEffects.colorize, saturation }
-                        })}
+                        onValueChange={([saturation]) => {
+                          updateImageEffects({ 
+                            colorize: { ...effectSettings.imageEffects.colorize, saturation }
+                          });
+                          onFeatureInteraction('colorize-saturation');
+                        }}
                         min={0}
                         max={100}
                         step={1}
@@ -931,7 +985,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={effectSettings.imageEffects.blackAndWhite}
-                  onCheckedChange={(enabled) => updateImageEffects({ blackAndWhite: !!enabled })}
+                  onCheckedChange={(enabled) => {
+                    updateImageEffects({ blackAndWhite: !!enabled });
+                    onFeatureInteraction('black-and-white');
+                  }}
                   className="data-[state=checked]:bg-accent-purple"
                 />
                 <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
