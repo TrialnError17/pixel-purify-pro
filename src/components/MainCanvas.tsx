@@ -2215,9 +2215,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         ref={containerRef}
         className="flex-1 relative overflow-hidden"
         style={{ 
-          backgroundColor: effectSettings.background.enabled ? effectSettings.background.color : 'hsl(var(--canvas-bg))',
-          backgroundImage: effectSettings.background.enabled ? 'none' : `radial-gradient(circle at 1px 1px, hsl(var(--grid-lines)) 1px, transparent 0)`,
-          backgroundSize: '20px 20px'
+          backgroundColor: effectSettings.background.enabled ? effectSettings.background.color : 'hsl(var(--canvas-bg))'
         }}
         onWheel={handleWheel}
       >
