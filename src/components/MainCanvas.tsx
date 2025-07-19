@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { usePanAndZoom } from '@/hooks/usePanAndZoom';
-import { useColorStack } from '@/hooks/useColorStack';
-import { useMagicWand } from '@/hooks/useMagicWand';
 import { useEraserTool } from '@/hooks/useEraserTool';
-import { ImageItem, ColorRemovalSettings, ContiguousToolSettings, EffectSettings, SpeckleSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
+import { ImageItem, ColorRemovalSettings, ContiguousToolSettings, EffectSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
+import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
@@ -64,35 +62,38 @@ export const MainCanvas = ({
   const [zoom, setZoom] = useState(1);
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
   
-  // Pan and Zoom hook
-  const { handleWheel, handleMouseDown } = usePanAndZoom({
-    containerRef,
-    canvasRef,
-    setPan,
-    setZoom,
-    setCenterOffset,
-    initialPan: { x: 0, y: 0 },
-    initialZoom: 1,
-  });
-  
-  // Color Stack hook
-  const colorStack = useColorStack({
-    canvas: canvasRef.current,
-    image: image?.processedData || image?.originalData,
-    colorSettings,
-    onImageChange: handleImageChange,
-    addUndoAction
-  });
-  
-  // Magic Wand hook
-  const magicWand = useMagicWand({
-    canvas: canvasRef.current,
-    image: image?.processedData || image?.originalData,
-    settings: contiguousSettings,
-    onImageChange: handleImageChange,
-    onColorPicked,
-    addUndoAction
-  });
+  // Basic pan and zoom functionality
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(prev => Math.max(0.1, Math.min(5, prev * delta)));
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (tool !== 'pan') return;
+    e.preventDefault();
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startPan = { ...pan };
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      setPan({
+        x: startPan.x + deltaX,
+        y: startPan.y + deltaY
+      });
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [tool, pan]);
 
   // Initialize eraser tool with zoom-responsive cursor
   const eraserTool = useEraserTool(canvasRef.current, {
@@ -180,10 +181,10 @@ export const MainCanvas = ({
     if (!image) return;
     
     // Update image item with processed data
-    const updatedImage = {
+    const updatedImage: ImageItem = {
       ...image,
       processedData: imageData,
-      status: 'completed'
+      status: 'completed' as const
     };
     
     onImageUpdate(updatedImage);
@@ -199,21 +200,9 @@ export const MainCanvas = ({
       return;
     }
     
-    // Handle color stack
-    if (tool === 'color-stack' && image?.processedData) {
-      colorStack?.handleMouseDown(e);
-      return;
-    }
-    
-    // Handle magic wand
-    if (tool === 'magic-wand' && image?.processedData) {
-      magicWand?.handleMouseDown(e);
-      return;
-    }
-    
     // Handle eraser tool
     if (tool === 'eraser') {
-      eraserTool?.startErasing(e);
+      eraserTool?.startErasing(e.nativeEvent);
       return;
     }
   };
@@ -221,21 +210,9 @@ export const MainCanvas = ({
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     if (!canvasRef.current || !containerRef.current) return;
     
-    // Handle color stack
-    if (tool === 'color-stack' && image?.processedData) {
-      colorStack?.handleMouseMove(e);
-      return;
-    }
-    
-    // Handle magic wand
-    if (tool === 'magic-wand' && image?.processedData) {
-      magicWand?.handleMouseMove(e);
-      return;
-    }
-    
     // Handle eraser tool
-    if (tool === 'eraser' && !erasingInProgressRef.current) {
-      eraserTool?.continueErasing(e);
+    if (tool === 'eraser' && erasingInProgressRef.current) {
+      eraserTool?.continueErasing(e.nativeEvent);
       return;
     }
   };
@@ -243,21 +220,9 @@ export const MainCanvas = ({
   const handleCanvasMouseUp = (e: React.MouseEvent) => {
     if (!canvasRef.current || !containerRef.current) return;
     
-    // Handle color stack
-    if (tool === 'color-stack' && image?.processedData) {
-      colorStack?.handleMouseUp(e);
-      return;
-    }
-    
-    // Handle magic wand
-    if (tool === 'magic-wand' && image?.processedData) {
-      magicWand?.handleMouseUp(e);
-      return;
-    }
-    
     // Handle eraser tool
     if (tool === 'eraser') {
-      eraserTool?.stopErasing(e);
+      eraserTool?.stopErasing(e.nativeEvent);
       return;
     }
   };
@@ -265,21 +230,9 @@ export const MainCanvas = ({
   const handleCanvasMouseLeave = (e: React.MouseEvent) => {
     if (!canvasRef.current || !containerRef.current) return;
     
-    // Handle color stack
-    if (tool === 'color-stack' && image?.processedData) {
-      colorStack?.handleMouseLeave(e);
-      return;
-    }
-    
-    // Handle magic wand
-    if (tool === 'magic-wand' && image?.processedData) {
-      magicWand?.handleMouseLeave(e);
-      return;
-    }
-    
     // Handle eraser tool
     if (tool === 'eraser') {
-      eraserTool?.stopErasing(e);
+      eraserTool?.stopErasing(e.nativeEvent);
       return;
     }
   };
