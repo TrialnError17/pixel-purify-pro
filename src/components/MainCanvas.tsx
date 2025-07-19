@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
+import { useEraserTool } from '@/hooks/useEraserTool';
 import { 
   Move, 
   Pipette, 
@@ -278,6 +279,39 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const { processSpecks } = useSpeckleTools();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Eraser tool integration
+  const eraserTool = useEraserTool(canvasRef.current, {
+    brushSize: eraserSettings.brushSize,
+    onImageChange: (imageData) => {
+      // Add to undo stack when erasing is complete
+      if (canvasRef.current) {
+        const currentImageData = canvasRef.current.getContext('2d')?.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+        if (currentImageData) {
+          addUndoAction({
+            type: 'manual-edit',
+            description: 'Eraser tool',
+            undo: () => {
+              const ctx = canvasRef.current?.getContext('2d');
+              if (ctx && manualImageData) {
+                ctx.putImageData(manualImageData, 0, 0);
+              }
+            },
+            redo: () => {
+              const ctx = canvasRef.current?.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(imageData, 0, 0);
+                hasManualEditsRef.current = true;
+              }
+            }
+          });
+          setManualImageData(currentImageData);
+          hasManualEditsRef.current = true;
+        }
+      }
+    }
+  });
+  
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
@@ -1853,24 +1887,32 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (tool === 'pan') {
+    if (tool === 'eraser') {
+      eraserTool.startErasing(e.nativeEvent);
+    } else if (tool === 'pan') {
       setIsDragging(true);
       setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [tool]);
+  }, [tool, eraserTool]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging && tool === 'pan') {
+    if (tool === 'eraser') {
+      eraserTool.continueErasing(e.nativeEvent);
+    } else if (isDragging && tool === 'pan') {
       const dx = e.clientX - lastMousePos.x;
       const dy = e.clientY - lastMousePos.y;
       setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
       setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [isDragging, tool, lastMousePos]);
+  }, [tool, eraserTool, isDragging, lastMousePos]);
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleMouseUp = useCallback((e?: React.MouseEvent) => {
+    if (tool === 'eraser') {
+      eraserTool.stopErasing(e?.nativeEvent);
+    } else {
+      setIsDragging(false);
+    }
+  }, [tool, eraserTool]);
 
   const handleZoom = useCallback((direction: 'in' | 'out', centerX?: number, centerY?: number) => {
     if (!containerRef.current || !canvasRef.current) return;
@@ -2259,18 +2301,23 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 "absolute cursor-crosshair",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'color-stack' && 'cursor-crosshair',
-                tool === 'magic-wand' && 'cursor-crosshair'
+                tool === 'magic-wand' && 'cursor-crosshair',
+                tool === 'eraser' && 'cursor-none'
               )}
               style={{
                 transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
                 transformOrigin: '0 0',
-                imageRendering: zoom > 2 ? 'pixelated' : 'auto'
+                imageRendering: zoom > 2 ? 'pixelated' : 'auto',
+                cursor: tool === 'eraser' ? eraserTool.getBrushCursor() : undefined
               }}
               onClick={handleCanvasClick}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={(e) => tool === 'eraser' && eraserTool.startErasing(e.nativeEvent)}
+              onTouchMove={(e) => tool === 'eraser' && eraserTool.continueErasing(e.nativeEvent)}
+              onTouchEnd={(e) => tool === 'eraser' && eraserTool.stopErasing(e.nativeEvent)}
             />
           </>
         ) : (
