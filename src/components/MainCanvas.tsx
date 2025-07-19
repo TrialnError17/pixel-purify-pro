@@ -699,7 +699,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       const needsInkStamp = effectSettings.inkStamp.enabled;
-      const needsImageEffects = false; // Disable image effects for manual edits to prevent tool corruption
+      const needsImageEffects = effectSettings.imageEffects.enabled; // Re-enable image effects for preview
       
       if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects) {
         console.log('Early return - no processing needed');
