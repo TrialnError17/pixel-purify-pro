@@ -1,3 +1,4 @@
+
 import { useRef, useCallback, useEffect } from 'react';
 
 export interface EraserToolOptions {
@@ -262,33 +263,30 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     if (e) e.preventDefault();
   }, [options.onImageChange, options.manualImageDataRef, options.erasingInProgressRef]);
 
-  // Get brush cursor style - NOW ZOOM-RESPONSIVE
-  const getBrushCursor = useCallback((zoomLevel: number = 1) => {
+  // Get brush cursor style - FIXED to match erasing radius exactly
+  const getBrushCursor = useCallback(() => {
     // Use the same radius calculation as erasing: Math.floor(brushSize / 2)
     const radius = Math.floor(options.brushSize / 2);
+    const size = Math.max(4, radius * 2); // Minimum 4px for visibility
     
-    // Apply zoom to the visual size so cursor matches the actual erasing area
-    const visualSize = Math.max(4, Math.min(100, (radius * 2) * zoomLevel));
+    // Dynamic stroke width for better visibility
+    const strokeWidth = Math.max(1, Math.min(2, options.brushSize / 20));
     
-    // Dynamic stroke width for better visibility, also zoom-responsive
-    const strokeWidth = Math.max(1, Math.min(3, (options.brushSize / 20) * zoomLevel));
-    
-    console.log('Zoom-responsive cursor calculation:', {
+    console.log('Cursor calculation:', {
       brushSize: options.brushSize,
       radius,
-      zoomLevel,
-      visualSize,
+      size,
       strokeWidth
     });
     
     const svg = `
-      <svg width="${visualSize}" height="${visualSize}" viewBox="0 0 ${visualSize} ${visualSize}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${visualSize/2}" cy="${visualSize/2}" r="${(radius * zoomLevel) - strokeWidth/2}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
-        <circle cx="${visualSize/2}" cy="${visualSize/2}" r="1" fill="rgba(255, 0, 0, 0.8)"/>
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${size/2}" cy="${size/2}" r="${radius - strokeWidth/2}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
+        <circle cx="${size/2}" cy="${size/2}" r="1" fill="rgba(255, 0, 0, 0.8)"/>
       </svg>
     `;
     const encodedSvg = encodeURIComponent(svg);
-    return `url("data:image/svg+xml,${encodedSvg}") ${visualSize/2} ${visualSize/2}, crosshair`;
+    return `url("data:image/svg+xml,${encodedSvg}") ${size/2} ${size/2}, crosshair`;
   }, [options.brushSize]);
 
   return {
