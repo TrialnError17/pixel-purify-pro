@@ -598,7 +598,13 @@ const Index = () => {
           {/* Right Learning Sidebar - Responsive */}
           {/* Desktop: Always visible */}
           <div className="hidden lg:block">
-            <RightSidebar currentTool={currentTool} />
+            <RightSidebar 
+              currentTool={currentTool}
+              colorSettings={colorSettings}
+              speckleSettings={speckleSettings}
+              effectSettings={effectSettings}
+              edgeCleanupSettings={edgeCleanupSettings}
+            />
           </div>
           
           {/* Mobile/Tablet: Sheet overlay */}
@@ -615,7 +621,13 @@ const Index = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-80 sm:w-96 bg-gradient-panel border-accent-purple/30 overflow-y-auto">
-                <RightSidebar currentTool={currentTool} />
+                <RightSidebar 
+                  currentTool={currentTool}
+                  colorSettings={colorSettings}
+                  speckleSettings={speckleSettings}
+                  effectSettings={effectSettings}
+                  edgeCleanupSettings={edgeCleanupSettings}
+                />
               </SheetContent>
             </Sheet>
           </div>

@@ -1,345 +1,112 @@
 import React from 'react';
+import { ColorRemovalSettings, EffectSettings, EdgeCleanupSettings } from '@/pages/Index';
+import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
-// Random learning content sets for the sidebar
-const LearningCenterContent: React.FC = () => {
-  const contentSets = [
-    // Set 1: Advanced Techniques & Workflow Tips
-    {
-      sections: [
-        {
-          icon: "🎯",
-          title: "Advanced Techniques",
-          gradient: "from-accent-orange/10 to-accent-red/10",
-          border: "border-accent-orange/30",
-          textColor: "text-accent-orange",
-          tips: [
-            "Multiple Colors: Stack different colors for complex removal",
-            "Threshold Fine-tuning: Lower values = precise, higher = broad removal",
-            "Edge Cleanup: Always apply after color removal for cleaner results",
-            "Speckle Order: Remove large areas first, then clean small specks"
-          ]
-        },
-        {
-          icon: "🔄",
-          title: "Workflow Tips",
-          gradient: "from-accent-cyan/10 to-accent-blue/10",
-          border: "border-accent-cyan/30",
-          textColor: "text-accent-cyan",
-          tips: [
-            "Save Progress: Download intermediate results before major changes",
-            "Zoom Strategy: Use high zoom for precise work, low zoom for overview",
-            "Tool Switching: Combine Magic Wand with Color Stack for best results",
-            "Undo Wisely: Use undo before applying new effects"
-          ]
-        },
-        {
-          icon: "⭐",
-          title: "Quality Guidelines",
-          gradient: "from-accent-lime/10 to-accent-green/10",
-          border: "border-accent-lime/30",
-          textColor: "text-accent-lime",
-          tips: [
-            "Image Resolution: Higher resolution = better precision",
-            "Color Contrast: High contrast images process more accurately",
-            "File Format: PNG preserves transparency, JPEG for smaller files",
-            "Lighting: Even lighting reduces color variation issues"
-          ]
-        }
-      ]
-    },
-    // Set 2: Pro Techniques & Troubleshooting
-    {
-      sections: [
-        {
-          icon: "🚀",
-          title: "Pro Techniques",
-          gradient: "from-accent-purple/10 to-accent-pink/10",
-          border: "border-accent-purple/30",
-          textColor: "text-accent-purple",
-          tips: [
-            "LAB Color Space: More accurate than RGB for color matching",
-            "Threshold Scaling: Start at 30, adjust based on image complexity",
-            "Contiguous Mode: Perfect for solid backgrounds with clear edges",
-            "Manual Mode: Pick specific colors for precise control"
-          ]
-        },
-        {
-          icon: "🔧",
-          title: "Troubleshooting",
-          gradient: "from-accent-red/10 to-accent-rose/10",
-          border: "border-accent-red/30",
-          textColor: "text-accent-red",
-          tips: [
-            "Color Won't Remove: Try different color space (LAB vs RGB)",
-            "Too Much Removed: Lower threshold or switch to manual selection",
-            "Jagged Edges: Enable edge cleanup or try different threshold",
-            "Performance Issues: Process smaller areas or reduce image size"
-          ]
-        },
-        {
-          icon: "🎨",
-          title: "Creative Effects",
-          gradient: "from-accent-indigo/10 to-accent-blue/10",
-          border: "border-accent-indigo/30",
-          textColor: "text-accent-indigo",
-          tips: [
-            "Ink Stamp: Create artistic silhouettes from photos",
-            "Background Colors: Add solid colors behind transparent areas",
-            "Image Effects: Adjust brightness, contrast, and hue",
-            "Speckle Removal: Clean noise while preserving detail"
-          ]
-        }
-      ]
-    },
-    // Set 3: Mastery & Performance
-    {
-      sections: [
-        {
-          icon: "🏆",
-          title: "Mastery Tips",
-          gradient: "from-accent-yellow/10 to-accent-orange/10",
-          border: "border-accent-yellow/30",
-          textColor: "text-accent-yellow",
-          tips: [
-            "Start Conservative: Begin with low thresholds and increase gradually",
-            "Preview First: Always preview changes before applying permanently",
-            "Batch Processing: Process similar images with same settings",
-            "Keep Originals: Always maintain backup of original images"
-          ]
-        },
-        {
-          icon: "⚡",
-          title: "Performance Optimization",
-          gradient: "from-accent-green/10 to-accent-lime/10",
-          border: "border-accent-green/30",
-          textColor: "text-accent-green",
-          tips: [
-            "Image Size: Resize large images for faster processing",
-            "Memory Usage: Process one image at a time for complex edits",
-            "Browser Performance: Close other tabs for better processing speed",
-            "File Types: JPEG loads faster, PNG preserves quality better"
-          ]
-        },
-        {
-          icon: "🎛️",
-          title: "Tool Combinations",
-          gradient: "from-accent-teal/10 to-accent-cyan/10",
-          border: "border-accent-teal/30",
-          textColor: "text-accent-teal",
-          tips: [
-            "Magic Wand + Edge Cleanup: Perfect for detailed selections",
-            "Color Stack + Speckle Removal: Clean complex backgrounds",
-            "Manual Mode + High Threshold: Remove similar color variations",
-            "Auto Mode + Background Color: Quick solid color replacement"
-          ]
-        }
-      ]
-    },
-    // Set 4: Precision & Automation
-    {
-      sections: [
-        {
-          icon: "🎯",
-          title: "Precision Control",
-          gradient: "from-accent-violet/10 to-accent-purple/10",
-          border: "border-accent-violet/30",
-          textColor: "text-accent-violet",
-          tips: [
-            "Pixel-Perfect Edges: Use edge cleanup with radius 1-2",
-            "Color Sampling: Click colors directly on image for accuracy",
-            "Threshold Testing: Try values 10-50 for most images",
-            "Zoom Navigation: 200-400% zoom for detailed work"
-          ]
-        },
-        {
-          icon: "🤖",
-          title: "Smart Automation",
-          gradient: "from-accent-emerald/10 to-accent-green/10",
-          border: "border-accent-emerald/30",
-          textColor: "text-accent-emerald",
-          tips: [
-            "Auto Mode: Detects top-left corner color automatically",
-            "Contiguous Detection: Finds connected areas intelligently",
-            "Adaptive Thresholds: Algorithm adjusts for image characteristics",
-            "Batch Queue: Process multiple images with same settings"
-          ]
-        },
-        {
-          icon: "💡",
-          title: "Expert Insights",
-          gradient: "from-accent-rose/10 to-accent-pink/10",
-          border: "border-accent-rose/30",
-          textColor: "text-accent-rose",
-          tips: [
-            "Color Theory: Complementary colors are harder to separate",
-            "Edge Artifacts: Anti-aliasing creates color variations",
-            "Lighting Impact: Shadows add color complexity",
-            "File Compression: JPEG artifacts affect color accuracy"
-          ]
-        }
-      ]
-    },
-    // Set 5: Advanced Workflows & Industry Tips
-    {
-      sections: [
-        {
-          icon: "🏢",
-          title: "Professional Workflows",
-          gradient: "from-accent-blue/10 to-accent-indigo/10",
-          border: "border-accent-blue/30",
-          textColor: "text-accent-blue",
-          tips: [
-            "Product Photography: Use manual mode for consistent results",
-            "Portrait Backgrounds: Combine multiple threshold values",
-            "Logo Extraction: Higher resolution improves edge quality",
-            "Batch Projects: Save settings for repeated use"
-          ]
-        },
-        {
-          icon: "🔬",
-          title: "Technical Deep Dive",
-          gradient: "from-accent-orange/10 to-accent-red/10",
-          border: "border-accent-orange/30",
-          textColor: "text-accent-orange",
-          tips: [
-            "LAB vs RGB: LAB matches human color perception better",
-            "Delta E Values: Industry standard for color difference",
-            "8-bit vs 16-bit: Higher bit depth improves gradient handling",
-            "Color Profiles: sRGB works best for web images"
-          ]
-        },
-        {
-          icon: "🎓",
-          title: "Learning Path",
-          gradient: "from-accent-cyan/10 to-accent-teal/10",
-          border: "border-accent-cyan/30",
-          textColor: "text-accent-cyan",
-          tips: [
-            "Week 1: Master auto mode and basic thresholds",
-            "Week 2: Learn manual color picking techniques",
-            "Week 3: Combine tools for complex backgrounds",
-            "Week 4: Optimize workflows for your specific needs"
-          ]
-        }
-      ]
+export interface RightSidebarProps {
+  currentTool: 'pan' | 'color-stack' | 'magic-wand';
+  colorSettings: ColorRemovalSettings;
+  speckleSettings: SpeckleSettings;
+  effectSettings: EffectSettings;
+  edgeCleanupSettings: EdgeCleanupSettings;
+}
+
+export const RightSidebar: React.FC<RightSidebarProps> = ({ 
+  currentTool, 
+  colorSettings, 
+  speckleSettings, 
+  effectSettings, 
+  edgeCleanupSettings 
+}) => {
+  // Determine which tool to show based on priority (most recently enabled)
+  const getActiveToolForDisplay = () => {
+    // Priority order: most specific to least specific
+    if (effectSettings.inkStamp.enabled) return 'ink-stamp';
+    if (effectSettings.imageEffects.enabled) return 'image-effects';
+    if (speckleSettings.enabled) return 'speckle-tools';
+    if (edgeCleanupSettings.enabled) return 'edge-cleanup';
+    if (effectSettings.background.enabled) return 'background';
+    if (colorSettings.enabled) return 'color-removal';
+    if (currentTool === 'magic-wand') return 'magic-wand';
+    if (currentTool === 'color-stack') return 'color-stack';
+    return currentTool; // defaults to 'pan' or whatever current tool is
+  };
+
+  const activeDisplayTool = getActiveToolForDisplay();
+
+  const getDisplayTitle = () => {
+    switch (activeDisplayTool) {
+      case 'color-removal': return '🎨 Color Removal Guide';
+      case 'background': return '🖼️ Background Guide';
+      case 'speckle-tools': return '🔧 Speckle Tools Guide';
+      case 'ink-stamp': return '🖋️ Ink Stamp Guide';
+      case 'image-effects': return '✨ Image Effects Guide';
+      case 'edge-cleanup': return '✂️ Edge Cleanup Guide';
+      case 'magic-wand': return '✨ Magic Wand Guide';
+      case 'color-stack': return '🎨 Color Stack Guide';
+      case 'pan': return '🗺️ Pan Tool Guide';
+      default: return '📚 Learning Center';
     }
-  ];
-
-  // Select random content set on component mount
-  const selectedContent = React.useMemo(() => {
-    return contentSets[Math.floor(Math.random() * contentSets.length)];
-  }, []);
+  };
 
   return (
-    <div className="flex-1 p-4 space-y-4 overflow-y-auto animate-fade-in">
-      {selectedContent.sections.map((section, index) => (
-        <div key={index} className={`bg-gradient-to-br ${section.gradient} border ${section.border} rounded-lg p-4`}>
-          <div className={`font-medium ${section.textColor} mb-3 flex items-center gap-2`}>
-            {section.icon} <span>{section.title}</span>
-          </div>
-          <div className="text-xs text-muted-foreground space-y-2">
-            {section.tips.map((tip, tipIndex) => {
-              const [title, description] = tip.split(': ');
-              return (
-                <div key={tipIndex}>
-                  • <strong>{title}:</strong> {description}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+    <div className="w-80 lg:w-96 bg-gradient-panel border-l border-border flex flex-col">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-lg font-semibold text-foreground">
+          📚 Learning Center
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          {getDisplayTitle()}
+        </p>
+      </div>
+      
+      <ToolSpecificContent 
+        activeDisplayTool={activeDisplayTool}
+        colorSettings={colorSettings}
+        speckleSettings={speckleSettings}
+        effectSettings={effectSettings}
+        edgeCleanupSettings={edgeCleanupSettings}
+      />
     </div>
   );
 };
 
-// Tool-specific content that adapts based on selected tool
-const ToolSpecificContent: React.FC<{ currentTool: 'pan' | 'color-stack' | 'magic-wand' }> = ({ currentTool }) => {
+// Tool-specific content that adapts based on active tools
+const ToolSpecificContent: React.FC<{ 
+  activeDisplayTool: string;
+  colorSettings: ColorRemovalSettings;
+  speckleSettings: SpeckleSettings;
+  effectSettings: EffectSettings;
+  edgeCleanupSettings: EdgeCleanupSettings;
+}> = ({ activeDisplayTool }) => {
   
-  // Comprehensive tool-specific instructions
-  const toolInstructions = {
-    'pan': {
-      sections: [
-        {
-          icon: "🗺️",
-          title: "Pan Tool Basics",
-          gradient: "from-accent-blue/10 to-accent-cyan/10",
-          border: "border-accent-blue/30",
-          textColor: "text-accent-blue",
-          tips: [
-            "Click and drag: Move around large images",
-            "Mouse wheel: Zoom in and out smoothly",
-            "Fit to screen: Triple-click for auto-fit",
-            "Precision mode: Hold Shift while scrolling for fine control"
-          ]
-        },
-        {
-          icon: "🔍",
-          title: "Navigation Mastery",
-          gradient: "from-accent-green/10 to-accent-lime/10",
-          border: "border-accent-green/30",
-          textColor: "text-accent-green",
-          tips: [
-            "Zoom levels: 25% to 800% for detailed work",
-            "Center view: Double-click to center on point",
-            "Quick reset: Press 'R' to reset zoom and position",
-            "Smooth panning: Use momentum scrolling for fluid movement"
-          ]
-        },
-        {
-          icon: "⌨️",
-          title: "Keyboard Shortcuts",
-          gradient: "from-accent-purple/10 to-accent-pink/10",
-          border: "border-accent-purple/30",
-          textColor: "text-accent-purple",
-          tips: [
-            "Spacebar + drag: Temporary pan mode from any tool",
-            "Ctrl + mouse wheel: Zoom with precision",
-            "Shift + scroll: Pan vertically",
-            "Alt + scroll: Pan horizontally"
-          ]
-        },
-        {
-          icon: "🎯",
-          title: "Pro Navigation Tips",
-          gradient: "from-accent-orange/10 to-accent-red/10",
-          border: "border-accent-orange/30",
-          textColor: "text-accent-orange",
-          tips: [
-            "Edge detection: Pan tool highlights clickable areas",
-            "Performance: Lower zoom for smoother panning on large images",
-            "Multi-monitor: Pan tool works across multiple screens",
-            "Touch devices: Pinch-to-zoom and two-finger pan supported"
-          ]
-        }
-      ]
-    },
-    'color-stack': {
+  // Comprehensive tool-specific instructions for ALL tools
+  const allToolInstructions: Record<string, any> = {
+    'color-removal': {
       sections: [
         {
           icon: "🎨",
-          title: "Color Stack Fundamentals",
+          title: "Color Removal Fundamentals",
           gradient: "from-accent-red/10 to-accent-rose/10",
           border: "border-accent-red/30",
           textColor: "text-accent-red",
           tips: [
-            "Click to sample: Pick colors directly from your image",
-            "Threshold control: Adjust how similar colors are included",
-            "Stack building: Add multiple colors for complex backgrounds",
-            "Live preview: See results instantly as you adjust settings"
+            "Auto Mode: Automatically detects top-left corner color",
+            "Manual Mode: Pick specific colors by clicking on image",
+            "Threshold Control: Lower = precise, higher = broad removal",
+            "Contiguous Mode: Only removes connected areas of similar color"
           ]
         },
         {
           icon: "🎚️",
-          title: "Threshold Optimization",
-          gradient: "from-accent-cyan/10 to-accent-blue/10",
-          border: "border-accent-cyan/30",
-          textColor: "text-accent-cyan",
+          title: "Threshold Mastery",
+          gradient: "from-accent-orange/10 to-accent-yellow/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
           tips: [
-            "Start low (10-20): For precise color matching",
-            "Increase gradually: Add similar color variations",
-            "Monitor changes: Watch preview for over-selection",
-            "Per-color thresholds: Each picked color has its own setting"
+            "Start Low (1-20): For precise color matching",
+            "Medium Range (21-50): Good for most images",
+            "High Range (51-80): Broad color variations",
+            "Maximum (81-100): Remove very different colors"
           ]
         },
         {
@@ -349,36 +116,251 @@ const ToolSpecificContent: React.FC<{ currentTool: 'pan' | 'color-stack' | 'magi
           border: "border-accent-purple/30",
           textColor: "text-accent-purple",
           tips: [
-            "LAB color space: More accurate than RGB for color matching",
-            "Delta E calculation: Industry standard for color difference",
-            "Perceptual matching: Algorithm mimics human color perception",
-            "Anti-aliasing awareness: Edge pixels may contain mixed colors"
+            "LAB Color Space: More perceptually accurate than RGB",
+            "Delta E Calculation: Industry standard for color difference",
+            "Perceptual Matching: Algorithm mimics human vision",
+            "Edge Anti-aliasing: Handles smooth color transitions"
           ]
         },
         {
-          icon: "🏗️",
-          title: "Advanced Stacking",
+          icon: "🎯",
+          title: "Advanced Techniques",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "Multiple Colors: Stack different target colors",
+            "Progressive Removal: Start with dominant colors first",
+            "Edge Awareness: Use lower thresholds near subject edges",
+            "Preview First: Always check results before applying"
+          ]
+        }
+      ]
+    },
+    'background': {
+      sections: [
+        {
+          icon: "🖼️",
+          title: "Background Fundamentals",
+          gradient: "from-accent-green/10 to-accent-lime/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          tips: [
+            "Color Selection: Pick any color from the color picker",
+            "Live Preview: See background applied in real-time",
+            "Save Options: Choose to save with or without background",
+            "Transparency Preservation: Original transparency maintained"
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Creative Applications",
+          gradient: "from-accent-blue/10 to-accent-cyan/10",
+          border: "border-accent-blue/30",
+          textColor: "text-accent-blue",
+          tips: [
+            "Product Photography: White or gradient backgrounds",
+            "Portrait Enhancement: Solid colors to match branding",
+            "Logo Preparation: Contrasting colors for visibility",
+            "Preview Mode: Test different colors before download"
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Workflow Integration",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          tips: [
+            "Combine with Color Removal: Remove old, add new background",
+            "Non-destructive: Original transparency always preserved",
+            "Quick Switching: Toggle on/off to compare results",
+            "Download Control: Save with transparent or solid background"
+          ]
+        }
+      ]
+    },
+    'speckle-tools': {
+      sections: [
+        {
+          icon: "🔧",
+          title: "Speckle Detection",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          tips: [
+            "Connected Components: Uses 8-way connectivity algorithm",
+            "Size Threshold: Set minimum speck size to remove",
+            "Highlight Mode: Visualize detected specks in red",
+            "Remove Mode: Permanently delete small unwanted areas"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Optimization Strategies",
+          gradient: "from-accent-cyan/10 to-accent-teal/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "Start Small: Begin with very small speck sizes (10-50 pixels)",
+            "Progressive Increase: Gradually increase threshold to catch more",
+            "Preview First: Use highlight mode before permanent removal",
+            "Combine with Edge Cleanup: Apply speckle removal then edge cleanup"
+          ]
+        },
+        {
+          icon: "🧠",
+          title: "Algorithm Insights",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Flood Fill: Finds all connected pixels of same transparency",
+            "Component Analysis: Groups pixels into distinct regions",
+            "Size Calculation: Counts actual pixels, not bounding box area",
+            "Performance: Optimized for large images with many small specks"
+          ]
+        },
+        {
+          icon: "🎪",
+          title: "Use Cases",
           gradient: "from-accent-lime/10 to-accent-green/10",
           border: "border-accent-lime/30",
           textColor: "text-accent-lime",
           tips: [
-            "Layered approach: Remove dominant colors first",
-            "Color relationships: Consider color harmony in selections",
-            "Gradient handling: Use multiple samples across gradients",
-            "Shadow detection: Lower thresholds for shadow colors"
+            "Noise Reduction: Remove scanner dust and artifacts",
+            "Clean Extractions: Perfect color removal results",
+            "Logo Cleanup: Remove unwanted dots and specks",
+            "Photo Restoration: Clean up damaged or aged photos"
+          ]
+        }
+      ]
+    },
+    'ink-stamp': {
+      sections: [
+        {
+          icon: "🖋️",
+          title: "Ink Stamp Basics",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Artistic Effect: Converts photos to stamp-like silhouettes",
+            "Threshold Control: Adjust which areas become ink vs transparent",
+            "Color Selection: Choose any ink color from picker",
+            "High Contrast: Works best with well-lit, clear subjects"
           ]
         },
         {
-          icon: "🔧",
-          title: "Troubleshooting",
+          icon: "🎨",
+          title: "Creative Techniques",
+          gradient: "from-accent-rose/10 to-accent-pink/10",
+          border: "border-accent-rose/30",
+          textColor: "text-accent-rose",
+          tips: [
+            "Portrait Silhouettes: Create artistic profile effects",
+            "Logo Design: Convert photos to logo-style graphics",
+            "Stamp Effects: Mimic traditional rubber stamp appearance",
+            "High Contrast Art: Bold, graphic design elements"
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Technical Control",
           gradient: "from-accent-yellow/10 to-accent-orange/10",
           border: "border-accent-yellow/30",
           textColor: "text-accent-yellow",
           tips: [
-            "Too much removed: Lower thresholds or remove problematic colors",
-            "Color won't remove: Try manual mode or different threshold",
-            "Patchy results: Add more color samples from problem areas",
-            "Performance issues: Process smaller image sections first"
+            "Luminance Conversion: Analyzes brightness of each pixel",
+            "Threshold Range: 1-100, lower = more detail preserved",
+            "Edge Cleanup: Automatically disabled to preserve sharp edges",
+            "Color Theory: Dark areas become ink, light areas transparent"
+          ]
+        }
+      ]
+    },
+    'image-effects': {
+      sections: [
+        {
+          icon: "✨",
+          title: "Image Enhancement",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          tips: [
+            "Brightness Control: -100 to +100 adjustment range",
+            "Contrast Enhancement: Improve definition and clarity",
+            "Vibrance Boost: Enhance muted colors without oversaturation",
+            "Hue Shifting: Rotate colors around the color wheel"
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Creative Effects",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          tips: [
+            "Colorize Mode: Apply single hue with adjustable intensity",
+            "Black & White: Classic monochrome conversion",
+            "Color Inversion: Artistic negative effects",
+            "Hue Saturation: Fine-tune color intensity and warmth"
+          ]
+        },
+        {
+          icon: "🔧",
+          title: "Professional Workflow",
+          gradient: "from-accent-green/10 to-accent-lime/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          tips: [
+            "Non-destructive: Effects apply after color removal",
+            "Real-time Preview: See changes instantly",
+            "Combine Effects: Layer multiple adjustments",
+            "Processing Order: Applied after all other tools"
+          ]
+        }
+      ]
+    },
+    'edge-cleanup': {
+      sections: [
+        {
+          icon: "✂️",
+          title: "Edge Processing",
+          gradient: "from-accent-teal/10 to-accent-cyan/10",
+          border: "border-accent-teal/30",
+          textColor: "text-accent-teal",
+          tips: [
+            "Trim Radius: 1-5 pixels, controls how much edge to clean",
+            "Alpha Feathering: Smooths harsh transparency edges",
+            "Anti-aliasing: Reduces pixelated or jagged appearances",
+            "Automatic Application: Processes after color removal"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Quality Control",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          tips: [
+            "Conservative Settings: Start with radius 1-2 for most images",
+            "Subject Preservation: Won't remove important details",
+            "Edge Detection: Intelligently identifies true edges vs noise",
+            "Zoom Testing: Check results at 100% zoom for accuracy"
+          ]
+        },
+        {
+          icon: "🧪",
+          title: "Technical Details",
+          gradient: "from-accent-indigo/10 to-accent-blue/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          tips: [
+            "Morphological Operations: Erosion and dilation algorithms",
+            "Alpha Channel Processing: Works on transparency data",
+            "Gradient Analysis: Detects smooth vs sharp transitions",
+            "Performance Impact: Minimal processing overhead"
           ]
         }
       ]
@@ -419,103 +401,187 @@ const ToolSpecificContent: React.FC<{ currentTool: 'pan' | 'color-stack' | 'magi
           textColor: "text-accent-green",
           tips: [
             "Start with backgrounds: Click solid color areas first",
-            "Work progressively: Increase threshold if initial selection is too small",
-            "Multiple clicks: Select different areas with separate clicks",
-            "Edge awareness: Click away from subject edges for cleaner results"
+            "Work progressively: Increase threshold if selection too small",
+            "Multiple clicks: Select different areas separately",
+            "Edge awareness: Click away from subject edges"
+          ]
+        }
+      ]
+    },
+    'color-stack': {
+      sections: [
+        {
+          icon: "🎨",
+          title: "Color Stack Fundamentals",
+          gradient: "from-accent-red/10 to-accent-rose/10",
+          border: "border-accent-red/30",
+          textColor: "text-accent-red",
+          tips: [
+            "Click to sample: Pick colors directly from your image",
+            "Threshold control: Adjust how similar colors are included",
+            "Stack building: Add multiple colors for complex backgrounds",
+            "Live preview: See results instantly as you adjust settings"
           ]
         },
         {
-          icon: "🧠",
-          title: "Algorithm Insights",
-          gradient: "from-accent-rose/10 to-accent-pink/10",
-          border: "border-accent-rose/30",
-          textColor: "text-accent-rose",
+          icon: "🎚️",
+          title: "Threshold Optimization",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
           tips: [
-            "Flood fill algorithm: Spreads from click point to similar colors",
-            "Color distance calculation: Uses LAB color space for accuracy",
-            "Boundary detection: Stops at significant color changes",
-            "Memory efficient: Processes large images without slowdown"
+            "Start low (10-20): For precise color matching",
+            "Increase gradually: Add similar color variations",
+            "Monitor changes: Watch preview for over-selection",
+            "Per-color thresholds: Each picked color has own setting"
           ]
-        },
+        }
+      ]
+    },
+    'pan': {
+      sections: [
         {
-          icon: "🎪",
-          title: "Creative Applications",
-          gradient: "from-accent-orange/10 to-accent-yellow/10",
-          border: "border-accent-orange/30",
-          textColor: "text-accent-orange",
+          icon: "🗺️",
+          title: "Pan Tool Basics",
+          gradient: "from-accent-blue/10 to-accent-cyan/10",
+          border: "border-accent-blue/30",
+          textColor: "text-accent-blue",
           tips: [
-            "Sky replacement: Perfect for selecting uniform skies",
-            "Product photography: Isolate items from plain backgrounds",
-            "Portrait backgrounds: Remove studio backgrounds cleanly",
-            "Logo extraction: Select solid color backgrounds around logos"
-          ]
-        },
-        {
-          icon: "⚡",
-          title: "Performance Tips",
-          gradient: "from-accent-violet/10 to-accent-purple/10",
-          border: "border-accent-violet/30",
-          textColor: "text-accent-violet",
-          tips: [
-            "Image size matters: Larger images provide more precise selection",
-            "Click positioning: Center clicks work better than edge clicks",
-            "Threshold testing: Try different values for optimal results",
-            "Combine with other tools: Use with Color Stack for complex selections"
+            "Click and drag: Move around large images",
+            "Mouse wheel: Zoom in and out smoothly",
+            "Fit to screen: Triple-click for auto-fit",
+            "Precision mode: Hold Shift while scrolling"
           ]
         }
       ]
     }
   };
 
-  // Get tool-specific instructions
-  const toolContent = toolInstructions[currentTool];
-  
-  // Random general tips to fill remaining space
-  const generalTips = [
+  // Get current tool instructions or fall back to random general tips
+  const getCurrentContent = () => {
+    if (allToolInstructions[activeDisplayTool]) {
+      return allToolInstructions[activeDisplayTool];
+    }
+    
+    // Fall back to original random tips when no specific tool is active
+    return getRandomGeneralContent();
+  };
+
+  // Original random general content sets
+  const getRandomGeneralContent = () => {
+    const generalContentSets = [
+      {
+        sections: [
+          {
+            icon: "🎯",
+            title: "Advanced Techniques",
+            gradient: "from-accent-orange/10 to-accent-red/10",
+            border: "border-accent-orange/30",
+            textColor: "text-accent-orange",
+            tips: [
+              "Multiple Colors: Stack different colors for complex removal",
+              "Threshold Fine-tuning: Lower values = precise, higher = broad",
+              "Edge Cleanup: Always apply after color removal",
+              "Speckle Order: Remove large areas first, then small specks"
+            ]
+          },
+          {
+            icon: "🔄",
+            title: "Workflow Tips",
+            gradient: "from-accent-cyan/10 to-accent-blue/10",
+            border: "border-accent-cyan/30",
+            textColor: "text-accent-cyan",
+            tips: [
+              "Save Progress: Download intermediate results",
+              "Zoom Strategy: High zoom for precision, low for overview",
+              "Tool Switching: Combine tools for best results",
+              "Undo Wisely: Use before applying new effects"
+            ]
+          }
+        ]
+      },
+      {
+        sections: [
+          {
+            icon: "🏆",
+            title: "Best Practices",
+            gradient: "from-accent-indigo/10 to-accent-blue/10",
+            border: "border-accent-indigo/30",
+            textColor: "text-accent-indigo",
+            tips: [
+              "Start Conservative: Low thresholds, increase gradually",
+              "Preview First: Check changes before applying",
+              "Batch Processing: Use same settings for similar images",
+              "Keep Originals: Maintain backup copies"
+            ]
+          },
+          {
+            icon: "⚡",
+            title: "Performance",
+            gradient: "from-accent-green/10 to-accent-lime/10",
+            border: "border-accent-green/30",
+            textColor: "text-accent-green",
+            tips: [
+              "Image Size: Resize large images for speed",
+              "Memory Usage: Process one image at a time",
+              "Browser Performance: Close other tabs",
+              "File Types: JPEG faster, PNG better quality"
+            ]
+          }
+        ]
+      }
+    ];
+
+    return generalContentSets[Math.floor(Math.random() * generalContentSets.length)];
+  };
+
+  const currentContent = getCurrentContent();
+
+  // Additional random tips to fill space
+  const bonusTips = [
     {
       icon: "💡",
-      title: "General Tips",
+      title: "Pro Tips",
       gradient: "from-accent-blue/10 to-accent-cyan/10",
       border: "border-accent-blue/30",
       textColor: "text-accent-blue",
       tips: [
-        "Save frequently: Download progress at key stages",
+        "Save frequently: Download at key stages",
         "Undo/Redo: Use Ctrl+Z and Ctrl+Y liberally",
-        "Preview before download: Check results in different zoom levels",
-        "Backup originals: Keep copies of source images"
+        "Preview at different zoom levels",
+        "Keep backups of original images"
       ]
     },
     {
       icon: "🚀",
-      title: "Workflow Efficiency", 
+      title: "Efficiency",
       gradient: "from-accent-green/10 to-accent-lime/10",
       border: "border-accent-green/30",
       textColor: "text-accent-green",
       tips: [
-        "Batch similar images: Use same settings for similar photos",
-        "Tool switching: Combine tools for complex backgrounds",
-        "Queue management: Process multiple images simultaneously",
-        "Settings presets: Remember successful configurations"
+        "Batch similar images with same settings",
+        "Combine tools for complex backgrounds",
+        "Use queue for multiple images",
+        "Remember successful configurations"
       ]
     }
   ];
 
-  // Randomly select additional tips
-  const selectedGeneralTip = React.useMemo(() => {
-    return generalTips[Math.floor(Math.random() * generalTips.length)];
-  }, [currentTool]); // Re-randomize when tool changes
+  const selectedBonusTip = React.useMemo(() => {
+    return bonusTips[Math.floor(Math.random() * bonusTips.length)];
+  }, [activeDisplayTool]);
 
   return (
     <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-      {/* Tool-specific instructions (always shown first) */}
+      {/* Tool-specific or general instructions */}
       <div className="space-y-4 animate-fade-in">
-        {toolContent.sections.map((section, index) => (
-          <div key={`tool-${index}`} className={`bg-gradient-to-br ${section.gradient} border ${section.border} rounded-lg p-4`}>
+        {currentContent.sections.map((section: any, index: number) => (
+          <div key={`section-${index}`} className={`bg-gradient-to-br ${section.gradient} border ${section.border} rounded-lg p-4`}>
             <div className={`font-medium ${section.textColor} mb-3 flex items-center gap-2`}>
               {section.icon} <span>{section.title}</span>
             </div>
             <div className="text-xs text-muted-foreground space-y-2">
-              {section.tips.map((tip, tipIndex) => {
+              {section.tips.map((tip: string, tipIndex: number) => {
                 const [title, description] = tip.split(': ');
                 return (
                   <div key={tipIndex}>
@@ -528,14 +594,14 @@ const ToolSpecificContent: React.FC<{ currentTool: 'pan' | 'color-stack' | 'magi
         ))}
       </div>
 
-      {/* Additional random tip to fill space */}
+      {/* Bonus tip to fill remaining space */}
       <div className="animate-fade-in">
-        <div className={`bg-gradient-to-br ${selectedGeneralTip.gradient} border ${selectedGeneralTip.border} rounded-lg p-4`}>
-          <div className={`font-medium ${selectedGeneralTip.textColor} mb-3 flex items-center gap-2`}>
-            {selectedGeneralTip.icon} <span>{selectedGeneralTip.title}</span>
+        <div className={`bg-gradient-to-br ${selectedBonusTip.gradient} border ${selectedBonusTip.border} rounded-lg p-4`}>
+          <div className={`font-medium ${selectedBonusTip.textColor} mb-3 flex items-center gap-2`}>
+            {selectedBonusTip.icon} <span>{selectedBonusTip.title}</span>
           </div>
           <div className="text-xs text-muted-foreground space-y-2">
-            {selectedGeneralTip.tips.map((tip, tipIndex) => {
+            {selectedBonusTip.tips.map((tip, tipIndex) => {
               const [title, description] = tip.split(': ');
               return (
                 <div key={tipIndex}>
@@ -546,29 +612,6 @@ const ToolSpecificContent: React.FC<{ currentTool: 'pan' | 'color-stack' | 'magi
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-export interface RightSidebarProps {
-  currentTool: 'pan' | 'color-stack' | 'magic-wand';
-}
-
-export const RightSidebar: React.FC<RightSidebarProps> = ({ currentTool }) => {
-  return (
-    <div className="w-80 lg:w-96 bg-gradient-panel border-l border-border flex flex-col">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-foreground">
-          📚 Learning Center
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {currentTool === 'pan' && '🗺️ Pan Tool Guide'}
-          {currentTool === 'color-stack' && '🎨 Color Stack Guide'} 
-          {currentTool === 'magic-wand' && '✨ Magic Wand Guide'}
-        </p>
-      </div>
-      
-      <ToolSpecificContent currentTool={currentTool} />
     </div>
   );
 };
