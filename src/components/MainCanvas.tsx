@@ -95,13 +95,49 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [clickCount, setClickCount] = useState(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Color processing functions
-  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
-    const dr = r1 - r2;
-    const dg = g1 - g2;
-    const db = b1 - b2;
-    return Math.sqrt(dr * dr + dg * dg + db * db);
+  // Color processing functions with LAB color space support
+  const rgbToLab = useCallback((r: number, g: number, b: number): [number, number, number] => {
+    // Convert RGB to XYZ
+    let x = r / 255;
+    let y = g / 255;
+    let z = b / 255;
+
+    x = x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
+    y = y > 0.04045 ? Math.pow((y + 0.055) / 1.055, 2.4) : y / 12.92;
+    z = z > 0.04045 ? Math.pow((z + 0.055) / 1.055, 2.4) : z / 12.92;
+
+    x *= 100;
+    y *= 100;
+    z *= 100;
+
+    // Observer = 2°, Illuminant = D65
+    x = x / 95.047;
+    y = y / 100.000;
+    z = z / 108.883;
+
+    x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16/116);
+    y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16/116);
+    z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16/116);
+
+    const L = (116 * y) - 16;
+    const A = 500 * (x - y);
+    const B = 200 * (y - z);
+
+    return [L, A, B];
   }, []);
+
+  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
+    // Use LAB color space for more perceptual color matching
+    const [l1, a1, b1Lab] = rgbToLab(r1, g1, b1);
+    const [l2, a2, b2Lab] = rgbToLab(r2, g2, b2);
+    
+    const dl = l1 - l2;
+    const da = a1 - a2;
+    const db = b1Lab - b2Lab;
+    
+    // Delta E CIE76 formula for perceptual color difference
+    return Math.sqrt(dl * dl + da * da + db * db);
+  }, [rgbToLab]);
 
   // Helper function to compare ImageData objects
   const areImageDataEqual = useCallback((data1: ImageData, data2: ImageData): boolean => {
@@ -134,7 +170,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const targetR = data[0];
         const targetG = data[1];
         const targetB = data[2];
-        const threshold = settings.threshold * 2.55;
+        const threshold = settings.threshold; // LAB color space uses 0-100 range directly
 
         if (settings.contiguous) {
           // Contiguous removal starting from top-left corner
@@ -213,7 +249,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           // Check against each target color
           for (const targetColor of colorsToRemove) {
             const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold * 2.55; // Scale to 0-255 range
+            const threshold = targetColor.threshold; // LAB color space uses 0-100 range directly
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
@@ -1315,7 +1351,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     const isColorSimilar = (r: number, g: number, b: number) => {
       const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      return distance <= settings.threshold * 2.55;
+      return distance <= settings.threshold; // LAB color space uses 0-100 range directly
     };
     
     while (stack.length > 0) {
@@ -1372,7 +1408,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const stack = [[startX, startY]];
     let removedPixels = 0;
     
-    const thresholdScaled = threshold * 2.55;
+    const thresholdScaled = threshold; // LAB color space uses 0-100 range directly
     console.log(`Threshold scaled: ${thresholdScaled}`);
     
     const isColorSimilar = (r: number, g: number, b: number) => {
@@ -1438,7 +1474,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
     
-    const thresholdScaled = threshold * 2.55;
+    const thresholdScaled = threshold; // LAB color space uses 0-100 range directly
     console.log(`Threshold scaled: ${thresholdScaled}`);
     
     const visited = new Set<string>();
@@ -1566,8 +1602,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
 
-    // Convert threshold to proper scale
-    const thresholdScaled = threshold * 2.55;
+    // Convert threshold to proper scale (LAB color space uses 0-100 range directly)
+    const thresholdScaled = threshold;
 
     // Remove all similar colors globally (non-contiguous for eyedropper)
     for (let i = 0; i < data.length; i += 4) {

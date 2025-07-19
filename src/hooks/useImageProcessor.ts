@@ -6,13 +6,78 @@ export const useImageProcessor = () => {
   const { toast } = useToast();
   const cancelTokenRef = useRef({ cancelled: false });
 
-  // Simple RGB color distance calculation (more reliable than LAB)
-  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
-    const dr = r1 - r2;
-    const dg = g1 - g2;
-    const db = b1 - b2;
-    return Math.sqrt(dr * dr + dg * dg + db * db);
+  // Color space conversion utilities
+  const rgbToLab = useCallback((r: number, g: number, b: number): [number, number, number] => {
+    // Convert RGB to XYZ
+    let x = r / 255;
+    let y = g / 255;
+    let z = b / 255;
+
+    x = x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
+    y = y > 0.04045 ? Math.pow((y + 0.055) / 1.055, 2.4) : y / 12.92;
+    z = z > 0.04045 ? Math.pow((z + 0.055) / 1.055, 2.4) : z / 12.92;
+
+    x *= 100;
+    y *= 100;
+    z *= 100;
+
+    // Observer = 2°, Illuminant = D65
+    x = x / 95.047;
+    y = y / 100.000;
+    z = z / 108.883;
+
+    x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16/116);
+    y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16/116);
+    z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16/116);
+
+    const L = (116 * y) - 16;
+    const A = 500 * (x - y);
+    const B = 200 * (y - z);
+
+    return [L, A, B];
   }, []);
+
+  // Color distance calculation with multiple color space support
+  const calculateColorDistance = useCallback((
+    r1: number, g1: number, b1: number, 
+    r2: number, g2: number, b2: number, 
+    colorSpace: 'rgb' | 'hsl' | 'lab' = 'lab'
+  ): number => {
+    switch (colorSpace) {
+      case 'rgb': {
+        const dr = r1 - r2;
+        const dg = g1 - g2;
+        const db = b1 - b2;
+        return Math.sqrt(dr * dr + dg * dg + db * db);
+      }
+      case 'hsl': {
+        const [h1, s1, l1] = rgbToHsl(r1, g1, b1);
+        const [h2, s2, l2] = rgbToHsl(r2, g2, b2);
+        
+        // Handle hue wrapping (circular distance)
+        let dh = Math.abs(h1 - h2);
+        dh = Math.min(dh, 360 - dh);
+        
+        const ds = (s1 - s2) * 100; // Scale saturation difference
+        const dl = (l1 - l2) * 100; // Scale lightness difference
+        
+        return Math.sqrt(dh * dh + ds * ds + dl * dl);
+      }
+      case 'lab': {
+        const [l1, a1, b1Lab] = rgbToLab(r1, g1, b1);
+        const [l2, a2, b2Lab] = rgbToLab(r2, g2, b2);
+        
+        const dl = l1 - l2;
+        const da = a1 - a2;
+        const db = b1Lab - b2Lab;
+        
+        // Delta E CIE76 formula for perceptual color difference
+        return Math.sqrt(dl * dl + da * da + db * db);
+      }
+      default:
+        return 0;
+    }
+  }, [rgbToLab]);
 
 
   // Auto color removal - removes top-left corner color and similar colors
@@ -26,10 +91,11 @@ export const useImageProcessor = () => {
     const targetG = data[1];
     const targetB = data[2];
 
-    // Convert threshold (0-100) to RGB distance threshold (much more conservative)
-    const threshold = settings.threshold * 2.55; // Scale to 0-255 range
+    // Scale threshold based on color space (LAB uses Delta E values, typically 0-100)
+    const threshold = settings.threshold; // LAB color space uses 0-100 range directly
     
-    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, 'threshold:', threshold);
+    const [targetL, targetA, targetBLab] = rgbToLab(targetR, targetG, targetB);
+    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, `lab(${targetL.toFixed(1)}, ${targetA.toFixed(1)}, ${targetBLab.toFixed(1)})`, 'threshold:', threshold);
     
     let pixelsRemoved = 0;
     for (let i = 0; i < data.length; i += 4) {
@@ -62,7 +128,7 @@ export const useImageProcessor = () => {
     const targetG = parseInt(hex.substr(2, 2), 16);
     const targetB = parseInt(hex.substr(4, 2), 16);
 
-    const threshold = settings.threshold * 2.55;
+    const threshold = settings.threshold; // LAB color space uses 0-100 range directly
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -92,7 +158,7 @@ export const useImageProcessor = () => {
         const targetR = data[0];
         const targetG = data[1];
         const targetB = data[2];
-        const threshold = settings.threshold * 2.55;
+        const threshold = settings.threshold; // LAB color space uses 0-100 range directly
 
         if (settings.contiguous) {
           // Contiguous removal starting from top-left corner
@@ -171,7 +237,7 @@ export const useImageProcessor = () => {
           // Check against each target color
           for (const targetColor of colorsToRemove) {
             const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold * 2.55; // Scale to 0-255 range
+            const threshold = targetColor.threshold; // LAB color space uses 0-100 range directly
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
@@ -194,7 +260,7 @@ export const useImageProcessor = () => {
 
     const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
       const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold * 2.55;
+      return distance <= settings.threshold; // LAB color space uses 0-100 range directly
     };
 
     const floodFillFromBorder = (startX: number, startY: number) => {
