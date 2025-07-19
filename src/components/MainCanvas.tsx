@@ -1,13 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { usePan } from '@/hooks/usePan';
-import { useZoom } from '@/hooks/useZoom';
-import { useImageTransform } from '@/hooks/useImageTransform';
-import { useDebounce } from '@/hooks/useDebounce';
-import { useTouchEvents } from '@/hooks/useTouchEvents';
-import { useColorPicker } from '@/hooks/useColorPicker';
-import { useMagicWand } from '@/hooks/useMagicWand';
 import { useEraserTool } from '@/hooks/useEraserTool';
 import { cn } from '@/lib/utils';
+import { Upload, Image as ImageIcon } from 'lucide-react';
 
 interface MainCanvasProps {
   image: any;
@@ -34,150 +28,154 @@ interface MainCanvasProps {
   onSpeckCountUpdate: any;
 }
 
-const MainCanvas: React.FC<MainCanvasProps> = ({ image, tool, eraserSettings }) => {
-  const currentImage = image?.canvas ? null : null; // Simplified for now
-  const brushSize = eraserSettings?.brushSize || 10;
+const MainCanvas: React.FC<MainCanvasProps> = ({ 
+  image, 
+  tool, 
+  eraserSettings,
+  onColorPicked,
+  onImageUpdate 
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
-  const manualImageDataRef = useRef<ImageData | null>(null);
-  const hasManualEditsRef = useRef(false);
-	const erasingInProgressRef = useRef(false);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
 
-  // Pan Hook
-  const { pan, handleMouseDown: handlePanMouseDown, handleMouseMove: handlePanMouseMove, handleMouseUp: handlePanMouseUp } = usePan(canvasRef, containerRef, setIsDragging);
-  
-  // Zoom Hook
-  const { zoom, centerOffset } = useZoom(currentImage, containerRef);
+  // Get current image from different sources
+  const currentImage = image?.canvas || image?.processedData || image?.originalData;
+  const brushSize = eraserSettings?.brushSize || 10;
 
-  // Image Transform Hook
-  const { applyImageTransform } = useImageTransform(canvasRef, currentImage, zoom, centerOffset, pan);
-
-  // Touch Events Hook
-  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useTouchEvents(
-    tool === 'pan' ? handlePanMouseDown : () => {},
-    tool === 'pan' ? handlePanMouseMove : () => {},
-    tool === 'pan' ? handlePanMouseUp : () => {}
-  );
-
-  // Color Picker Hook
-  const { handleColorSelection } = useColorPicker(canvasRef, currentImage);
-
-  // Magic Wand Hook
-  const { handleMagicWandSelection } = useMagicWand(canvasRef, currentImage, setManualImageData, manualImageDataRef);
-
-  // Eraser Hook
-  const { startErasing, continueErasing, stopErasing, getBrushCursor, saveBrushSize, loadBrushSize, isErasing } = useEraserTool(canvasRef.current, {
-    brushSize: brushSize,
-    zoom: zoom,
-    pan: pan,
-    centerOffset: centerOffset,
-    containerRef: containerRef,
-    manualImageDataRef: manualImageDataRef,
-		hasManualEditsRef: hasManualEditsRef,
-		erasingInProgressRef: erasingInProgressRef,
-    onImageChange: () => {} // Simplified for now
-  });
-
-  // Load initial brush size from localStorage
-  useEffect(() => {
-    const initialBrushSize = loadBrushSize();
-  }, [loadBrushSize]);
-
-  // Debounced effect to apply image transform
-  const debouncedApplyImageTransform = useDebounce(applyImageTransform, 100);
-
-  useEffect(() => {
-    if (currentImage) {
-      debouncedApplyImageTransform();
-    }
-  }, [currentImage, zoom, centerOffset, pan, debouncedApplyImageTransform]);
-
-  // Update manual image data on canvas
-  useEffect(() => {
-    if (canvasRef.current && manualImageData) {
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) {
-        ctx.putImageData(manualImageData, 0, 0);
-      }
-    }
-  }, [manualImageData]);
-
-  // Mouse event handlers
+  // Simple pan functionality
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-
     if (tool === 'pan') {
-      handlePanMouseDown(e.nativeEvent);
-    } else if (tool === 'color-picker' && currentImage) {
-      handleColorSelection(e);
-    } else if (tool === 'magic-wand' && currentImage) {
-      handleMagicWandSelection(e);
-    } else if (tool === 'eraser') {
-      startErasing(e.nativeEvent);
+      setIsDragging(true);
+      setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [tool, currentImage, handlePanMouseDown, handleColorSelection, handleMagicWandSelection, startErasing]);
+  }, [tool]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'pan' && isDragging) {
+      const deltaX = e.clientX - lastMousePos.x;
+      const deltaY = e.clientY - lastMousePos.y;
+      
+      setPan(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY
+      }));
+      
+      setLastMousePos({ x: e.clientX, y: e.clientY });
+    }
+  }, [tool, isDragging, lastMousePos]);
+
+  const handleMouseUp = useCallback(() => {
+    if (tool === 'pan') {
+      setIsDragging(false);
+    }
+  }, [tool]);
+
+  // Draw image to canvas
+  useEffect(() => {
     if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    if (tool === 'pan') {
-      handlePanMouseMove(e.nativeEvent);
-    } else if (tool === 'eraser' && erasingInProgressRef.current) {
-      continueErasing(e.nativeEvent);
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentImage) {
+      if (currentImage instanceof HTMLCanvasElement) {
+        // Draw from canvas
+        ctx.drawImage(currentImage, 0, 0);
+      } else if (currentImage instanceof ImageData) {
+        // Draw from ImageData
+        canvas.width = currentImage.width;
+        canvas.height = currentImage.height;
+        ctx.putImageData(currentImage, 0, 0);
+      } else if (image?.file) {
+        // Load from file
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = URL.createObjectURL(image.file);
+      }
     }
-  }, [tool, handlePanMouseMove, continueErasing]);
+  }, [currentImage, image]);
 
-  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+  // Calculate canvas position and size
+  const getCanvasStyle = () => {
+    if (!currentImage && !image?.file) return {};
+    
+    return {
+      transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+      transformOrigin: '0 0',
+    };
+  };
 
-    if (tool === 'pan') {
-      handlePanMouseUp();
-    } else if (tool === 'eraser') {
-      stopErasing(e.nativeEvent);
+  // Render drag and drop area when no image
+  if (!image) {
+    return (
+      <div 
+        className="relative w-full h-full overflow-hidden bg-canvas-bg flex items-center justify-center"
+        ref={containerRef}
+      >
+        <div className="text-center p-8 border-2 border-dashed border-border rounded-lg bg-card/50">
+          <Upload className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            Drag & Drop Images Here
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            Or use the "Add Images" button in the header
+          </p>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <ImageIcon className="w-4 h-4" />
+            <span>Supports JPG, PNG, WebP</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get canvas dimensions
+  const getCanvasDimensions = () => {
+    if (currentImage instanceof ImageData) {
+      return { width: currentImage.width, height: currentImage.height };
     }
-  }, [tool, handlePanMouseUp, stopErasing]);
-
-  const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (tool === 'pan') {
-      handlePanMouseUp();
-    } else if (tool === 'eraser') {
-      stopErasing(e.nativeEvent);
+    if (currentImage instanceof HTMLCanvasElement) {
+      return { width: currentImage.width, height: currentImage.height };
     }
-  }, [tool, handlePanMouseUp, stopErasing]);
+    return { width: 800, height: 600 };
+  };
+
+  const { width, height } = getCanvasDimensions();
 
   return (
     <div 
       className="relative w-full h-full overflow-hidden bg-canvas-bg"
       ref={containerRef}
     >
-      {currentImage && (
-          <canvas
-            ref={canvasRef}
-            width={currentImage?.width || 800}
-            height={currentImage?.height || 600}
-            className={cn(
-              "absolute",
-              tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
-              tool === 'color-picker' && 'cursor-crosshair',
-              tool === 'magic-wand' && 'cursor-crosshair',
-              tool !== 'eraser' && tool !== 'pan' && tool !== 'color-picker' && tool !== 'magic-wand' && 'cursor-crosshair'
-            )}
-            style={{
-              transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
-              transformOrigin: '0 0',
-              ...(tool === 'eraser' && { cursor: getBrushCursor() })
-            }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          />
-      )}
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        className={cn(
+          "absolute",
+          tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
+          tool === 'color-picker' && 'cursor-crosshair',
+          tool === 'magic-wand' && 'cursor-crosshair',
+          tool === 'eraser' && 'cursor-crosshair'
+        )}
+        style={getCanvasStyle()}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      />
     </div>
   );
 };
