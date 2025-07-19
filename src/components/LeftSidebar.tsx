@@ -123,7 +123,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <div className="w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
+    <div className="w-80 lg:w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
