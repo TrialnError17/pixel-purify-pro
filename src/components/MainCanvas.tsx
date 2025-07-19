@@ -2213,11 +2213,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       {/* Canvas Area */}
       <div 
         ref={containerRef}
-        className="flex-1 relative overflow-hidden"
+        className="flex-1 relative overflow-hidden select-none"
         style={{ 
           backgroundColor: effectSettings.background.enabled ? effectSettings.background.color : 'hsl(var(--canvas-bg))'
         }}
         onWheel={handleWheel}
+        onDoubleClick={handleFitToScreen}
       >
         {image ? (
           <>
