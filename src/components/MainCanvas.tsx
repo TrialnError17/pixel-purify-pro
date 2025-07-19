@@ -1251,6 +1251,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Store the image data after magic wand removal for potential speckle processing later
       setManualImageData(newImageData);
       
+      // Clear speckle state so it can work with fresh manual edits
+      if (preSpeckleImageData) {
+        setPreSpeckleImageData(null);
+        console.log('Cleared pre-speckle state to allow fresh speckle processing');
+      }
+      
       // DON'T run speckle processing here - let the main effect handle it to avoid threshold corruption
       console.log('Magic wand removal completed, manual edits stored');
       
