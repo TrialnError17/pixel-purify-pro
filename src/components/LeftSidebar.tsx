@@ -508,17 +508,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     {/* Controls Row */}
                     <div className="flex items-center gap-3">
                       <div className="w-20 flex justify-center">
-                        <Button
-                          variant={speckleSettings.removeSpecks ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => updateSpeckleSettings({ removeSpecks: !speckleSettings.removeSpecks })}
-                          className={speckleSettings.removeSpecks 
-                            ? "bg-gradient-to-r from-accent-red to-accent-pink border-accent-red text-white" 
-                            : "border-accent-red text-accent-red hover:bg-accent-red/10"
-                          }
-                        >
-                          <EyeOff className="w-3 h-3" />
-                        </Button>
+                        <Switch
+                          checked={speckleSettings.removeSpecks}
+                          onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks })}
+                          className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
+                        />
                       </div>
                       <div className="flex-1">
                         <div className="p-2 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded border border-accent-blue/20">
