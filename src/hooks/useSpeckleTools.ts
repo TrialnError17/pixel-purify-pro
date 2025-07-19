@@ -165,7 +165,7 @@ export const useSpeckleTools = () => {
     };
   }, [findConnectedComponents]);
 
-  // Remove specks by making them transparent, and highlight remaining larger specks
+  // Remove specks by making them transparent, and highlight remaining smaller specks
   const removeSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
     const { components, speckCount, largestSpeck } = findConnectedComponents(imageData);
     const processedData = new ImageData(
@@ -179,6 +179,10 @@ export const useSpeckleTools = () => {
     let removedSpecks = 0;
     let remainingSpecks = 0;
 
+    // Find the largest component size to distinguish main subject from specks
+    const largestComponentSize = Math.max(...components.map(comp => comp.length));
+    const speckThreshold = Math.min(settings.minSpeckSize * 10, largestComponentSize * 0.1); // Only highlight specks up to 10x threshold or 10% of largest component
+
     // Process all components
     components.forEach(component => {
       if (component.length <= settings.minSpeckSize) {
@@ -188,8 +192,8 @@ export const useSpeckleTools = () => {
           data[pixelIndex + 3] = 0; // Make transparent
         });
         removedSpecks++;
-      } else {
-        // Highlight remaining larger specks in red so user can see what's left
+      } else if (component.length <= speckThreshold) {
+        // Highlight remaining medium-sized specks in red (but not the main subject)
         component.forEach(index => {
           const x = index % width;
           const y = Math.floor(index / width);
@@ -215,9 +219,10 @@ export const useSpeckleTools = () => {
         });
         remainingSpecks++;
       }
+      // Large components (main subject) are left untouched
     });
 
-    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels), highlighted ${remainingSpecks} remaining larger specks`);
+    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels), highlighted ${remainingSpecks} remaining medium specks (threshold: ${speckThreshold})`);
 
     return {
       processedData,
