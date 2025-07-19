@@ -88,6 +88,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   
   // Triple-click detection state
   const [clickCount, setClickCount] = useState(0);
@@ -1552,30 +1553,22 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current || isDownloading) return;
     
-    // Immediate feedback
+    // Immediate feedback - start local progress
     setIsDownloading(true);
-    
-    // Show progress indicator
-    if (setSingleImageProgress) {
-      setSingleImageProgress({ imageId: image.id, progress: 0 });
-    }
+    setDownloadProgress(0);
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
       setIsDownloading(false);
-      if (setSingleImageProgress) {
-        setSingleImageProgress(null);
-      }
+      setDownloadProgress(0);
       return;
     }
     
-    // Simulate progress for immediate feedback
-    setTimeout(() => {
-      if (setSingleImageProgress) {
-        setSingleImageProgress({ imageId: image.id, progress: 50 });
-      }
-    }, 100);
+    // Simulate progress steps for visual feedback
+    setTimeout(() => setDownloadProgress(25), 100);
+    setTimeout(() => setDownloadProgress(50), 200);
+    setTimeout(() => setDownloadProgress(75), 300);
     
     // Get current canvas data to pass to the download handler
     const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1587,18 +1580,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       status: 'completed' as const
     };
     
-    // Complete the download after a short delay to ensure user sees the feedback
+    // Complete the download
     setTimeout(() => {
+      setDownloadProgress(100);
       onDownloadImage(imageWithCurrentData);
       
       // Reset states after download
       setTimeout(() => {
         setIsDownloading(false);
+        setDownloadProgress(0);
+        // Also trigger the queue progress for consistency if it's visible
         if (setSingleImageProgress) {
           setSingleImageProgress(null);
         }
-      }, 1000); // Keep progress visible briefly after download completes
-    }, 200);
+      }, 1000);
+    }, 400);
   }, [image, onDownloadImage, setSingleImageProgress, isDownloading]);
 
   return (
@@ -1816,6 +1812,30 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               </p>
             </div>
           </Card>
+        )}
+        
+        {/* Download Progress Overlay - Always visible regardless of queue state */}
+        {isDownloading && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg p-6 shadow-xl min-w-80">
+              <div className="flex items-center gap-3 mb-4">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <span className="text-lg font-medium">Downloading Image...</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Progress</span>
+                  <span>{downloadProgress}%</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
