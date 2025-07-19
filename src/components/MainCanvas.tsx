@@ -682,8 +682,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // Allow speckle and edge cleanup to run even with manual edits, but skip other auto-processing
     if (hasManualEditsRef.current) {
       // If we have manual edits, handle speckle and edge cleanup specially
-      if (isProcessingEdgeCleanupRef.current) {
-        console.log('Early return - already processing');
+      // Add additional guard: don't process during panning/dragging
+      if (isProcessingEdgeCleanupRef.current || isDragging) {
+        console.log('Early return - already processing or dragging');
         return;
       }
       
@@ -965,7 +966,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, isDragging]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {

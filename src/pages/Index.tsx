@@ -114,7 +114,7 @@ const Index = () => {
   });
 
   const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
-    threshold: 10
+    threshold: 30 // Changed from 10 to 30
   });
 
   const [speckleSettings, setSpeckleSettings] = useState<SpeckleSettings>({
@@ -159,7 +159,7 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 3,
+    trimRadius: 1, // Changed from 3 to 1
     legacyEnabled: false,
     legacyRadius: 2,
     softening: {
