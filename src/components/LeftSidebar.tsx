@@ -488,43 +488,42 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardHeader>
               {speckleSettings.enabled && (
                 <CardContent className="pt-0 space-y-4">
-                  <div className="text-xs text-muted-foreground p-2 bg-accent-blue/5 rounded border border-accent-blue/20">
-                    🔍 Detects and manages isolated pixel clusters (specks) in your image
-                  </div>
-
-                  {/* Compact Layout: Left Side (Remove Specks) + Right Side (Min Speck Size Vertical Slider) */}
-                  <div className="flex gap-3">
-                    {/* Left Half - Remove Specks */}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                        <div className="flex items-center gap-2">
-                          <EyeOff className="w-4 h-4 text-accent-red" />
-                          <span className="text-sm font-medium text-accent-red">Remove Specks</span>
-                        </div>
+                  {/* Compact Vertical Layout: Remove Specks + Min Speck Size */}
+                  <div className="flex gap-4 justify-center">
+                    {/* Remove Specks - Vertical Toggle */}
+                    <div className="flex flex-col items-center gap-3">
+                      <Label className="text-xs font-medium text-accent-red text-center leading-tight">
+                        Remove<br/>Specks
+                      </Label>
+                      <div className="flex flex-col items-center gap-2 p-3 bg-gradient-to-b from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20 min-h-[120px] justify-center">
+                        <EyeOff className="w-5 h-5 text-accent-red" />
                         <Switch
                           checked={speckleSettings.removeSpecks}
                           onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks })}
-                          className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
+                          className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink rotate-90"
                         />
                       </div>
                     </div>
 
-                    {/* Right Half - Min Speck Size Vertical Slider */}
-                    <div className="flex-1 flex justify-center">
-                      <div className="flex flex-col items-center">
-                        <Label className="text-xs font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent mb-2 text-center">
-                          📏 Min Size
-                        </Label>
-                        <GraphicEQBand
-                          label=""
-                          value={speckleSettings.minSpeckSize}
-                          onValueChange={(minSpeckSize) => updateSpeckleSettings({ minSpeckSize })}
-                          min={1}
-                          max={2000}
-                          step={1}
-                        />
-                      </div>
+                    {/* Min Speck Size - Vertical Slider */}
+                    <div className="flex flex-col items-center gap-3">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent text-center leading-tight">
+                        Min<br/>Size
+                      </Label>
+                      <GraphicEQBand
+                        label=""
+                        value={speckleSettings.minSpeckSize}
+                        onValueChange={(minSpeckSize) => updateSpeckleSettings({ minSpeckSize })}
+                        min={1}
+                        max={2000}
+                        step={1}
+                      />
                     </div>
+                  </div>
+
+                  {/* Description at bottom */}
+                  <div className="text-xs text-muted-foreground p-2 bg-accent-blue/5 rounded border border-accent-blue/20">
+                    🔍 Detects and manages isolated pixel clusters (specks) in your image
                   </div>
 
                   {/* Speck Count Display */}
