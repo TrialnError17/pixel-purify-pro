@@ -1,3 +1,4 @@
+
 import { useRef, useCallback, useEffect } from 'react';
 
 export interface EraserToolOptions {
@@ -8,6 +9,7 @@ export interface EraserToolOptions {
   containerRef: React.RefObject<HTMLDivElement>;
   manualImageDataRef: React.MutableRefObject<ImageData | null>;
   hasManualEditsRef: React.MutableRefObject<boolean>;
+  erasingInProgressRef: React.MutableRefObject<boolean>;
   onImageChange?: (imageData: ImageData) => void;
 }
 
@@ -18,7 +20,9 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
   // Save brush size to localStorage
   const saveBrushSize = useCallback((size: number) => {
     try {
-      localStorage.setItem('eraserBrushSize', size.toString());
+      if (size >= 1 && size <= 50) {
+        localStorage.setItem('eraserBrushSize', size.toString());
+      }
     } catch (error) {
       console.warn('Failed to save eraser brush size:', error);
     }
@@ -40,23 +44,43 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
 
   // Get canvas coordinates from mouse/touch event using container reference
   const getCanvasCoords = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!canvas || !options.containerRef.current) return null;
+    if (!canvas || !options.containerRef.current) {
+      console.log('getCanvasCoords: Missing canvas or containerRef');
+      return null;
+    }
     
     const containerRect = options.containerRef.current.getBoundingClientRect();
     const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0]?.clientX;
     const clientY = e instanceof MouseEvent ? e.clientY : e.touches[0]?.clientY;
     
-    if (clientX === undefined || clientY === undefined) return null;
+    if (clientX === undefined || clientY === undefined) {
+      console.log('getCanvasCoords: Missing clientX or clientY');
+      return null;
+    }
     
     // Get coordinates relative to container
     const mouseX = clientX - containerRect.left;
     const mouseY = clientY - containerRect.top;
     
-    // Transform to image data coordinates (same as magic wand tool)
-    const dataX = Math.floor((mouseX - options.centerOffset.x - options.pan.x) / options.zoom);
-    const dataY = Math.floor((mouseY - options.centerOffset.y - options.pan.y) / options.zoom);
+    // Transform to image data coordinates
+    const dataX = Math.floor((mouseX - options.centerOffset.x - options.pan.x) / Math.max(options.zoom, 0.01));
+    const dataY = Math.floor((mouseY - options.centerOffset.y - options.pan.y) / Math.max(options.zoom, 0.01));
     
-    // Clamp to image bounds
+    console.log('Coordinate transform:', {
+      screenX: clientX,
+      screenY: clientY,
+      containerLeft: containerRect.left,
+      containerTop: containerRect.top,
+      mouseX,
+      mouseY,
+      centerOffset: options.centerOffset,
+      pan: options.pan,
+      zoom: options.zoom,
+      dataX,
+      dataY
+    });
+    
+    // Clamp to image bounds if we have image data
     const imageData = options.manualImageDataRef.current;
     if (imageData) {
       const clampedX = Math.max(0, Math.min(dataX, imageData.width - 1));
@@ -71,6 +95,7 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
   const erasePixels = useCallback((imageData: ImageData, centerX: number, centerY: number, radius: number) => {
     const { data, width, height } = imageData;
     const radiusSquared = radius * radius;
+    let pixelsModified = 0;
     
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
@@ -81,46 +106,95 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
           
           if (x >= 0 && x < width && y >= 0 && y < height) {
             const index = (y * width + x) * 4;
-            data[index + 3] = 0; // Set alpha to 0 (transparent)
+            if (data[index + 3] > 0) { // Only count if pixel was not already transparent
+              data[index + 3] = 0; // Set alpha to 0 (transparent)
+              pixelsModified++;
+            }
           }
         }
       }
     }
+    
+    console.log(`Erased ${pixelsModified} pixels at (${centerX}, ${centerY}) with radius ${radius}`);
   }, []);
 
   // Start erasing
   const startErasing = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!canvas || !options.manualImageDataRef.current) return;
+    console.log('startErasing called');
     
-    const coords = getCanvasCoords(e);
-    if (!coords) return;
+    // Reset erasing progress flag to prevent race conditions
+    options.erasingInProgressRef.current = false;
+    
+    if (!canvas || !options.containerRef.current) {
+      console.log('startErasing: Missing canvas or containerRef');
+      return;
+    }
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.log('startErasing: Could not get canvas context');
+      return;
+    }
     
+    // Initialize manualImageDataRef if it's null
+    if (!options.manualImageDataRef.current) {
+      console.log('Initializing manualImageDataRef with canvas data');
+      try {
+        options.manualImageDataRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        console.log('Initialized manualImageData:', {
+          width: options.manualImageDataRef.current.width,
+          height: options.manualImageDataRef.current.height
+        });
+      } catch (error) {
+        console.error('Failed to initialize manualImageDataRef:', error);
+        return;
+      }
+    }
+    
+    const coords = getCanvasCoords(e);
+    if (!coords) {
+      console.log('startErasing: Could not get coordinates');
+      return;
+    }
+    
+    console.log('Starting erase at coordinates:', coords);
+    
+    // Set erasing state
     isErasingRef.current = true;
     lastPosRef.current = coords;
     options.hasManualEditsRef.current = true;
+    options.erasingInProgressRef.current = true;
     
     // Erase pixels in the manual image data
     const radius = Math.floor(options.brushSize / 2);
     erasePixels(options.manualImageDataRef.current, coords.x, coords.y, radius);
     
     // Update canvas display
-    ctx.putImageData(options.manualImageDataRef.current, 0, 0);
+    try {
+      ctx.putImageData(options.manualImageDataRef.current, 0, 0);
+      console.log('Canvas updated after start erasing');
+    } catch (error) {
+      console.error('Failed to update canvas after start erasing:', error);
+    }
     
     e.preventDefault();
-  }, [canvas, options.brushSize, options.manualImageDataRef, options.hasManualEditsRef, getCanvasCoords, erasePixels]);
+  }, [canvas, options.brushSize, options.manualImageDataRef, options.hasManualEditsRef, options.erasingInProgressRef, options.containerRef, getCanvasCoords, erasePixels]);
 
   // Continue erasing (drag) - use Bresenham's line algorithm for smooth strokes
   const continueErasing = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!canvas || !isErasingRef.current || !options.manualImageDataRef.current) return;
+    if (!canvas || !isErasingRef.current || !options.manualImageDataRef.current) {
+      return;
+    }
     
     const coords = getCanvasCoords(e);
-    if (!coords || !lastPosRef.current) return;
+    if (!coords || !lastPosRef.current) {
+      return;
+    }
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
     
     // Draw line between last position and current position using Bresenham's algorithm
     const x0 = lastPosRef.current.x;
@@ -156,7 +230,11 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     }
     
     // Update canvas display
-    ctx.putImageData(options.manualImageDataRef.current, 0, 0);
+    try {
+      ctx.putImageData(options.manualImageDataRef.current, 0, 0);
+    } catch (error) {
+      console.error('Failed to update canvas during continue erasing:', error);
+    }
     
     lastPosRef.current = coords;
     e.preventDefault();
@@ -164,18 +242,26 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
 
   // Stop erasing
   const stopErasing = useCallback((e?: MouseEvent | TouchEvent) => {
-    if (!isErasingRef.current) return;
+    console.log('stopErasing called, isErasing:', isErasingRef.current);
+    
+    if (!isErasingRef.current) {
+      // Always reset the progress flag even if we weren't erasing
+      options.erasingInProgressRef.current = false;
+      return;
+    }
     
     isErasingRef.current = false;
     lastPosRef.current = null;
+    options.erasingInProgressRef.current = false;
     
-    // Trigger image change callback for undo/redo system
+    // Trigger image change callback for undo/redo system and persistence
     if (options.onImageChange && options.manualImageDataRef.current) {
+      console.log('Calling onImageChange with updated image data');
       options.onImageChange(options.manualImageDataRef.current);
     }
     
     if (e) e.preventDefault();
-  }, [options.onImageChange, options.manualImageDataRef]);
+  }, [options.onImageChange, options.manualImageDataRef, options.erasingInProgressRef]);
 
   // Get brush cursor style
   const getBrushCursor = useCallback(() => {

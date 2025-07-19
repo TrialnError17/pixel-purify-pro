@@ -107,6 +107,9 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
+  // Add erasingInProgressRef to prevent auto-processing during erasing
+  const erasingInProgressRef = useRef<boolean>(false);
+  
   const [colorSettings, setColorSettings] = useState<ColorRemovalSettings>({
     enabled: true,
     mode: 'auto',
@@ -486,6 +489,7 @@ const Index = () => {
               speckleSettings={speckleSettings}
               edgeCleanupSettings={edgeCleanupSettings}
               eraserSettings={eraserSettings}
+              erasingInProgressRef={erasingInProgressRef}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
