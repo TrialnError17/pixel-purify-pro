@@ -238,6 +238,7 @@ interface MainCanvasProps {
   speckleSettings: SpeckleSettings;
   edgeCleanupSettings: EdgeCleanupSettings;
   eraserSettings: { brushSize: number };
+  erasingInProgressRef: React.MutableRefObject<boolean>;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -263,6 +264,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   speckleSettings,
   edgeCleanupSettings,
   eraserSettings,
+  erasingInProgressRef,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -307,6 +309,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     containerRef,
     manualImageDataRef,
     hasManualEditsRef,
+    erasingInProgressRef,
     onImageChange: (imageData) => {
       // Add to undo stack when erasing is complete
       addUndoAction?.({
