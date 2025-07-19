@@ -3,7 +3,7 @@ import { ColorRemovalSettings, EffectSettings, EdgeCleanupSettings } from '@/pag
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 export interface RightSidebarProps {
-  currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
+  currentTool: 'pan' | 'color-picker' | 'magic-wand' | 'eraser';
   colorSettings: ColorRemovalSettings;
   speckleSettings: SpeckleSettings;
   effectSettings: EffectSettings;
@@ -36,7 +36,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
     if (effectSettings.background.enabled) return 'background';
     if (colorSettings.enabled) return 'color-removal';
     if (currentTool === 'magic-wand') return 'magic-wand';
-    if (currentTool === 'color-stack') return 'color-stack';
+    if (currentTool === 'color-picker') return 'color-picker';
     return currentTool; // defaults to 'pan'
   };
 
@@ -59,7 +59,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       case 'image-effects': return '✨ Image Effects Guide';
       case 'edge-cleanup': return '✂️ Edge Cleanup Guide';
       case 'magic-wand': return '✨ Magic Wand Guide';
-      case 'color-stack': return '🎨 Color Stack Guide';
+      case 'color-picker': return '🎨 Color Picker Guide';
       case 'pan': return '🗺️ Pan Tool Guide';
       default: return '📚 Learning Center';
     }
@@ -922,7 +922,7 @@ const ToolSpecificContent: React.FC<{
         }
       ]
     },
-    'color-stack': {
+    'color-picker': {
       sections: [
         {
           icon: "🎨",

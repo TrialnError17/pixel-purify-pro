@@ -26,7 +26,7 @@ interface LeftSidebarProps {
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
   eraserSettings: EraserSettings;
   onEraserSettingsChange: (settings: EraserSettings) => void;
-  currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
+  currentTool: 'pan' | 'color-picker' | 'magic-wand' | 'eraser';
   onAddImages: () => void;
   onAddFolder: () => void;
   onFeatureInteraction: (feature: string) => void;

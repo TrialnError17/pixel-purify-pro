@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
-import { MainCanvas } from '@/components/MainCanvas';
+import MainCanvas from '@/components/MainCanvas';
 import { ImageQueue } from '@/components/ImageQueue';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
@@ -100,7 +100,7 @@ const Index = () => {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
-  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
+  const [currentTool, setCurrentTool] = useState<'pan' | 'color-picker' | 'magic-wand' | 'eraser'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
