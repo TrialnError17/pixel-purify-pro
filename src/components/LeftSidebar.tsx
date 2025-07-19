@@ -287,7 +287,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     min={1}
                     max={100}
                     step={1}
-                    id="weighted-threshold"
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
                 </div>
