@@ -439,6 +439,7 @@ const Index = () => {
               });
             }}
             currentTool={currentTool}
+            onToolChange={setCurrentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
           />

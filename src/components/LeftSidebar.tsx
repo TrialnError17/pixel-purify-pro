@@ -25,6 +25,7 @@ interface LeftSidebarProps {
   edgeCleanupSettings: EdgeCleanupSettings;
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
   currentTool: 'pan' | 'color-stack' | 'magic-wand';
+  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
   onAddImages: () => void;
   onAddFolder: () => void;
 }
@@ -42,6 +43,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   edgeCleanupSettings,
   onEdgeCleanupSettingsChange,
   currentTool,
+  onToolChange,
   onAddImages,
   onAddFolder
 }) => {
@@ -159,7 +161,59 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         </div>
       </div>
       
+      {/* Tool Selection */}
       <div className="flex-1 p-3 space-y-4 overflow-y-auto min-h-0">
+        <Card className="bg-gradient-to-br from-accent-green/10 to-accent-cyan/10 border-accent-green/30 shadow-colorful">
+          <CardHeader className="pt-2 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Wand className="w-4 h-4 text-accent-green" />
+              <span className="bg-gradient-to-r from-accent-green to-accent-cyan bg-clip-text text-transparent font-semibold">
+                🎯 Tools
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 pb-2 space-y-2">
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant={currentTool === 'pan' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onToolChange('pan')}
+                className={`justify-start ${
+                  currentTool === 'pan' 
+                    ? 'bg-gradient-to-r from-accent-green to-accent-cyan text-white' 
+                    : 'border-accent-green/30 text-accent-green hover:bg-accent-green/10'
+                }`}
+              >
+                🖐️ Pan Tool
+              </Button>
+              <Button
+                variant={currentTool === 'color-stack' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onToolChange('color-stack')}
+                className={`justify-start ${
+                  currentTool === 'color-stack' 
+                    ? 'bg-gradient-to-r from-accent-orange to-accent-red text-white' 
+                    : 'border-accent-orange/30 text-accent-orange hover:bg-accent-orange/10'
+                }`}
+              >
+                🎨 Color Stacker
+              </Button>
+              <Button
+                variant={currentTool === 'magic-wand' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onToolChange('magic-wand')}
+                className={`justify-start ${
+                  currentTool === 'magic-wand' 
+                    ? 'bg-gradient-to-r from-accent-cyan to-accent-blue text-white' 
+                    : 'border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10'
+                }`}
+              >
+                ✨ Magic Wand
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
         {/* Background Enable Toggle */}
         <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 shadow-colorful">
           <CardHeader className="pt-2 pb-2">
