@@ -59,7 +59,58 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-2">
-        {/* Empty space for right side */}
+        {/* Undo/Redo Controls */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onUndo}
+          disabled={!canUndo}
+          className="h-8 px-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <span className="text-xs">Undo</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRedo}
+          disabled={!canRedo}
+          className="h-8 px-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <span className="text-xs">Redo</span>
+        </Button>
+        
+        {/* Add Images Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAddImages}
+          className="h-8 px-3 border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10"
+        >
+          <ImagePlus className="w-4 h-4 mr-2" />
+          Add Images
+        </Button>
+        
+        {/* Add Folder Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAddFolder}
+          className="h-8 px-3 border-accent-purple/30 text-accent-purple hover:bg-accent-purple/10"
+        >
+          <FolderPlus className="w-4 h-4 mr-2" />
+          Add Folder
+        </Button>
+        
+        {/* Download Button */}
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onDownloadPNG}
+          disabled={!canDownload}
+          className="h-8 px-3 bg-accent-green hover:bg-accent-green/80 disabled:opacity-50"
+        >
+          Download PNG
+        </Button>
       </div>
     </header>
   );
