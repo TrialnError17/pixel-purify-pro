@@ -1,72 +1,89 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useImageProcessor } from '../hooks/useImageProcessor';
 import { useEraserTool } from '../hooks/useEraserTool';
-import { useSpeckleTools } from '../hooks/useSpeckleTools';
 import { cn } from '../lib/utils';
 
 interface MainCanvasProps {
-  selectedImage: string | null;
+  image: any;
   tool: 'pan' | 'eraser' | 'color-stack' | 'magic-wand';
-  brushSize: number;
-  onBrushSizeChange: (size: number) => void;
-  zoom: number;
-  pan: { x: number; y: number };
-  onZoomChange: (zoom: number) => void;
-  onPanChange: (pan: { x: number; y: number }) => void;
-  onImageChange?: (imageData: ImageData) => void;
+  onToolChange: (tool: 'pan' | 'eraser' | 'color-stack' | 'magic-wand') => void;
+  colorSettings: any;
+  contiguousSettings: any;
+  effectSettings: any;
+  speckleSettings: any;
+  edgeCleanupSettings: any;
+  eraserSettings: any;
+  erasingInProgressRef: any;
+  onImageUpdate: (image: any) => void;
+  onColorPicked: (color: string) => void;
+  onPreviousImage: () => void;
+  onNextImage: () => void;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  currentImageIndex: number;
+  totalImages: number;
+  onDownloadImage: () => void;
+  setSingleImageProgress: (progress: any) => void;
+  addUndoAction: (action: any) => void;
+  onSpeckCountUpdate: (count: any) => void;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
-  selectedImage,
+  image,
   tool,
-  brushSize,
-  onBrushSizeChange,
-  zoom,
-  pan,
-  onZoomChange,
-  onPanChange,
-  onImageChange
+  onToolChange,
+  colorSettings,
+  contiguousSettings,
+  effectSettings,
+  speckleSettings,
+  edgeCleanupSettings,
+  eraserSettings,
+  erasingInProgressRef,
+  onImageUpdate,
+  onColorPicked,
+  onPreviousImage,
+  onNextImage,
+  canGoPrevious,
+  canGoNext,
+  currentImageIndex,
+  totalImages,
+  onDownloadImage,
+  setSingleImageProgress,
+  addUndoAction,
+  onSpeckCountUpdate
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const manualImageDataRef = useRef<ImageData | null>(null);
   const hasManualEditsRef = useRef(false);
-  const erasingInProgressRef = useRef(false);
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
   const [isMouseOver, setIsMouseOver] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  const { processedImageUrl, isProcessing, processImage } = useImageProcessor();
-
   const eraserTool = useEraserTool(canvasRef.current, {
-    brushSize,
-    zoom,
-    pan,
+    brushSize: eraserSettings?.brushSize || 10,
+    zoom: 1,
+    pan: { x: 0, y: 0 },
     centerOffset,
     containerRef,
     manualImageDataRef,
     hasManualEditsRef,
     erasingInProgressRef,
-    onImageChange
-  });
-
-  const speckleTools = useSpeckleTools(canvasRef.current, {
-    zoom,
-    pan,
-    centerOffset,
-    containerRef,
-    manualImageDataRef,
-    hasManualEditsRef,
-    onImageChange
+    onImageChange: (imageData) => {
+      if (onImageUpdate && image) {
+        // Create updated image with new image data
+        const updatedImage = { ...image, processedData: imageData };
+        onImageUpdate(updatedImage);
+      }
+    }
   });
 
   // Update cursor position for both cursors
-  const updateCursorPosition = useCallback((e: MouseEvent | TouchEvent) => {
+  const updateCursorPosition = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
-    const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0]?.clientX;
-    const clientY = e instanceof MouseEvent ? e.clientY : e.touches[0]?.clientY;
+    const clientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY;
     
     if (clientX === undefined || clientY === undefined) return;
 
@@ -79,6 +96,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const outerCursor = document.getElementById("eraser-outer-cursor");
       
       // Calculate cursor size - start with brushSize and iteratively adjust
+      const brushSize = eraserSettings?.brushSize || 10;
       const cursorSize = Math.max(4, brushSize * 2); // Initial attempt: double brush size to match ~20px erase area
       
       if (cursor) {
@@ -107,11 +125,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         expectedEraseArea: Math.PI * Math.pow(Math.floor(brushSize / 2), 2)
       });
     }
-  }, [tool, brushSize]);
+  }, [tool, eraserSettings]);
 
   // Load and display image on canvas
   useEffect(() => {
-    if (!selectedImage || !canvasRef.current) return;
+    if (!image || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -135,8 +153,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       if (containerRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect();
         const newCenterOffset = {
-          x: (containerRect.width - img.width * zoom) / 2,
-          y: (containerRect.height - img.height * zoom) / 2
+          x: (containerRect.width - img.width) / 2,
+          y: (containerRect.height - img.height) / 2
         };
         setCenterOffset(newCenterOffset);
       }
@@ -146,53 +164,24 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       console.error('Failed to load image:', error);
     };
 
-    img.src = selectedImage;
-  }, [selectedImage, zoom]);
+    img.src = image;
+  }, [image]);
 
-  // Update center offset when zoom changes
-  useEffect(() => {
-    if (!canvasRef.current || !containerRef.current) return;
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    updateCursorPosition(e);
+  }, [updateCursorPosition]);
 
-    const canvas = canvasRef.current;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    
-    const newCenterOffset = {
-      x: (containerRect.width - canvas.width * zoom) / 2,
-      y: (containerRect.height - canvas.height * zoom) / 2
-    };
-    setCenterOffset(newCenterOffset);
-  }, [zoom]);
-
-  // Handle mouse events
-  const handleMouseMove = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!containerRef.current) return;
-    
-    // Update cursor position with throttling
-    requestAnimationFrame(() => updateCursorPosition(e));
-    
-    // Continue with existing tool logic
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (tool === 'eraser') {
-      eraserTool.continueErasing(e);
-    } else if (tool === 'magic-wand') {
-      speckleTools.continueRemoving(e);
+      eraserTool.startErasing(e as any);
     }
-  }, [tool, eraserTool, speckleTools, updateCursorPosition]);
+  }, [tool, eraserTool]);
 
-  const handleMouseDown = useCallback((e: MouseEvent | TouchEvent) => {
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
     if (tool === 'eraser') {
-      eraserTool.startErasing(e);
-    } else if (tool === 'magic-wand') {
-      speckleTools.startRemoving(e);
+      eraserTool.stopErasing(e as any);
     }
-  }, [tool, eraserTool, speckleTools]);
-
-  const handleMouseUp = useCallback((e: MouseEvent | TouchEvent) => {
-    if (tool === 'eraser') {
-      eraserTool.stopErasing(e);
-    } else if (tool === 'magic-wand') {
-      speckleTools.stopRemoving(e);
-    }
-  }, [tool, eraserTool, speckleTools]);
+  }, [tool, eraserTool]);
 
   const handleMouseEnter = useCallback(() => {
     setIsMouseOver(true);
@@ -207,62 +196,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (outerCursor) outerCursor.style.display = 'none';
   }, []);
 
-  // Set up event listeners
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    updateCursorPosition(e);
+  }, [updateCursorPosition]);
 
-    // Mouse events
-    container.addEventListener('mousemove', handleMouseMove);
-    container.addEventListener('mousedown', handleMouseDown);
-    container.addEventListener('mouseup', handleMouseUp);
-    container.addEventListener('mouseenter', handleMouseEnter);
-    container.addEventListener('mouseleave', handleMouseLeave);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Handle tool interactions here
+  }, [tool]);
 
-    // Touch events
-    container.addEventListener('touchmove', handleMouseMove);
-    container.addEventListener('touchstart', handleMouseDown);
-    container.addEventListener('touchend', handleMouseUp);
-
-    return () => {
-      container.removeEventListener('mousemove', handleMouseMove);
-      container.removeEventListener('mousedown', handleMouseDown);
-      container.removeEventListener('mouseup', handleMouseUp);
-      container.removeEventListener('mouseenter', handleMouseEnter);
-      container.removeEventListener('mouseleave', handleMouseLeave);
-      container.removeEventListener('touchmove', handleMouseMove);
-      container.removeEventListener('touchstart', handleMouseDown);
-      container.removeEventListener('touchend', handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseDown, handleMouseUp, handleMouseEnter, handleMouseLeave]);
-
-  // Process image when requested
-  useEffect(() => {
-    if (!selectedImage || !canvasRef.current || !hasManualEditsRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Get current image data
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
-    // Process the image
-    processImage(imageData);
-  }, [selectedImage, processImage]);
-
-  // Load brush size from localStorage on mount
-  useEffect(() => {
-    const savedBrushSize = eraserTool.loadBrushSize();
-    if (savedBrushSize !== brushSize) {
-      onBrushSizeChange(savedBrushSize);
-    }
-  }, [eraserTool, brushSize, onBrushSizeChange]);
-
-  // Save brush size to localStorage when it changes
-  useEffect(() => {
-    eraserTool.saveBrushSize(brushSize);
-  }, [eraserTool, brushSize]);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    // Handle tool interactions here
+  }, [tool]);
 
   return (
     <div 
@@ -276,11 +220,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       onMouseUp={handleMouseUp}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onTouchMove={handleMouseMove}
-      onTouchStart={handleMouseDown}
-      onTouchEnd={handleMouseUp}
+      onTouchMove={handleTouchMove}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
-      {!selectedImage && (
+      {!image && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center p-8 border-2 border-dashed border-border rounded-lg bg-muted/50">
             <p className="text-lg font-medium text-foreground mb-2">
@@ -297,7 +241,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         ref={canvasRef}
         className="absolute"
         style={{
-          transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
+          transform: `translate(${centerOffset.x}px, ${centerOffset.y}px) scale(1)`,
           transformOrigin: 'top left',
         }}
       />
