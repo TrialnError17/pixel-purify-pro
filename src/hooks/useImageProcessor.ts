@@ -1060,10 +1060,10 @@ export const useImageProcessor = () => {
     
     let imageDataToDownload = processedData;
     
-    // Apply automatic alpha feathering (radius 10) and edge softening (5 iterations) before download
+    // Apply automatic alpha feathering (radius 3) and edge softening (2 iterations) before download
     console.log('Applying automatic alpha feathering and edge softening for download...');
-    imageDataToDownload = applyAlphaFeathering(imageDataToDownload, 10); // Fixed radius 10
-    imageDataToDownload = applyEdgeSoftening(imageDataToDownload, 5);    // Fixed 5 iterations
+    imageDataToDownload = applyAlphaFeathering(imageDataToDownload, 3); // Reduced from 10 to 3
+    imageDataToDownload = applyEdgeSoftening(imageDataToDownload, 2);    // Reduced from 5 to 2
     console.log('Applied automatic edge enhancement for download');
     
     // Apply download effects if provided
