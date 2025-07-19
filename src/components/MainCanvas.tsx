@@ -1268,12 +1268,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // DON'T run speckle processing here - let the main effect handle it to avoid threshold corruption
       console.log('Magic wand removal completed, manual edits stored, all states reset');
       
-      // Apply edge cleanup if enabled
-      if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
-        console.log('Running edge cleanup after magic wand removal');
-        newImageData = processEdgeCleanup(newImageData, edgeCleanupSettings);
-        console.log('Edge cleanup completed after magic wand');
-      }
+      
+      // Don't automatically apply edge cleanup after magic wand - let user control this separately
       
       // Apply the processed data back to canvas
       ctx.putImageData(newImageData, 0, 0);
