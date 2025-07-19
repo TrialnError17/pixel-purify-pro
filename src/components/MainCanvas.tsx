@@ -17,7 +17,8 @@ import {
   Download,
   Wand,
   Undo,
-  Redo
+  Redo,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +40,7 @@ interface MainCanvasProps {
   currentImageIndex: number;
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
+  setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void;
   addUndoAction?: (action: { type: string; description: string; undo: () => void; redo?: () => void }) => void;
   
   onSpeckCountUpdate?: (count: number) => void;
@@ -62,6 +64,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   currentImageIndex,
   totalImages,
   onDownloadImage,
+  setSingleImageProgress,
   addUndoAction,
   onSpeckCountUpdate
 }) => {
@@ -84,6 +87,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Triple-click detection state
   const [clickCount, setClickCount] = useState(0);
@@ -1546,11 +1550,32 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
   const handleDownload = useCallback(() => {
-    if (!image || !canvasRef.current) return;
+    if (!image || !canvasRef.current || isDownloading) return;
+    
+    // Immediate feedback
+    setIsDownloading(true);
+    
+    // Show progress indicator
+    if (setSingleImageProgress) {
+      setSingleImageProgress({ imageId: image.id, progress: 0 });
+    }
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setIsDownloading(false);
+      if (setSingleImageProgress) {
+        setSingleImageProgress(null);
+      }
+      return;
+    }
+    
+    // Simulate progress for immediate feedback
+    setTimeout(() => {
+      if (setSingleImageProgress) {
+        setSingleImageProgress({ imageId: image.id, progress: 50 });
+      }
+    }, 100);
     
     // Get current canvas data to pass to the download handler
     const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1562,8 +1587,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       status: 'completed' as const
     };
     
-    onDownloadImage(imageWithCurrentData);
-  }, [image, onDownloadImage]);
+    // Complete the download after a short delay to ensure user sees the feedback
+    setTimeout(() => {
+      onDownloadImage(imageWithCurrentData);
+      
+      // Reset states after download
+      setTimeout(() => {
+        setIsDownloading(false);
+        if (setSingleImageProgress) {
+          setSingleImageProgress(null);
+        }
+      }, 1000); // Keep progress visible briefly after download completes
+    }, 200);
+  }, [image, onDownloadImage, setSingleImageProgress, isDownloading]);
 
   return (
     <div className="flex-1 flex flex-col bg-canvas-bg">
@@ -1708,12 +1744,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               variant="default"
               size="sm"
               onClick={handleDownload}
-              disabled={!image}
-              title="Download PNG"
+              disabled={!image || isDownloading}
+              title={isDownloading ? "Preparing download..." : "Download PNG"}
               className="flex items-center gap-2"
             >
-              <Download className="w-4 h-4" />
-              Download
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isDownloading ? "Preparing..." : "Download"}
             </Button>
           )}
         </div>

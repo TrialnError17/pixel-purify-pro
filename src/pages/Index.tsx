@@ -483,6 +483,7 @@ const Index = () => {
                   downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
                 }
               }}
+              setSingleImageProgress={setSingleImageProgress}
               addUndoAction={addUndoAction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
