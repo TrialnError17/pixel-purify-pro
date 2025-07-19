@@ -184,9 +184,25 @@ export const useSpeckleTools = () => {
     let totalPixelsRemoved = 0;
 
     // Simple removal: remove components smaller than threshold
-    components.forEach(component => {
-      if (component.length <= settings.minSpeckSize) {
-        console.log(`🗑️ Removing speck of size ${component.length} pixels`);
+    components.forEach((component, componentIndex) => {
+      const componentSize = component.length;
+      console.log(`🔍 Component ${componentIndex}: ${componentSize} pixels (threshold: ${settings.minSpeckSize})`);
+      
+      if (componentSize <= settings.minSpeckSize) {
+        console.log(`🗑️ Removing speck ${componentIndex} of size ${componentSize} pixels`);
+        
+        // Calculate component bounds for debugging
+        let minX = width, maxX = 0, minY = imageData.height, maxY = 0;
+        component.forEach(index => {
+          const x = index % width;
+          const y = Math.floor(index / width);
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        });
+        console.log(`📐 Component ${componentIndex} bounds: (${minX},${minY}) to (${maxX},${maxY}), area: ${(maxX-minX+1) * (maxY-minY+1)}`);
+        
         component.forEach(index => {
           const pixelIndex = index * 4;
           // Check if pixel is actually non-transparent before removing
@@ -197,7 +213,19 @@ export const useSpeckleTools = () => {
         });
         removedSpecks++;
       } else {
-        console.log(`✅ Keeping component of size ${component.length} pixels (larger than ${settings.minSpeckSize})`);
+        console.log(`✅ Keeping component ${componentIndex} of size ${componentSize} pixels (larger than ${settings.minSpeckSize})`);
+        
+        // Show bounds of kept components for debugging
+        let minX = width, maxX = 0, minY = imageData.height, maxY = 0;
+        component.forEach(index => {
+          const x = index % width;
+          const y = Math.floor(index / width);
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        });
+        console.log(`📐 Large component ${componentIndex} bounds: (${minX},${minY}) to (${maxX},${maxY}), visual area: ${(maxX-minX+1) * (maxY-minY+1)}`);
       }
     });
 
