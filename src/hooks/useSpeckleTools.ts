@@ -227,17 +227,24 @@ export const useSpeckleTools = () => {
       };
     }
 
+    // Create clean copy of image data to avoid contamination from previous highlighting
+    const cleanImageData = new ImageData(
+      new Uint8ClampedArray(imageData.data),
+      imageData.width,
+      imageData.height
+    );
+
     if (settings.removeSpecks) {
-      console.log('Running removeSpecks function');
-      return removeSpecks(imageData, settings);
+      console.log('Running removeSpecks function on clean data');
+      return removeSpecks(cleanImageData, settings);
     } else if (settings.highlightSpecks) {
-      console.log('Running highlightSpecks function');
-      return highlightSpecks(imageData, settings);
+      console.log('Running highlightSpecks function on clean data');
+      return highlightSpecks(cleanImageData, settings);
     }
 
     console.log('No speckle processing mode selected');
     return {
-      processedData: imageData,
+      processedData: cleanImageData,
       speckCount: 0
     };
   }, [highlightSpecks, removeSpecks]);
