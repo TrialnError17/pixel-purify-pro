@@ -167,11 +167,7 @@ export const useSpeckleTools = () => {
 
   // Remove specks by making them transparent, and highlight remaining smaller specks
   const removeSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
-    console.log('removeSpecks function called with minSpeckSize:', settings.minSpeckSize);
-    
     const { components, speckCount, largestSpeck } = findConnectedComponents(imageData);
-    console.log('Found components:', components.length, 'with sizes:', components.map(c => c.length));
-    
     const processedData = new ImageData(
       new Uint8ClampedArray(imageData.data),
       imageData.width,
@@ -181,50 +177,19 @@ export const useSpeckleTools = () => {
     const data = processedData.data;
     const width = imageData.width;
     let removedSpecks = 0;
-    let remainingSpecks = 0;
 
-    // Process all components
+    // Simple removal: remove components smaller than threshold
     components.forEach(component => {
       if (component.length <= settings.minSpeckSize) {
-        // Remove small components (specks) by making them transparent
-        console.log('Removing speck of size:', component.length);
         component.forEach(index => {
           const pixelIndex = index * 4;
           data[pixelIndex + 3] = 0; // Make transparent
         });
         removedSpecks++;
-      } else if (component.length <= settings.minSpeckSize * 5) {
-        // Only highlight medium-sized specks (up to 5x the threshold) so we don't highlight the main subject
-        console.log('Highlighting remaining speck of size:', component.length);
-        component.forEach(index => {
-          const x = index % width;
-          const y = Math.floor(index / width);
-          
-          // Add red glow around the remaining speck
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = x + dx;
-              const ny = y + dy;
-              if (nx >= 0 && nx < width && ny >= 0 && ny < imageData.height) {
-                const nIndex = (ny * width + nx) * 4;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance <= 1) {
-                  const intensity = Math.max(0, 1 - distance);
-                  data[nIndex] = Math.min(255, data[nIndex] + intensity * 255); // Red
-                  data[nIndex + 1] = Math.max(0, data[nIndex + 1] * (1 - intensity * 0.5)); // Reduce green
-                  data[nIndex + 2] = Math.max(0, data[nIndex + 2] * (1 - intensity * 0.5)); // Reduce blue
-                  data[nIndex + 3] = Math.max(data[nIndex + 3], intensity * 150); // Ensure visibility
-                }
-              }
-            }
-          }
-        });
-        remainingSpecks++;
       }
-      // Large components (main subject) are left untouched
     });
 
-    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels), highlighted ${remainingSpecks} remaining medium specks`);
+    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels)`);
 
     return {
       processedData,
