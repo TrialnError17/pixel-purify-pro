@@ -487,34 +487,37 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </CardTitle>
               </CardHeader>
               {speckleSettings.enabled && (
-                <CardContent className="pt-0 space-y-4">
-                  {/* Remove Specks Checkbox */}
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      checked={speckleSettings.removeSpecks}
-                      onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks: !!removeSpecks })}
-                      className="data-[state=checked]:bg-accent-red"
-                    />
-                    <Label className="text-sm font-medium text-accent-red flex items-center gap-1">
-                      <EyeOff className="w-4 h-4" />
-                      Remove Specks
-                    </Label>
-                  </div>
-
-                  {/* Min Speck Size Slider */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
-                      📏 Min Speck Size
-                    </Label>
-                    <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                      <SliderWithInput
-                        value={[speckleSettings.minSpeckSize]}
-                        onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
-                        min={1}
-                        max={2000}
-                        step={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                <CardContent className="pt-0 space-y-3">
+                  {/* Remove Specks + Min Speck Size on same row */}
+                  <div className="flex items-center gap-3">
+                    {/* Remove Specks Checkbox */}
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <Checkbox
+                        checked={speckleSettings.removeSpecks}
+                        onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks: !!removeSpecks })}
+                        className="data-[state=checked]:bg-accent-red"
                       />
+                      <Label className="text-sm font-medium text-accent-red flex items-center gap-1">
+                        <EyeOff className="w-4 h-4" />
+                        Remove
+                      </Label>
+                    </div>
+
+                    {/* Min Speck Size Slider - takes remaining space */}
+                    <div className="flex-1 min-w-0">
+                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent mb-1 block">
+                        📏 Min Size
+                      </Label>
+                      <div className="p-2 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded border border-accent-blue/20">
+                        <SliderWithInput
+                          value={[speckleSettings.minSpeckSize]}
+                          onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
+                          min={1}
+                          max={2000}
+                          step={1}
+                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                        />
+                      </div>
                     </div>
                   </div>
 
