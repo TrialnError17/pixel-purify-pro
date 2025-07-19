@@ -128,6 +128,7 @@ const Index = () => {
   });
 
   const [speckCount, setSpeckCount] = useState<number | undefined>(undefined);
+  const [isProcessingSpeckles, setIsProcessingSpeckles] = useState(false);
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
@@ -346,11 +347,14 @@ const Index = () => {
                 highlight: newSpeckleSettings.highlightSpecks,
                 remove: newSpeckleSettings.removeSpecks,
                 hasProcessedData: !!selectedImage?.processedData,
-                hasOriginalData: !!selectedImage?.originalData 
+                hasOriginalData: !!selectedImage?.originalData,
+                isProcessingSpeckles
               });
               
-              // Process speckles when settings change and image is selected
-              if (selectedImage?.processedData || selectedImage?.originalData) {
+              // Only process speckles if not already processing to prevent feedback loop
+              if (!isProcessingSpeckles && (selectedImage?.processedData || selectedImage?.originalData)) {
+                setIsProcessingSpeckles(true);
+                
                 // Use processedData if available (includes color effects), otherwise fall back to originalData
                 const baseData = selectedImage.processedData || selectedImage.originalData!;
                 
@@ -371,6 +375,9 @@ const Index = () => {
                     ? { ...img, processedData: result.processedData }
                     : img
                 ));
+                
+                // Reset processing flag after a short delay
+                setTimeout(() => setIsProcessingSpeckles(false), 100);
               }
               
               // Add undo action for speckle settings changes
