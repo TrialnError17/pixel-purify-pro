@@ -18,7 +18,8 @@ import {
   Wand,
   Undo,
   Redo,
-  Loader2
+  Loader2,
+  Eraser
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -228,13 +229,14 @@ const MainCanvasTips: React.FC = () => {
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'color-stack' | 'magic-wand';
-  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
+  tool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
+  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser') => void;
   colorSettings: ColorRemovalSettings;
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   speckleSettings: SpeckleSettings;
   edgeCleanupSettings: EdgeCleanupSettings;
+  eraserSettings: { brushSize: number };
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -259,6 +261,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   effectSettings,
   speckleSettings,
   edgeCleanupSettings,
+  eraserSettings,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -290,7 +293,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
+  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -2142,6 +2145,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           >
             <Wand className="w-4 h-4 mr-1" />
             Magic Wand
+          </Button>
+          
+          <Button
+            variant={tool === 'eraser' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onToolChange('eraser')}
+            className={tool === 'eraser' 
+              ? "bg-accent-red text-white" 
+              : "border-accent-red text-accent-red hover:bg-accent-red/10"}
+            title="Eraser - Remove pixels with brush"
+          >
+            <Eraser className="w-4 h-4 mr-1" />
+            Eraser
           </Button>
         </div>
         

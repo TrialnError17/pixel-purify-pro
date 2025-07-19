@@ -91,12 +91,16 @@ export interface ContiguousToolSettings {
   threshold: number;
 }
 
+export interface EraserSettings {
+  brushSize: number;
+}
+
 const Index = () => {
   console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
-  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
+  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
@@ -178,6 +182,10 @@ const Index = () => {
       enabled: false,
       iterations: 1,
     },
+  });
+
+  const [eraserSettings, setEraserSettings] = useState<EraserSettings>({
+    brushSize: 10
   });
 
   // Track if edge trim was auto-disabled by ink stamp
@@ -457,6 +465,8 @@ const Index = () => {
                 undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
               });
             }}
+            eraserSettings={eraserSettings}
+            onEraserSettingsChange={setEraserSettings}
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
@@ -475,6 +485,7 @@ const Index = () => {
               effectSettings={effectSettings}
               speckleSettings={speckleSettings}
               edgeCleanupSettings={edgeCleanupSettings}
+              eraserSettings={eraserSettings}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 

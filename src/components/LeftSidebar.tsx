@@ -8,7 +8,7 @@ import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
+import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
@@ -24,7 +24,9 @@ interface LeftSidebarProps {
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
   edgeCleanupSettings: EdgeCleanupSettings;
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
-  currentTool: 'pan' | 'color-stack' | 'magic-wand';
+  eraserSettings: EraserSettings;
+  onEraserSettingsChange: (settings: EraserSettings) => void;
+  currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
   onAddImages: () => void;
   onAddFolder: () => void;
   onFeatureInteraction: (feature: string) => void;
@@ -42,6 +44,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onContiguousSettingsChange,
   edgeCleanupSettings,
   onEdgeCleanupSettingsChange,
+  eraserSettings,
+  onEraserSettingsChange,
   currentTool,
   onAddImages,
   onAddFolder,
@@ -385,6 +389,43 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardContent>
             </Card>
           </>
+        )}
+
+        {/* Eraser Tool Settings - only shown when eraser tool is selected */}
+        {currentTool === 'eraser' && (
+          <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30 shadow-colorful">
+            <CardHeader className="pt-2 pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <span className="bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold flex items-center gap-1">
+                  🎨 Eraser Tool
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent">
+                  Brush Size: {eraserSettings.brushSize}px
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <SliderWithInput
+                    value={[eraserSettings.brushSize]}
+                    onValueChange={([brushSize]) => {
+                      onEraserSettingsChange({ brushSize });
+                      onFeatureInteraction('eraser-size');
+                    }}
+                    min={1}
+                    max={50}
+                    step={1}
+                    buttonStep={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground p-2 bg-accent-red/5 rounded border border-accent-red/20">
+                🖌️ Click and drag to erase pixels. Use smaller brush for precision, larger for broad strokes.
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Magic Wand Tool Settings - only shown when magic wand tool is selected */}
