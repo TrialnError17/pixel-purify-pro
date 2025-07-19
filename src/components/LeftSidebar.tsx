@@ -276,7 +276,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
-                  🎚️ Threshold Sensitivity
+                  🎚️ Threshold (Weighted RGB)
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
@@ -287,6 +287,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     min={1}
                     max={100}
                     step={1}
+                    id="weighted-threshold"
                     sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
                   />
                 </div>
