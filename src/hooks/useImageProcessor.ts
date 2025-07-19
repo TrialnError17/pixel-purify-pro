@@ -6,14 +6,14 @@ export const useImageProcessor = () => {
   const { toast } = useToast();
   const cancelTokenRef = useRef({ cancelled: false });
 
-  // Weighted RGB color distance calculation for better perceptual accuracy
-  // Uses weights: Red (0.30), Green (0.59), Blue (0.11) based on human eye sensitivity
+  // Simple RGB color distance calculation (more reliable than LAB)
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
     const dr = r1 - r2;
     const dg = g1 - g2;
     const db = b1 - b2;
-    return Math.sqrt(0.30 * dr * dr + 0.59 * dg * dg + 0.11 * db * db);
+    return Math.sqrt(dr * dr + dg * dg + db * db);
   }, []);
+
 
   // Auto color removal - removes top-left corner color and similar colors
   const autoColorRemoval = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {

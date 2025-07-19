@@ -376,7 +376,6 @@ const Index = () => {
                 undo: () => setSpeckleSettings(prevSpeckleSettings)
               });
             }}
-            speckCount={speckCount}
             effectSettings={effectSettings}
             onEffectSettingsChange={(newEffectSettings) => {
               const prevEffectSettings = { ...effectSettings };
@@ -440,7 +439,6 @@ const Index = () => {
               });
             }}
             currentTool={currentTool}
-            onToolChange={setCurrentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
           />
@@ -448,24 +446,46 @@ const Index = () => {
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
             <MainCanvas 
-              images={images}
-              currentImageIndex={selectedImageIndex}
+              image={selectedImage}
+              tool={currentTool}
+              onToolChange={setCurrentTool}
               colorSettings={colorSettings}
               contiguousSettings={contiguousSettings}
               effectSettings={effectSettings}
               speckleSettings={speckleSettings}
               edgeCleanupSettings={edgeCleanupSettings}
-              onImageUpdate={(imageId, updates) => {
+              
+              onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
-                  img.id === imageId ? { ...img, ...updates } : img
+                  img.id === updatedImage.id ? updatedImage : img
                 ));
               }}
-              onSettingsChange={setColorSettings}
-              onSpeckCountChange={setSpeckCount}
-              currentTool={currentTool}
-              isFullscreen={false}
-              onToggleFullscreen={() => {}}
+              onColorPicked={(color) => {
+                // Add color to picked colors list with default threshold of 30
+                const newPickedColor: PickedColor = {
+                  id: crypto.randomUUID(),
+                  color,
+                  threshold: 30
+                };
+                setColorSettings(prev => ({ 
+                  ...prev, 
+                  pickedColors: [...prev.pickedColors, newPickedColor] 
+                }));
+              }}
+              onPreviousImage={handlePreviousImage}
+              onNextImage={handleNextImage}
+              canGoPrevious={selectedImageIndex > 0}
+              canGoNext={selectedImageIndex < images.length - 1}
+              currentImageIndex={selectedImageIndex + 1}
+              totalImages={images.length}
+              onDownloadImage={() => {
+                if (selectedImage) {
+                  downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
+                }
+              }}
               setSingleImageProgress={setSingleImageProgress}
+              addUndoAction={addUndoAction}
+              onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
             
             {/* Image Queue - At bottom between sidebars */}
