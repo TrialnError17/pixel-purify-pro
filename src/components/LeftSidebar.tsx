@@ -782,14 +782,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </Card>
 
-        {/* Modular Help Text - Appears when major widgets are collapsed */}
-        {!effectSettings.background.enabled && 
-         !edgeCleanupSettings.enabled && 
-         !speckleSettings.enabled && 
-         !effectSettings.inkStamp.enabled && 
-         !effectSettings.imageEffects.enabled && (
-          <div className="space-y-3 mt-6">
-            {/* Quick Start Tips */}
+        {/* Modular Help Text - Each card appears/disappears based on available space */}
+        <div className="space-y-3 mt-6">
+          {/* Quick Start Tips - Disappears first when any major widget expands */}
+          {!effectSettings.background.enabled && 
+           !effectSettings.inkStamp.enabled && 
+           !effectSettings.imageEffects.enabled && (
             <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
               <CardContent className="pt-3 pb-3">
                 <div className="text-xs text-muted-foreground space-y-2">
@@ -802,8 +800,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </div>
               </CardContent>
             </Card>
+          )}
 
-            {/* Pro Tips */}
+          {/* Pro Tips - Disappears when 2+ major widgets are expanded */}
+          {(!effectSettings.background.enabled || !effectSettings.inkStamp.enabled) && 
+           (!effectSettings.imageEffects.enabled || !speckleSettings.enabled) && 
+           (!edgeCleanupSettings.enabled || 
+            (!effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !effectSettings.imageEffects.enabled)) && (
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30">
               <CardContent className="pt-3 pb-3">
                 <div className="text-xs text-muted-foreground space-y-2">
@@ -816,8 +819,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </div>
               </CardContent>
             </Card>
+          )}
 
-            {/* Keyboard Shortcuts */}
+          {/* Keyboard Shortcuts - Only disappears when most widgets are expanded */}
+          {!effectSettings.background.enabled && 
+           !effectSettings.inkStamp.enabled && 
+           !effectSettings.imageEffects.enabled && 
+           !speckleSettings.enabled && (
             <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30">
               <CardContent className="pt-3 pb-3">
                 <div className="text-xs text-muted-foreground space-y-2">
@@ -831,8 +839,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </div>
               </CardContent>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
 
       </div>
     </div>
