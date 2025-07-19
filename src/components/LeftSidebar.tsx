@@ -54,6 +54,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     if (updates.enabled === true && !speckleSettings.highlightSpecks && !speckleSettings.removeSpecks) {
       updates.highlightSpecks = true;
     }
+    
+    // Handle mutual exclusivity between highlight and remove
+    if (updates.removeSpecks === true) {
+      updates.highlightSpecks = false;
+    } else if (updates.removeSpecks === false && !speckleSettings.highlightSpecks) {
+      updates.highlightSpecks = true; // Turn highlighting back on when remove is disabled
+    }
+    
     onSpeckleSettingsChange({ ...speckleSettings, ...updates });
   };
 
