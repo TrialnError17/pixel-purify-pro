@@ -2317,8 +2317,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 "absolute cursor-crosshair",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'color-stack' && 'cursor-crosshair',
-                tool === 'magic-wand' && 'cursor-crosshair',
-                tool === 'eraser' && 'cursor-none'
+                tool === 'magic-wand' && 'cursor-crosshair'
               )}
               style={{
                 transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
