@@ -488,35 +488,32 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardHeader>
               {speckleSettings.enabled && (
                 <CardContent className="pt-0 space-y-4">
-                  {/* Compact Vertical Layout: Remove Specks + Min Speck Size */}
-                  <div className="flex gap-4 justify-center">
-                    {/* Remove Specks - Vertical Toggle */}
-                    <div className="flex flex-col items-center gap-3">
-                      <Label className="text-xs font-medium text-accent-red text-center leading-tight">
-                        Remove<br/>Specks
-                      </Label>
-                      <div className="flex flex-col items-center gap-2 p-3 bg-gradient-to-b from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20 min-h-[120px] justify-center">
-                        <EyeOff className="w-5 h-5 text-accent-red" />
-                        <Switch
-                          checked={speckleSettings.removeSpecks}
-                          onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks })}
-                          className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink rotate-90"
-                        />
-                      </div>
-                    </div>
+                  {/* Remove Specks Checkbox */}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={speckleSettings.removeSpecks}
+                      onCheckedChange={(removeSpecks) => updateSpeckleSettings({ removeSpecks: !!removeSpecks })}
+                      className="data-[state=checked]:bg-accent-red"
+                    />
+                    <Label className="text-sm font-medium text-accent-red flex items-center gap-1">
+                      <EyeOff className="w-4 h-4" />
+                      Remove Specks
+                    </Label>
+                  </div>
 
-                    {/* Min Speck Size - Vertical Slider */}
-                    <div className="flex flex-col items-center gap-3">
-                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent text-center leading-tight">
-                        Min<br/>Size
-                      </Label>
-                      <GraphicEQBand
-                        label=""
-                        value={speckleSettings.minSpeckSize}
-                        onValueChange={(minSpeckSize) => updateSpeckleSettings({ minSpeckSize })}
+                  {/* Min Speck Size Slider */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
+                      📏 Min Speck Size
+                    </Label>
+                    <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
+                      <SliderWithInput
+                        value={[speckleSettings.minSpeckSize]}
+                        onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
                         min={1}
                         max={2000}
                         step={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
                       />
                     </div>
                   </div>
