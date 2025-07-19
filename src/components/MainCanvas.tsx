@@ -149,7 +149,7 @@ const MainCanvas: React.FC<MainCanvasProps> = ({ image, tool, eraserSettings }) 
 
   return (
     <div 
-      className="relative w-full h-full overflow-hidden bg-neutral-100"
+      className="relative w-full h-full overflow-hidden bg-canvas-bg"
       ref={containerRef}
     >
       {currentImage && (
