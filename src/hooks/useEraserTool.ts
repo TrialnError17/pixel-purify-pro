@@ -2,6 +2,9 @@ import { useRef, useCallback, useEffect } from 'react';
 
 export interface EraserToolOptions {
   brushSize: number;
+  zoom?: number;
+  pan?: { x: number; y: number };
+  centerOffset?: { x: number; y: number };
   onImageChange?: (imageData: ImageData) => void;
 }
 
@@ -40,11 +43,24 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0]?.clientX;
     const clientY = e instanceof MouseEvent ? e.clientY : e.touches[0]?.clientY;
     
+    // Get raw coordinates relative to canvas element
+    const rawX = clientX - rect.left;
+    const rawY = clientY - rect.top;
+    
+    // Account for transformations (zoom, pan, centerOffset)
+    const zoom = options.zoom || 1;
+    const pan = options.pan || { x: 0, y: 0 };
+    const centerOffset = options.centerOffset || { x: 0, y: 0 };
+    
+    // Transform coordinates back to image space
+    const canvasX = (rawX - centerOffset.x - pan.x) / zoom;
+    const canvasY = (rawY - centerOffset.y - pan.y) / zoom;
+    
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: canvasX,
+      y: canvasY
     };
-  }, [canvas]);
+  }, [canvas, options.zoom, options.pan, options.centerOffset]);
 
   // Start erasing
   const startErasing = useCallback((e: MouseEvent | TouchEvent) => {

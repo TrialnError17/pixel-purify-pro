@@ -280,9 +280,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
+  
   // Eraser tool integration
   const eraserTool = useEraserTool(canvasRef.current, {
     brushSize: eraserSettings.brushSize,
+    zoom,
+    pan,
+    centerOffset,
     onImageChange: (imageData) => {
       // Add to undo stack when erasing is complete
       if (canvasRef.current) {
@@ -316,10 +323,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
   });
-  
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
