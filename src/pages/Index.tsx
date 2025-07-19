@@ -133,6 +133,11 @@ const Index = () => {
   // Track last interacted feature for Learning Center
   const [lastInteractedFeature, setLastInteractedFeature] = useState<string | null>(null);
   
+  // Handle feature interaction for Learning Center
+  const handleFeatureInteraction = useCallback((feature: string) => {
+    setLastInteractedFeature(feature);
+  }, []);
+  
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
       enabled: false,
@@ -455,6 +460,7 @@ const Index = () => {
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
+            onFeatureInteraction={handleFeatureInteraction}
           />
           </div>
           
