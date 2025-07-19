@@ -782,9 +782,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </Card>
 
-        {/* Modular Help Text - Appears when widgets are collapsed */}
+        {/* Modular Help Text - Appears when major widgets are collapsed */}
         {!effectSettings.background.enabled && 
-         !settings.enabled && 
          !edgeCleanupSettings.enabled && 
          !speckleSettings.enabled && 
          !effectSettings.inkStamp.enabled && 
