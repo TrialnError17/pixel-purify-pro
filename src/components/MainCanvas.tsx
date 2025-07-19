@@ -374,7 +374,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const targetR = data[0];
         const targetG = data[1];
         const targetB = data[2];
-        const threshold = settings.threshold; // LAB color space uses 0-100 range directly
+        const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
 
         if (settings.contiguous) {
           // Contiguous removal starting from top-left corner
@@ -453,7 +453,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           // Check against each target color
           for (const targetColor of colorsToRemove) {
             const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold; // LAB color space uses 0-100 range directly
+            const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
@@ -1579,7 +1579,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     const isColorSimilar = (r: number, g: number, b: number) => {
       const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      return distance <= settings.threshold; // LAB color space uses 0-100 range directly
+      return distance <= settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     };
     
     while (stack.length > 0) {
@@ -1636,7 +1636,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const stack = [[startX, startY]];
     let removedPixels = 0;
     
-    const thresholdScaled = threshold; // LAB color space uses 0-100 range directly
+    const thresholdScaled = threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     console.log(`Threshold scaled: ${thresholdScaled}`);
     
     const isColorSimilar = (r: number, g: number, b: number) => {
@@ -1702,7 +1702,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
     
-    const thresholdScaled = threshold; // LAB color space uses 0-100 range directly
+    const thresholdScaled = threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     console.log(`Threshold scaled: ${thresholdScaled}`);
     
     const visited = new Set<string>();
@@ -1830,8 +1830,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
 
-    // Convert threshold to proper scale (LAB color space uses 0-100 range directly)
-    const thresholdScaled = threshold;
+    // Convert threshold to proper scale - scale it to make it more sensitive (was too high)
+    const thresholdScaled = threshold * 2.5;
 
     // Remove all similar colors globally (non-contiguous for eyedropper)
     for (let i = 0; i < data.length; i += 4) {
@@ -2213,9 +2213,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       {/* Canvas Area */}
       <div 
         ref={containerRef}
-        className="flex-1 relative overflow-hidden bg-canvas-bg"
+        className="flex-1 relative overflow-hidden"
         style={{ 
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--grid-lines)) 1px, transparent 0)`,
+          backgroundColor: effectSettings.background.enabled ? effectSettings.background.color : 'hsl(var(--canvas-bg))',
+          backgroundImage: effectSettings.background.enabled ? 'none' : `radial-gradient(circle at 1px 1px, hsl(var(--grid-lines)) 1px, transparent 0)`,
           backgroundSize: '20px 20px'
         }}
         onWheel={handleWheel}
@@ -2240,7 +2241,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <canvas
               ref={canvasRef}
               className={cn(
-                "absolute cursor-crosshair border border-canvas-border",
+                "absolute cursor-crosshair",
+                effectSettings.background.enabled ? "" : "border border-canvas-border",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'color-stack' && 'cursor-crosshair',
                 tool === 'magic-wand' && 'cursor-crosshair'

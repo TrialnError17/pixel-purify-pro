@@ -92,7 +92,7 @@ export const useImageProcessor = () => {
     const targetB = data[2];
 
     // Scale threshold based on color space (LAB uses Delta E values, typically 0-100)
-    const threshold = settings.threshold; // LAB color space uses 0-100 range directly
+    const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     
     const [targetL, targetA, targetBLab] = rgbToLab(targetR, targetG, targetB);
     console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, `lab(${targetL.toFixed(1)}, ${targetA.toFixed(1)}, ${targetBLab.toFixed(1)})`, 'threshold:', threshold);
@@ -128,7 +128,7 @@ export const useImageProcessor = () => {
     const targetG = parseInt(hex.substr(2, 2), 16);
     const targetB = parseInt(hex.substr(4, 2), 16);
 
-    const threshold = settings.threshold; // LAB color space uses 0-100 range directly
+    const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -158,7 +158,7 @@ export const useImageProcessor = () => {
         const targetR = data[0];
         const targetG = data[1];
         const targetB = data[2];
-        const threshold = settings.threshold; // LAB color space uses 0-100 range directly
+        const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
 
         if (settings.contiguous) {
           // Contiguous removal starting from top-left corner
@@ -237,7 +237,7 @@ export const useImageProcessor = () => {
           // Check against each target color
           for (const targetColor of colorsToRemove) {
             const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold; // LAB color space uses 0-100 range directly
+            const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
@@ -260,7 +260,7 @@ export const useImageProcessor = () => {
 
     const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
       const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold; // LAB color space uses 0-100 range directly
+      return distance <= settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     };
 
     const floodFillFromBorder = (startX: number, startY: number) => {
