@@ -782,6 +782,59 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </Card>
 
+        {/* Modular Help Text - Appears when widgets are collapsed */}
+        {!effectSettings.background.enabled && 
+         !settings.enabled && 
+         !edgeCleanupSettings.enabled && 
+         !speckleSettings.enabled && 
+         !effectSettings.inkStamp.enabled && 
+         !effectSettings.imageEffects.enabled && (
+          <div className="space-y-3 mt-6">
+            {/* Quick Start Tips */}
+            <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
+              <CardContent className="pt-3 pb-3">
+                <div className="text-xs text-muted-foreground space-y-2">
+                  <div className="font-medium text-accent-green mb-2 flex items-center gap-1">
+                    🚀 <span>Quick Start</span>
+                  </div>
+                  <div>• <strong>Color Stack:</strong> Click colors to remove them</div>
+                  <div>• <strong>Magic Wand:</strong> Click to remove connected areas</div>
+                  <div>• <strong>Pan:</strong> Drag to move, scroll to zoom</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pro Tips */}
+            <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30">
+              <CardContent className="pt-3 pb-3">
+                <div className="text-xs text-muted-foreground space-y-2">
+                  <div className="font-medium text-accent-blue mb-2 flex items-center gap-1">
+                    💡 <span>Pro Tips</span>
+                  </div>
+                  <div>• Hold <strong>Spacebar</strong> for temporary pan mode</div>
+                  <div>• Use <strong>Speckle Tools</strong> to clean small artifacts</div>
+                  <div>• Enable <strong>Edge Trimming</strong> for cleaner edges</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Keyboard Shortcuts */}
+            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30">
+              <CardContent className="pt-3 pb-3">
+                <div className="text-xs text-muted-foreground space-y-2">
+                  <div className="font-medium text-accent-purple mb-2 flex items-center gap-1">
+                    ⌨️ <span>Shortcuts</span>
+                  </div>
+                  <div>• <strong>Spacebar:</strong> Pan tool</div>
+                  <div>• <strong>Scroll:</strong> Zoom in/out</div>
+                  <div>• <strong>Shift + Scroll:</strong> Pan up/down</div>
+                  <div>• <strong>Alt + Scroll:</strong> Pan left/right</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
       </div>
     </div>
   );
