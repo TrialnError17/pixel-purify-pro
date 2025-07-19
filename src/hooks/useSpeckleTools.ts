@@ -167,7 +167,11 @@ export const useSpeckleTools = () => {
 
   // Remove specks by making them transparent, and highlight remaining smaller specks
   const removeSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
+    console.log('removeSpecks function called with minSpeckSize:', settings.minSpeckSize);
+    
     const { components, speckCount, largestSpeck } = findConnectedComponents(imageData);
+    console.log('Found components:', components.length, 'with sizes:', components.map(c => c.length));
+    
     const processedData = new ImageData(
       new Uint8ClampedArray(imageData.data),
       imageData.width,
@@ -182,6 +186,8 @@ export const useSpeckleTools = () => {
     // Find the largest component size to distinguish main subject from specks
     const largestComponentSize = Math.max(...components.map(comp => comp.length));
     const speckThreshold = Math.min(settings.minSpeckSize * 10, largestComponentSize * 0.1); // Only highlight specks up to 10x threshold or 10% of largest component
+    
+    console.log('Largest component size:', largestComponentSize, 'speckThreshold:', speckThreshold, 'minSpeckSize:', settings.minSpeckSize);
 
     // Process all components
     components.forEach(component => {
@@ -233,7 +239,15 @@ export const useSpeckleTools = () => {
 
   // Process specks based on settings
   const processSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
+    console.log('processSpecks called with settings:', {
+      enabled: settings.enabled,
+      highlightSpecks: settings.highlightSpecks,
+      removeSpecks: settings.removeSpecks,
+      minSpeckSize: settings.minSpeckSize
+    });
+    
     if (!settings.enabled) {
+      console.log('Speckle processing disabled');
       return {
         processedData: imageData,
         speckCount: 0
@@ -241,11 +255,14 @@ export const useSpeckleTools = () => {
     }
 
     if (settings.removeSpecks) {
+      console.log('Running removeSpecks function');
       return removeSpecks(imageData, settings);
     } else if (settings.highlightSpecks) {
+      console.log('Running highlightSpecks function');
       return highlightSpecks(imageData, settings);
     }
 
+    console.log('No speckle processing mode selected');
     return {
       processedData: imageData,
       speckCount: 0
