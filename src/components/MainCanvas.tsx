@@ -787,17 +787,41 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         
         // Always apply speckle processing to the clean pre-speckle data (no effects applied)
         const baseData = preSpeckleImageData || manualImageData || currentImageData;
-        const speckleResult = processSpecks(baseData, speckleSettings);
-        currentImageData = speckleResult.processedData;
+        
+        // Handle speckle removal vs highlighting differently
+        if (speckleSettings.removeSpecks) {
+          // Apply actual speckle removal - this permanently modifies the data
+          const speckleResult = processSpecks(baseData, speckleSettings);
+          currentImageData = speckleResult.processedData;
+          
+          // Update the manual image data to reflect the removal
+          setManualImageData(new ImageData(
+            new Uint8ClampedArray(currentImageData.data),
+            currentImageData.width,
+            currentImageData.height
+          ));
+          hasManualEditsRef.current = true;
+          
+          // Apply to canvas
+          ctx.putImageData(currentImageData, 0, 0);
+          console.log('Speckle removal applied permanently to image data');
+        } else if (speckleSettings.highlightSpecks) {
+          // Apply highlighting for display only - don't modify permanent data
+          const speckleResult = processSpecks(baseData, speckleSettings);
+          
+          // Display the highlighted version on canvas but don't save it
+          ctx.putImageData(speckleResult.processedData, 0, 0);
+          console.log('Speckle highlighting applied for display only (not saved)');
+          
+          // Keep the original data unchanged
+          currentImageData = baseData;
+        }
         
         // Update speck count
+        const speckleResult = processSpecks(baseData, speckleSettings);
         if (onSpeckCountUpdate) {
           onSpeckCountUpdate(speckleResult.speckCount);
         }
-        
-        // Apply speckle result to canvas
-        ctx.putImageData(currentImageData, 0, 0);
-        console.log('Speckle processing applied to manual edits');
       } else if (needsSpeckleRestore) {
         console.log('Speckle disabled, restoring pre-speckle state');
         
