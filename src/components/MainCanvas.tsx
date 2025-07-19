@@ -77,6 +77,47 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
   });
 
+  // Load and display image on canvas
+  useEffect(() => {
+    if (!image || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Clear canvas and draw image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+
+      // Reset manual edits when new image is loaded
+      hasManualEditsRef.current = false;
+      manualImageDataRef.current = null;
+
+      // Calculate center offset to center the image in the container
+      if (containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const newCenterOffset = {
+          x: (containerRect.width - img.width) / 2,
+          y: (containerRect.height - img.height) / 2
+        };
+        setCenterOffset(newCenterOffset);
+      }
+    };
+
+    img.onerror = (error) => {
+      console.error('Failed to load image:', error);
+    };
+
+    // Use the image URL or processed data
+    img.src = image.processedUrl || image.url;
+  }, [image]);
+
   // Update cursor position for both cursors
   const updateCursorPosition = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!containerRef.current) return;
@@ -127,45 +168,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
   }, [tool, eraserSettings]);
 
-  // Load and display image on canvas
-  useEffect(() => {
-    if (!image || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const img = new Image();
-    img.onload = () => {
-      // Set canvas size to match image
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      // Clear canvas and draw image
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-
-      // Reset manual edits when new image is loaded
-      hasManualEditsRef.current = false;
-      manualImageDataRef.current = null;
-
-      // Calculate center offset to center the image in the container
-      if (containerRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const newCenterOffset = {
-          x: (containerRect.width - img.width) / 2,
-          y: (containerRect.height - img.height) / 2
-        };
-        setCenterOffset(newCenterOffset);
-      }
-    };
-
-    img.onerror = (error) => {
-      console.error('Failed to load image:', error);
-    };
-
-    img.src = image;
-  }, [image]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     updateCursorPosition(e);
