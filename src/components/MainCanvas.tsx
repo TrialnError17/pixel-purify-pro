@@ -307,6 +307,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           });
           setManualImageData(currentImageData);
           hasManualEditsRef.current = true;
+          // Update the image so changes persist
+          if (image) {
+            const updatedImage = { ...image, processedData: currentImageData };
+            onImageUpdate(updatedImage);
+          }
         }
       }
     }
