@@ -1248,11 +1248,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Remove contiguous color at clicked position using independent contiguous threshold
       console.log('Before removeContiguousColorIndependent, manual edits marked');
-      removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
+      const removedPixelsMap = removeContiguousColorIndependentWithTracking(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
       
       // Get the image data after magic wand removal
       let newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      
+      // Apply edge cleanup only to newly removed areas if enabled
+      if ((edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) && removedPixelsMap.size > 0) {
+        console.log('Applying edge cleanup to newly removed pixels only');
+        newImageData = processEdgeCleanupSelective(newImageData, edgeCleanupSettings, removedPixelsMap);
+        console.log('Edge cleanup applied to magic wand selection');
+        // Apply the edge-cleaned data back to canvas
+        ctx.putImageData(newImageData, 0, 0);
+      }
       
       // Store the image data after magic wand removal and reset all effect states
       setManualImageData(newImageData);
@@ -1267,12 +1276,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // DON'T run speckle processing here - let the main effect handle it to avoid threshold corruption
       console.log('Magic wand removal completed, manual edits stored, all states reset');
-      
-      
-      // Don't automatically apply edge cleanup after magic wand - let user control this separately
-      
-      // Apply the processed data back to canvas
-      ctx.putImageData(newImageData, 0, 0);
       
       // Store the manually edited result as base for future operations
       setManualImageData(newImageData);
@@ -1412,6 +1415,149 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     } else {
       console.log('No pixels were removed');
     }
+  };
+
+  // Enhanced version that tracks which pixels were removed
+  const removeContiguousColorIndependentWithTracking = (ctx: CanvasRenderingContext2D, startX: number, startY: number, threshold: number): Set<number> => {
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+    const removedPixels = new Set<number>();
+    
+    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
+    
+    // Get target color
+    const targetIndex = (startY * width + startX) * 4;
+    const targetR = data[targetIndex];
+    const targetG = data[targetIndex + 1];
+    const targetB = data[targetIndex + 2];
+    const targetA = data[targetIndex + 3];
+    
+    if (targetA === 0) return removedPixels; // Already transparent
+    
+    console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
+    
+    const thresholdScaled = threshold * 2.55;
+    console.log(`Threshold scaled: ${thresholdScaled}`);
+    
+    const visited = new Set<string>();
+    const stack: [number, number][] = [[startX, startY]];
+    let pixelCount = 0;
+    
+    while (stack.length > 0 && pixelCount < 500000) {
+      const [x, y] = stack.pop()!;
+      pixelCount++;
+      
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      
+      const key = `${x},${y}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      
+      const pixelIndex = (y * width + x) * 4;
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      const a = data[pixelIndex + 3];
+      
+      if (a === 0) continue; // Already transparent
+      
+      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      if (distance > thresholdScaled) continue;
+      
+      // Mark pixel as transparent and track it
+      data[pixelIndex + 3] = 0;
+      removedPixels.add(pixelIndex / 4); // Store pixel index (not byte index)
+      
+      // Add neighbors to stack
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    
+    console.log(`Removed ${removedPixels.size} pixels`);
+    
+    if (removedPixels.size > 0) {
+      ctx.putImageData(imageData, 0, 0);
+      console.log('Applied image data to canvas');
+    }
+    
+    return removedPixels;
+  };
+
+  // Selective edge cleanup that only processes pixels around newly removed areas
+  const processEdgeCleanupSelective = (imageData: ImageData, settings: EdgeCleanupSettings, removedPixels: Set<number>): ImageData => {
+    const { width, height } = imageData;
+    const data = new Uint8ClampedArray(imageData.data);
+    const result = new ImageData(data, width, height);
+    
+    if (!settings.enabled || settings.trimRadius <= 0 || removedPixels.size === 0) {
+      return result;
+    }
+    
+    // Find edge pixels - pixels that are adjacent to removed pixels
+    const edgePixels = new Set<number>();
+    const radius = settings.trimRadius;
+    
+    for (const removedPixelIndex of removedPixels) {
+      const x = removedPixelIndex % width;
+      const y = Math.floor(removedPixelIndex / width);
+      
+      // Check surrounding pixels within trim radius
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const neighborIndex = ny * width + nx;
+            const dataIndex = neighborIndex * 4;
+            
+            // If this pixel is not transparent and not already removed, it's an edge pixel
+            if (result.data[dataIndex + 3] > 0 && !removedPixels.has(neighborIndex)) {
+              edgePixels.add(neighborIndex);
+            }
+          }
+        }
+      }
+    }
+    
+    // Apply edge trimming to edge pixels
+    for (const edgePixelIndex of edgePixels) {
+      const x = edgePixelIndex % width;
+      const y = Math.floor(edgePixelIndex / width);
+      const dataIndex = edgePixelIndex * 4;
+      
+      // Check if this pixel should be trimmed based on proximity to removed areas
+      let shouldTrim = false;
+      
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const neighborIndex = ny * width + nx;
+            
+            // If a neighboring pixel was removed, consider trimming this edge pixel
+            if (removedPixels.has(neighborIndex)) {
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance <= radius) {
+                shouldTrim = true;
+                break;
+              }
+            }
+          }
+        }
+        if (shouldTrim) break;
+      }
+      
+      if (shouldTrim) {
+        result.data[dataIndex + 3] = 0; // Make transparent
+      }
+    }
+    
+    console.log(`Edge cleanup processed ${edgePixels.size} edge pixels around ${removedPixels.size} removed pixels`);
+    return result;
   };
 
   const removePickedColor = (ctx: CanvasRenderingContext2D, targetR: number, targetG: number, targetB: number, threshold: number) => {
@@ -1697,34 +1843,40 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           {/* Tools */}
           <Button
-            variant={tool === 'pan' ? 'default' : 'ghost'}
+            variant={tool === 'pan' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('pan')}
-            className="flex items-center gap-1"
+            className={tool === 'pan' 
+              ? "bg-accent-blue text-white" 
+              : "border-accent-blue text-accent-blue hover:bg-accent-blue/10"}
           >
-            <Move className="w-4 h-4" />
-            Move
+            <Move className="w-4 h-4 mr-1" />
+            Pan
           </Button>
           
           <Button
-            variant={tool === 'color-stack' ? 'default' : 'ghost'}
+            variant={tool === 'color-stack' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
-            className="flex items-center gap-1"
+            className={tool === 'color-stack' 
+              ? "bg-accent-purple text-white" 
+              : "border-accent-purple text-accent-purple hover:bg-accent-purple/10"}
           >
-            <Pipette className="w-4 h-4" />
+            <Pipette className="w-4 h-4 mr-1" />
             Color Stack
           </Button>
           
           
           <Button
-            variant={tool === 'magic-wand' ? 'default' : 'ghost'}
+            variant={tool === 'magic-wand' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
-            className="flex items-center gap-1"
+            className={tool === 'magic-wand' 
+              ? "bg-accent-cyan text-white" 
+              : "border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"}
             title="Magic Wand - Remove connected pixels"
           >
-            <Wand className="w-4 h-4" />
+            <Wand className="w-4 h-4 mr-1" />
             Magic Wand
           </Button>
         </div>
@@ -1880,3 +2032,5 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     </div>
   );
 };
+
+export default MainCanvas;
