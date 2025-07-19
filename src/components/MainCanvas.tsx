@@ -283,46 +283,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
-  
-  // Eraser tool integration
-  const eraserTool = useEraserTool(canvasRef.current, {
-    brushSize: eraserSettings.brushSize,
-    zoom,
-    pan,
-    centerOffset,
-    onImageChange: (imageData) => {
-      // Add to undo stack when erasing is complete
-      if (canvasRef.current) {
-        const currentImageData = canvasRef.current.getContext('2d')?.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
-        if (currentImageData) {
-          addUndoAction({
-            type: 'manual-edit',
-            description: 'Eraser tool',
-            undo: () => {
-              const ctx = canvasRef.current?.getContext('2d');
-              if (ctx && manualImageData) {
-                ctx.putImageData(manualImageData, 0, 0);
-              }
-            },
-            redo: () => {
-              const ctx = canvasRef.current?.getContext('2d');
-              if (ctx) {
-                ctx.putImageData(imageData, 0, 0);
-                hasManualEditsRef.current = true;
-              }
-            }
-          });
-          setManualImageData(currentImageData);
-          hasManualEditsRef.current = true;
-          // Update the image so changes persist
-          if (image) {
-            const updatedImage = { ...image, processedData: currentImageData };
-            onImageUpdate(updatedImage);
-          }
-        }
-      }
-    }
-  });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
@@ -331,6 +291,51 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
+  const manualImageDataRef = useRef<ImageData | null>(null);
+  
+  // Sync manualImageDataRef with manualImageData state
+  useEffect(() => {
+    manualImageDataRef.current = manualImageData;
+  }, [manualImageData]);
+  
+  // Eraser tool integration
+  const eraserTool = useEraserTool(canvasRef.current, {
+    brushSize: eraserSettings.brushSize,
+    zoom,
+    pan,
+    centerOffset,
+    containerRef,
+    manualImageDataRef,
+    hasManualEditsRef,
+    onImageChange: (imageData) => {
+      // Add to undo stack when erasing is complete
+      addUndoAction?.({
+        type: 'manual-edit',
+        description: 'Eraser tool',
+        undo: () => {
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx && manualImageData) {
+            ctx.putImageData(manualImageData, 0, 0);
+            manualImageDataRef.current = manualImageData;
+          }
+        },
+        redo: () => {
+          const ctx = canvasRef.current?.getContext('2d');
+          if (ctx) {
+            ctx.putImageData(imageData, 0, 0);
+            manualImageDataRef.current = imageData;
+            hasManualEditsRef.current = true;
+          }
+        }
+      });
+      setManualImageData(imageData);
+      // Update the image so changes persist
+      if (image) {
+        const updatedImage = { ...image, processedData: imageData };
+        onImageUpdate(updatedImage);
+      }
+    }
+  });
   const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);

@@ -2,9 +2,12 @@ import { useRef, useCallback, useEffect } from 'react';
 
 export interface EraserToolOptions {
   brushSize: number;
-  zoom?: number;
-  pan?: { x: number; y: number };
-  centerOffset?: { x: number; y: number };
+  zoom: number;
+  pan: { x: number; y: number };
+  centerOffset: { x: number; y: number };
+  containerRef: React.RefObject<HTMLDivElement>;
+  manualImageDataRef: React.MutableRefObject<ImageData | null>;
+  hasManualEditsRef: React.MutableRefObject<boolean>;
   onImageChange?: (imageData: ImageData) => void;
 }
 
@@ -35,36 +38,59 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     return 10;
   }, []);
 
-  // Get canvas coordinates from mouse/touch event
+  // Get canvas coordinates from mouse/touch event using container reference
   const getCanvasCoords = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!canvas) return null;
+    if (!canvas || !options.containerRef.current) return null;
     
-    const rect = canvas.getBoundingClientRect();
+    const containerRect = options.containerRef.current.getBoundingClientRect();
     const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0]?.clientX;
     const clientY = e instanceof MouseEvent ? e.clientY : e.touches[0]?.clientY;
     
-    // Get raw coordinates relative to canvas element
-    const rawX = clientX - rect.left;
-    const rawY = clientY - rect.top;
+    if (clientX === undefined || clientY === undefined) return null;
     
-    // Account for transformations (zoom, pan, centerOffset)
-    const zoom = options.zoom || 1;
-    const pan = options.pan || { x: 0, y: 0 };
-    const centerOffset = options.centerOffset || { x: 0, y: 0 };
+    // Get coordinates relative to container
+    const mouseX = clientX - containerRect.left;
+    const mouseY = clientY - containerRect.top;
     
-    // Transform coordinates back to image space
-    const canvasX = (rawX - centerOffset.x - pan.x) / zoom;
-    const canvasY = (rawY - centerOffset.y - pan.y) / zoom;
+    // Transform to image data coordinates (same as magic wand tool)
+    const dataX = Math.floor((mouseX - options.centerOffset.x - options.pan.x) / options.zoom);
+    const dataY = Math.floor((mouseY - options.centerOffset.y - options.pan.y) / options.zoom);
     
-    return {
-      x: canvasX,
-      y: canvasY
-    };
-  }, [canvas, options.zoom, options.pan, options.centerOffset]);
+    // Clamp to image bounds
+    const imageData = options.manualImageDataRef.current;
+    if (imageData) {
+      const clampedX = Math.max(0, Math.min(dataX, imageData.width - 1));
+      const clampedY = Math.max(0, Math.min(dataY, imageData.height - 1));
+      return { x: clampedX, y: clampedY };
+    }
+    
+    return { x: dataX, y: dataY };
+  }, [canvas, options.containerRef, options.centerOffset, options.pan, options.zoom, options.manualImageDataRef]);
+
+  // Erase pixels in a circle around the given point
+  const erasePixels = useCallback((imageData: ImageData, centerX: number, centerY: number, radius: number) => {
+    const { data, width, height } = imageData;
+    const radiusSquared = radius * radius;
+    
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared <= radiusSquared) {
+          const x = centerX + dx;
+          const y = centerY + dy;
+          
+          if (x >= 0 && x < width && y >= 0 && y < height) {
+            const index = (y * width + x) * 4;
+            data[index + 3] = 0; // Set alpha to 0 (transparent)
+          }
+        }
+      }
+    }
+  }, []);
 
   // Start erasing
   const startErasing = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!canvas) return;
+    if (!canvas || !options.manualImageDataRef.current) return;
     
     const coords = getCanvasCoords(e);
     if (!coords) return;
@@ -74,24 +100,21 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     
     isErasingRef.current = true;
     lastPosRef.current = coords;
+    options.hasManualEditsRef.current = true;
     
-    // Set up erasing mode
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.lineWidth = options.brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    // Erase pixels in the manual image data
+    const radius = Math.floor(options.brushSize / 2);
+    erasePixels(options.manualImageDataRef.current, coords.x, coords.y, radius);
     
-    // Draw a single point for initial click
-    ctx.beginPath();
-    ctx.arc(coords.x, coords.y, options.brushSize / 2, 0, Math.PI * 2);
-    ctx.fill();
+    // Update canvas display
+    ctx.putImageData(options.manualImageDataRef.current, 0, 0);
     
     e.preventDefault();
-  }, [canvas, options.brushSize, getCanvasCoords]);
+  }, [canvas, options.brushSize, options.manualImageDataRef, options.hasManualEditsRef, getCanvasCoords, erasePixels]);
 
-  // Continue erasing (drag)
+  // Continue erasing (drag) - use Bresenham's line algorithm for smooth strokes
   const continueErasing = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!canvas || !isErasingRef.current) return;
+    if (!canvas || !isErasingRef.current || !options.manualImageDataRef.current) return;
     
     const coords = getCanvasCoords(e);
     if (!coords || !lastPosRef.current) return;
@@ -99,20 +122,45 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Smooth line drawing between points
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.lineWidth = options.brushSize;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    // Draw line between last position and current position using Bresenham's algorithm
+    const x0 = lastPosRef.current.x;
+    const y0 = lastPosRef.current.y;
+    const x1 = coords.x;
+    const y1 = coords.y;
     
-    ctx.beginPath();
-    ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
-    ctx.lineTo(coords.x, coords.y);
-    ctx.stroke();
+    const dx = Math.abs(x1 - x0);
+    const dy = Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+    
+    let x = x0;
+    let y = y0;
+    const radius = Math.floor(options.brushSize / 2);
+    
+    while (true) {
+      // Erase pixels at current point
+      erasePixels(options.manualImageDataRef.current, x, y, radius);
+      
+      if (x === x1 && y === y1) break;
+      
+      const e2 = 2 * err;
+      if (e2 > -dy) {
+        err -= dy;
+        x += sx;
+      }
+      if (e2 < dx) {
+        err += dx;
+        y += sy;
+      }
+    }
+    
+    // Update canvas display
+    ctx.putImageData(options.manualImageDataRef.current, 0, 0);
     
     lastPosRef.current = coords;
     e.preventDefault();
-  }, [canvas, options.brushSize, getCanvasCoords]);
+  }, [canvas, options.brushSize, options.manualImageDataRef, getCanvasCoords, erasePixels]);
 
   // Stop erasing
   const stopErasing = useCallback((e?: MouseEvent | TouchEvent) => {
@@ -121,22 +169,13 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     isErasingRef.current = false;
     lastPosRef.current = null;
     
-    // Restore normal drawing mode and trigger image change callback
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.globalCompositeOperation = 'source-over';
-        
-        // Notify about image change for undo stack
-        if (options.onImageChange) {
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          options.onImageChange(imageData);
-        }
-      }
+    // Trigger image change callback for undo/redo system
+    if (options.onImageChange && options.manualImageDataRef.current) {
+      options.onImageChange(options.manualImageDataRef.current);
     }
     
     if (e) e.preventDefault();
-  }, [canvas, options.onImageChange]);
+  }, [options.onImageChange, options.manualImageDataRef]);
 
   // Get brush cursor style
   const getBrushCursor = useCallback(() => {
