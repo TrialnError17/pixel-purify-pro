@@ -2055,12 +2055,27 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </>
         ) : (
           <Card className="absolute inset-4 flex items-center justify-center border-dashed border-2 border-border/50">
-            <div className="text-center">
+            <div className="text-center max-w-lg mx-auto px-6">
               <div className="text-4xl mb-4">🖼️</div>
-              <h3 className="text-lg font-medium text-foreground mb-2">No Image Selected</h3>
-              <p className="text-muted-foreground">
-                Add images or drag & drop files to get started
-              </p>
+              <h3 className="text-lg font-medium text-foreground mb-4">No Image Selected</h3>
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-accent-purple/10 to-accent-pink/10 border border-accent-purple/30 rounded-lg p-4">
+                  <div className="font-medium text-accent-purple mb-3">🎯 Getting Started</div>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <div>• <strong>Drag & Drop:</strong> Simply drop image files here</div>
+                    <div>• <strong>Upload Button:</strong> Use "Add Images" in the header</div>
+                    <div>• <strong>Batch Processing:</strong> Add multiple images to the queue</div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-accent-orange/10 to-accent-red/10 border border-accent-orange/30 rounded-lg p-4">
+                  <div className="font-medium text-accent-orange mb-3">⚡ Best Results</div>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <div>• <strong>High Resolution:</strong> Better precision for color removal</div>
+                    <div>• <strong>Good Contrast:</strong> Clear distinction between colors</div>
+                    <div>• <strong>Even Lighting:</strong> Reduces color variation issues</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
         )}

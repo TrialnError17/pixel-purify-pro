@@ -271,10 +271,27 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
         )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
+              <div className="text-center max-w-md mx-auto px-4">
                 <div className="text-4xl mb-4">📁</div>
-                <p className="text-lg font-medium mb-2">No images in queue</p>
-                <p className="text-sm">Add images or drag & drop files to get started</p>
+                <p className="text-lg font-medium mb-4">No images in queue</p>
+                <div className="space-y-3 text-sm">
+                  <div className="bg-gradient-to-r from-accent-blue/10 to-accent-cyan/10 border border-accent-blue/30 rounded-lg p-3">
+                    <div className="font-medium text-accent-blue mb-2">🚀 Quick Start Tips</div>
+                    <div className="text-xs space-y-1">
+                      <div>• Drag & drop images directly onto the canvas</div>
+                      <div>• Use "Add Images" button in the header</div>
+                      <div>• Process multiple images at once for efficiency</div>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-accent-green/10 to-accent-lime/10 border border-accent-green/30 rounded-lg p-3">
+                    <div className="font-medium text-accent-green mb-2">💡 Pro Tips</div>
+                    <div className="text-xs space-y-1">
+                      <div>• Higher resolution images = better precision</div>
+                      <div>• PNG format preserves transparency</div>
+                      <div>• Good lighting reduces color variation</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
