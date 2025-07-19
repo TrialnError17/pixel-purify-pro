@@ -8,6 +8,9 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { BookOpen } from 'lucide-react';
 
 console.log('Index.tsx is loading');
 
@@ -585,9 +588,29 @@ const Index = () => {
             />
           </div>
           
-          {/* Right Learning Sidebar - Hidden on mobile */}
+          {/* Right Learning Sidebar - Responsive */}
+          {/* Desktop: Always visible */}
           <div className="hidden lg:block">
             <RightSidebar />
+          </div>
+          
+          {/* Mobile/Tablet: Sheet overlay */}
+          <div className="lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="fixed top-20 right-4 z-40 bg-gradient-to-r from-accent-purple to-accent-blue text-white border-accent-purple/30 hover:from-accent-purple/80 hover:to-accent-blue/80"
+                >
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Tips
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80 sm:w-96 bg-gradient-panel border-accent-purple/30 overflow-y-auto">
+                <RightSidebar />
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
         
