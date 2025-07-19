@@ -122,6 +122,190 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     onEdgeCleanupSettingsChange({ ...edgeCleanupSettings, ...updates });
   };
 
+  // Random contextual tip components for the bottom of the sidebar
+  const ContextualTips: React.FC = () => {
+    const tipSets = [
+      {
+        icon: "🚀",
+        title: "Get Started",
+        gradient: "from-accent-blue/10 to-accent-cyan/10",
+        border: "border-accent-blue/30",
+        textColor: "text-accent-blue",
+        tips: [
+          "Load an image to begin color removal",
+          "Enable <strong>Color Removal</strong> above to start",
+          "Try <strong>Auto Mode</strong> for simple backgrounds"
+        ]
+      },
+      {
+        icon: "🎯",
+        title: "First Steps",
+        gradient: "from-accent-green/10 to-accent-lime/10",
+        border: "border-accent-green/30",
+        textColor: "text-accent-green",
+        tips: [
+          "Drag an image to the canvas area",
+          "Tools will activate once image is loaded",
+          "Start with <strong>Auto Mode</strong> for easy removal"
+        ]
+      },
+      {
+        icon: "💡",
+        title: "Quick Start",
+        gradient: "from-accent-purple/10 to-accent-pink/10",
+        border: "border-accent-purple/30",
+        textColor: "text-accent-purple",
+        tips: [
+          "Upload images using the header button",
+          "Enable tools above to see options",
+          "Preview changes before downloading"
+        ]
+      }
+    ];
+
+    const selectedTip = React.useMemo(() => {
+      return tipSets[Math.floor(Math.random() * tipSets.length)];
+    }, []);
+
+    return (
+      <Card className={`bg-gradient-to-br ${selectedTip.gradient} border ${selectedTip.border} animate-fade-in`}>
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className={`font-medium ${selectedTip.textColor} mb-2 flex items-center gap-1`}>
+              {selectedTip.icon} <span>{selectedTip.title}</span>
+            </div>
+            {selectedTip.tips.map((tip, index) => (
+              <div key={index} dangerouslySetInnerHTML={{ __html: `• ${tip}` }} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const QuickToolTips: React.FC = () => {
+    const tipSets = [
+      {
+        icon: "💡",
+        title: "Pro Tips",
+        gradient: "from-accent-cyan/10 to-accent-blue/10",
+        border: "border-accent-cyan/30",
+        textColor: "text-accent-cyan",
+        tips: [
+          "Hold <strong>Spacebar</strong> for temporary pan mode",
+          "Use <strong>Speckle Tools</strong> to clean small artifacts",
+          "Enable <strong>Edge Trimming</strong> for cleaner edges"
+        ]
+      },
+      {
+        icon: "🎛️",
+        title: "Tool Tips",
+        gradient: "from-accent-orange/10 to-accent-red/10",
+        border: "border-accent-orange/30",
+        textColor: "text-accent-orange",
+        tips: [
+          "Lower thresholds for <strong>precise</strong> removal",
+          "Higher thresholds for <strong>broader</strong> selection",
+          "Switch to <strong>Manual Mode</strong> for specific colors"
+        ]
+      },
+      {
+        icon: "⚡",
+        title: "Workflow",
+        gradient: "from-accent-lime/10 to-accent-green/10",
+        border: "border-accent-lime/30",
+        textColor: "text-accent-lime",
+        tips: [
+          "Try <strong>Auto Mode</strong> first for speed",
+          "Use <strong>Magic Wand</strong> for connected areas",
+          "Add <strong>Background Colors</strong> for previews"
+        ]
+      }
+    ];
+
+    const selectedTip = React.useMemo(() => {
+      return tipSets[Math.floor(Math.random() * tipSets.length)];
+    }, []);
+
+    return (
+      <Card className={`bg-gradient-to-br ${selectedTip.gradient} border ${selectedTip.border} animate-fade-in`}>
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className={`font-medium ${selectedTip.textColor} mb-2 flex items-center gap-1`}>
+              {selectedTip.icon} <span>{selectedTip.title}</span>
+            </div>
+            {selectedTip.tips.map((tip, index) => (
+              <div key={index} dangerouslySetInnerHTML={{ __html: `• ${tip}` }} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const KeyboardShortcuts: React.FC = () => {
+    const shortcutSets = [
+      {
+        icon: "⌨️",
+        title: "Shortcuts",
+        gradient: "from-accent-purple/10 to-accent-pink/10",
+        border: "border-accent-purple/30",
+        textColor: "text-accent-purple",
+        shortcuts: [
+          { key: "Spacebar:", action: "Pan tool" },
+          { key: "Scroll:", action: "Zoom in/out" },
+          { key: "Shift + Scroll:", action: "Pan up/down" },
+          { key: "Alt + Scroll:", action: "Pan left/right" }
+        ]
+      },
+      {
+        icon: "🖱️",
+        title: "Navigation",
+        gradient: "from-accent-indigo/10 to-accent-blue/10",
+        border: "border-accent-indigo/30",
+        textColor: "text-accent-indigo",
+        shortcuts: [
+          { key: "Triple Click:", action: "Auto-fit image" },
+          { key: "Mouse Wheel:", action: "Zoom smoothly" },
+          { key: "Space + Drag:", action: "Pan around" },
+          { key: "Right Click:", action: "Context menu" }
+        ]
+      },
+      {
+        icon: "🔥",
+        title: "Hotkeys",
+        gradient: "from-accent-yellow/10 to-accent-orange/10",
+        border: "border-accent-yellow/30",
+        textColor: "text-accent-yellow",
+        shortcuts: [
+          { key: "Ctrl + Z:", action: "Undo action" },
+          { key: "Ctrl + Y:", action: "Redo action" },
+          { key: "Escape:", action: "Exit fullscreen" },
+          { key: "Enter:", action: "Apply changes" }
+        ]
+      }
+    ];
+
+    const selectedShortcuts = React.useMemo(() => {
+      return shortcutSets[Math.floor(Math.random() * shortcutSets.length)];
+    }, []);
+
+    return (
+      <Card className={`bg-gradient-to-br ${selectedShortcuts.gradient} border ${selectedShortcuts.border} animate-fade-in`}>
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className={`font-medium ${selectedShortcuts.textColor} mb-2 flex items-center gap-1`}>
+              {selectedShortcuts.icon} <span>{selectedShortcuts.title}</span>
+            </div>
+            {selectedShortcuts.shortcuts.map((shortcut, index) => (
+              <div key={index}>• <strong>{shortcut.key}</strong> {shortcut.action}</div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="w-80 lg:w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
       <div className="p-4 border-b border-border">
@@ -770,65 +954,29 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </Card>
 
-        {/* Modular Help Text - Each card appears/disappears based on available space */}
-        <div className="space-y-3 mt-6">
-          {/* Quick Start Tips - Disappears first when any major widget expands */}
-          {!effectSettings.background.enabled && 
-           !effectSettings.inkStamp.enabled && 
-           !effectSettings.imageEffects.enabled && (
-            <Card className="bg-gradient-to-br from-accent-green/10 to-accent-lime/10 border-accent-green/30">
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground space-y-2">
-                  <div className="font-medium text-accent-green mb-2 flex items-center gap-1">
-                    🚀 <span>Quick Start</span>
-                  </div>
-                  <div>• <strong>Color Stack:</strong> Click colors to remove them</div>
-                  <div>• <strong>Magic Wand:</strong> Click to remove connected areas</div>
-                  <div>• <strong>Pan:</strong> Drag to move, scroll to zoom</div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+        {/* Contextual Tips - Show when not using advanced features */}
+        {!settings.enabled && 
+         !effectSettings.background.enabled && 
+         !effectSettings.inkStamp.enabled && (
+          <ContextualTips />
+        )}
 
-          {/* Pro Tips - Disappears when 2+ major widgets are expanded */}
-          {(!effectSettings.background.enabled || !effectSettings.inkStamp.enabled) && 
-           (!effectSettings.imageEffects.enabled || !speckleSettings.enabled) && 
-           (!edgeCleanupSettings.enabled || 
-            (!effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !effectSettings.imageEffects.enabled)) && (
-            <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30">
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground space-y-2">
-                  <div className="font-medium text-accent-blue mb-2 flex items-center gap-1">
-                    💡 <span>Pro Tips</span>
-                  </div>
-                  <div>• Hold <strong>Spacebar</strong> for temporary pan mode</div>
-                  <div>• Use <strong>Speckle Tools</strong> to clean small artifacts</div>
-                  <div>• Enable <strong>Edge Trimming</strong> for cleaner edges</div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+        {/* Quick Tips - Shows when basic tools are active but advanced aren't */}
+        {settings.enabled && 
+         !effectSettings.background.enabled && 
+         !effectSettings.inkStamp.enabled && 
+         !effectSettings.imageEffects.enabled && 
+         !speckleSettings.enabled && (
+          <QuickToolTips />
+        )}
 
-          {/* Keyboard Shortcuts - Only disappears when most widgets are expanded */}
-          {!effectSettings.background.enabled && 
-           !effectSettings.inkStamp.enabled && 
-           !effectSettings.imageEffects.enabled && 
-           !speckleSettings.enabled && (
-            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30">
-              <CardContent className="pt-3 pb-3">
-                <div className="text-xs text-muted-foreground space-y-2">
-                  <div className="font-medium text-accent-purple mb-2 flex items-center gap-1">
-                    ⌨️ <span>Shortcuts</span>
-                  </div>
-                  <div>• <strong>Spacebar:</strong> Pan tool</div>
-                  <div>• <strong>Scroll:</strong> Zoom in/out</div>
-                  <div>• <strong>Shift + Scroll:</strong> Pan up/down</div>
-                  <div>• <strong>Alt + Scroll:</strong> Pan left/right</div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+        {/* Keyboard Shortcuts - Only when most features are inactive */}
+        {!effectSettings.background.enabled && 
+         !effectSettings.inkStamp.enabled && 
+         !effectSettings.imageEffects.enabled && 
+         !speckleSettings.enabled && (
+          <KeyboardShortcuts />
+        )}
 
       </div>
     </div>
