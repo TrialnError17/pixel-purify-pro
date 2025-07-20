@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImageItem, ColorRemovalSettings, EffectSettings, EdgeCleanupSettings, ContiguousToolSettings, EraserSettings } from '@/pages/Index';
+import { applyColorRemoval } from '@/utils/colorRemoval';
+import { applyBackgroundColor } from '@/utils/background';
+import { applyInkStampEffect } from '@/utils/inkStamp';
+import { applyImageEffects } from '@/utils/imageEffects';
+import { applyEdgeCleanup, applyLegacyEdgeCleanup, applySoftenEdges } from '@/utils/edgeCleanup';
+import { floodFill, getMousePosition } from '@/utils/canvasUtils';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools } from '@/hooks/useSpeckleTools';
 
@@ -150,7 +156,36 @@ const MainCanvas = ({
     // Skip processing if no image or if currently processing
     if (!image?.originalData || isProcessing) return;
 
-    // Call processEffects function directly
+    processEffects();
+  }, [colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, image, isProcessing, processEffects]);
+
+  // Sync manual edits with main canvas
+  useEffect(() => {
+    if (!manualEditsCanvasRef.current || !canvasRef.current || !image?.originalData) return;
+
+    const manualCanvas = manualEditsCanvasRef.current;
+    const mainCanvas = canvasRef.current;
+    manualCanvas.width = mainCanvas.width;
+    manualCanvas.height = mainCanvas.height;
+
+    const manualCtx = manualCanvas.getContext('2d');
+    const mainCtx = mainCanvas.getContext('2d');
+
+    if (!manualCtx || !mainCtx) return;
+
+    // Clear the manual edits canvas
+    manualCtx.clearRect(0, 0, manualCanvas.width, manualCanvas.height);
+
+    // Redraw the original image on the main canvas
+    mainCtx.putImageData(image.originalData, 0, 0);
+
+    // If there's processed data, draw it on top of the original image
+    if (image.processedData) {
+      mainCtx.putImageData(image.processedData, 0, 0);
+    }
+  }, [image?.originalData, image?.processedData]);
+
+  const processEffects = useCallback(() => {
     if (!image?.originalData || !canvasRef.current || isProcessing) return;
 
     const canvas = canvasRef.current;
@@ -235,7 +270,7 @@ const MainCanvas = ({
         onSpeckCountUpdate?.(result.speckCount);
       }
 
-      // 2. Edge cleanup processing - simplified without utilities
+      // 2. Edge cleanup processing
       if (edgeCleanupSettings.enabled && !needsEdgeCleanupRestore) {
         if (!preEdgeCleanupImageData) {
           setPreEdgeCleanupImageData(new ImageData(
@@ -245,11 +280,18 @@ const MainCanvas = ({
           ));
         }
         
-        // Simple edge cleanup implementation
-        console.log('Edge cleanup would be applied here');
+        if (edgeCleanupSettings.legacyEnabled) {
+          currentImageData = applyLegacyEdgeCleanup(currentImageData, edgeCleanupSettings.legacyRadius);
+        } else {
+          currentImageData = applyEdgeCleanup(currentImageData, edgeCleanupSettings.trimRadius);
+        }
+
+        if (edgeCleanupSettings.softening.enabled && edgeCleanupSettings.softening.iterations > 0) {
+          currentImageData = applySoftenEdges(currentImageData, edgeCleanupSettings.softening.iterations);
+        }
       }
 
-      // 3. Ink stamp processing - simplified without utilities
+      // 3. Ink stamp processing
       if (effectSettings.inkStamp.enabled && !needsInkStampRestore) {
         if (!preInkStampImageData) {
           setPreInkStampImageData(new ImageData(
@@ -259,21 +301,23 @@ const MainCanvas = ({
           ));
         }
         
-        console.log('Ink stamp effect would be applied here');
+        console.log('Applying ink stamp effect');
+        currentImageData = applyInkStampEffect(currentImageData, effectSettings.inkStamp);
       }
 
-      // 4. Image effects processing - simplified without utilities
+      // 4. Image effects processing
       if (effectSettings.imageEffects.enabled) {
-        console.log('Image effects would be applied here');
+        console.log('Applying image effects');
+        currentImageData = applyImageEffects(currentImageData, effectSettings.imageEffects);
       }
 
       if (manualEditsCanvasRef.current && (effectSettings.inkStamp.enabled || effectSettings.imageEffects.enabled)) {
         console.log('Ink stamp and/or image effects applied to manual edits');
       }
 
-      // Apply background if enabled - simplified without utilities
+      // Apply background if enabled
       if (effectSettings.background.enabled) {
-        console.log('Background color would be applied here');
+        currentImageData = applyBackgroundColor(currentImageData, effectSettings.background.color);
       }
 
       // Update canvas
@@ -292,72 +336,20 @@ const MainCanvas = ({
     } catch (error) {
       console.error('Error in processEffects:', error);
     }
-  }, [colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, image, isProcessing, preSpeckleImageData, preEdgeCleanupImageData, preInkStampImageData, processSpecks, onImageUpdate, onSpeckCountUpdate]);
-
-  // Sync manual edits with main canvas
-  useEffect(() => {
-    if (!manualEditsCanvasRef.current || !canvasRef.current || !image?.originalData) return;
-
-    const manualCanvas = manualEditsCanvasRef.current;
-    const mainCanvas = canvasRef.current;
-    manualCanvas.width = mainCanvas.width;
-    manualCanvas.height = mainCanvas.height;
-
-    const manualCtx = manualCanvas.getContext('2d');
-    const mainCtx = mainCanvas.getContext('2d');
-
-    if (!manualCtx || !mainCtx) return;
-
-    // Clear the manual edits canvas
-    manualCtx.clearRect(0, 0, manualCanvas.width, manualCanvas.height);
-
-    // Redraw the original image on the main canvas
-    mainCtx.putImageData(image.originalData, 0, 0);
-
-    // If there's processed data, draw it on top of the original image
-    if (image.processedData) {
-      mainCtx.putImageData(image.processedData, 0, 0);
-    }
-  }, [image?.originalData, image?.processedData]);
-
-  // Simple flood fill implementation
-  const floodFill = useCallback((x: number, y: number, tolerance: number, imageData: ImageData, callback: (pixelIndex: number) => void) => {
-    // Basic flood fill implementation
-    const width = imageData.width;
-    const height = imageData.height;
-    const data = imageData.data;
-    
-    if (x < 0 || y < 0 || x >= width || y >= height) return;
-    
-    const stack = [[x, y]];
-    const visited = new Set<string>();
-    
-    const getPixelIndex = (px: number, py: number) => (py * width + px) * 4;
-    const targetPixelIndex = getPixelIndex(x, y);
-    const targetR = data[targetPixelIndex];
-    const targetG = data[targetPixelIndex + 1];
-    const targetB = data[targetPixelIndex + 2];
-    
-    while (stack.length > 0) {
-      const [px, py] = stack.pop()!;
-      const key = `${px},${py}`;
-      
-      if (visited.has(key) || px < 0 || py < 0 || px >= width || py >= height) continue;
-      visited.add(key);
-      
-      const pixelIndex = getPixelIndex(px, py);
-      const r = data[pixelIndex];
-      const g = data[pixelIndex + 1];
-      const b = data[pixelIndex + 2];
-      
-      const distance = Math.sqrt((r - targetR) ** 2 + (g - targetG) ** 2 + (b - targetB) ** 2);
-      
-      if (distance <= tolerance) {
-        callback(pixelIndex);
-        stack.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]);
-      }
-    }
-  }, []);
+  }, [
+    image,
+    colorSettings,
+    effectSettings,
+    speckleSettings,
+    edgeCleanupSettings,
+    isProcessing,
+    preSpeckleImageData,
+    preEdgeCleanupImageData,
+    preInkStampImageData,
+    processSpecks,
+    onImageUpdate,
+    onSpeckCountUpdate
+  ]);
 
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !image?.originalData) return;
@@ -384,7 +376,7 @@ const MainCanvas = ({
       default:
         break;
     }
-  }, [tool, image]);
+  }, [tool, startErasing, handleMagicWandClick, handleColorStackClick]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !image?.originalData) return;
@@ -405,38 +397,25 @@ const MainCanvas = ({
 
       setLastPosition({ x: event.clientX, y: event.clientY });
     } else if (tool === 'eraser' && isErasing) {
-      // Call erase function directly
-      if (!manualEditsCanvasRef.current) return;
-
-      const canvas = manualEditsCanvasRef.current;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) return;
-
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.arc(x, y, eraserSettings.brushSize, 0, 2 * Math.PI);
-      ctx.fill();
+      erase(x, y);
     }
-  }, [tool, isDragging, lastPosition, isErasing, eraserSettings.brushSize]);
+  }, [tool, isDragging, lastPosition, isErasing, erase]);
 
   const handleMouseUp = useCallback(() => {
     if (tool === 'pan') {
       setIsDragging(false);
     } else if (tool === 'eraser') {
-      setIsErasing(false);
-      erasingInProgressRef.current = false;
+      stopErasing();
     }
-  }, [tool]);
+  }, [tool, stopErasing]);
 
   const handleMouseLeave = useCallback(() => {
     if (tool === 'pan') {
       setIsDragging(false);
     } else if (tool === 'eraser') {
-      setIsErasing(false);
-      erasingInProgressRef.current = false;
+      stopErasing();
     }
-  }, [tool]);
+  }, [tool, stopErasing]);
 
   const handleWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -467,6 +446,7 @@ const MainCanvas = ({
     ctx.fill();
 
     setManualEdits(true);
+    erase(x, y);
 
     // Add undo action
     addUndoAction({
@@ -491,6 +471,24 @@ const MainCanvas = ({
     });
   }, [image, eraserSettings.brushSize, clearEffectStates, addUndoAction]);
 
+  const erase = useCallback((x: number, y: number) => {
+    if (!manualEditsCanvasRef.current) return;
+
+    const canvas = manualEditsCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(x, y, eraserSettings.brushSize, 0, 2 * Math.PI);
+    ctx.fill();
+  }, [eraserSettings.brushSize]);
+
+  const stopErasing = useCallback(() => {
+    setIsErasing(false);
+    erasingInProgressRef.current = false;
+  }, []);
 
   const handleMagicWandClick = useCallback((x: number, y: number) => {
     if (!canvasRef.current || !image?.originalData) return;

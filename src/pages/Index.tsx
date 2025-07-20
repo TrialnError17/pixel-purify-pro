@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
-import MainCanvas from '@/components/MainCanvas';
+import { MainCanvas } from '@/components/MainCanvas';
 import { ImageQueue } from '@/components/ImageQueue';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
