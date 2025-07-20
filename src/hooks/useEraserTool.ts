@@ -16,6 +16,7 @@ export interface EraserToolOptions {
 export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserToolOptions) => {
   const isErasingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const directionRef = useRef<"none" | "vertical" | "horizontal">("none");
 
   // Save brush size to localStorage
   const saveBrushSize = useCallback((size: number) => {
@@ -91,6 +92,36 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     return { x: dataX, y: dataY };
   }, [canvas, options.containerRef, options.centerOffset, options.pan, options.zoom, options.manualImageDataRef]);
 
+  // Constrain position for Shift-key straight line drawing
+  const constrainPosition = useCallback((lastPos: { x: number; y: number }, currentPos: { x: number; y: number }) => {
+    const dx = Math.abs(currentPos.x - lastPos.x);
+    const dy = Math.abs(currentPos.y - lastPos.y);
+    
+    // Determine direction if not set and movement is significant
+    if (directionRef.current === "none" && (dx > 5 || dy > 5)) {
+      directionRef.current = dx > dy ? "horizontal" : "vertical";
+      console.log('Shift constraint direction set to:', directionRef.current);
+    }
+    
+    // Apply constraint based on direction
+    let constrainedPos = { ...currentPos };
+    if (directionRef.current === "horizontal") {
+      constrainedPos.y = lastPos.y;
+    } else if (directionRef.current === "vertical") {
+      constrainedPos.x = lastPos.x;
+    }
+    
+    console.log('Position constraint:', {
+      raw: currentPos,
+      constrained: constrainedPos,
+      direction: directionRef.current,
+      dx,
+      dy
+    });
+    
+    return constrainedPos;
+  }, []);
+
   // Erase pixels in a circle around the given point
   const erasePixels = useCallback((imageData: ImageData, centerX: number, centerY: number, radius: number) => {
     const { data, width, height } = imageData;
@@ -122,8 +153,9 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
   const startErasing = useCallback((e: MouseEvent | TouchEvent) => {
     console.log('startErasing called');
     
-    // Reset erasing progress flag to prevent race conditions
+    // Reset erasing progress flag and direction to prevent race conditions
     options.erasingInProgressRef.current = false;
+    directionRef.current = "none";
     
     if (!canvas || !options.containerRef.current) {
       console.log('startErasing: Missing canvas or containerRef');
@@ -196,11 +228,23 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
       return;
     }
     
+    let currentPos = coords;
+    
+    // Apply Shift-key constraint for straight lines (mouse only)
+    if (e instanceof MouseEvent && e.shiftKey) {
+      currentPos = constrainPosition(lastPosRef.current, coords);
+      console.log('Shift-key constraint applied:', {
+        original: coords,
+        constrained: currentPos,
+        shiftKey: true
+      });
+    }
+    
     // Draw line between last position and current position using Bresenham's algorithm
     const x0 = lastPosRef.current.x;
     const y0 = lastPosRef.current.y;
-    const x1 = coords.x;
-    const y1 = coords.y;
+    const x1 = currentPos.x;
+    const y1 = currentPos.y;
     
     const dx = Math.abs(x1 - x0);
     const dy = Math.abs(y1 - y0);
@@ -236,13 +280,16 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
       console.error('Failed to update canvas during continue erasing:', error);
     }
     
-    lastPosRef.current = coords;
+    lastPosRef.current = currentPos;
     e.preventDefault();
-  }, [canvas, options.brushSize, options.manualImageDataRef, getCanvasCoords, erasePixels]);
+  }, [canvas, options.brushSize, options.manualImageDataRef, getCanvasCoords, erasePixels, constrainPosition]);
 
   // Stop erasing
   const stopErasing = useCallback((e?: MouseEvent | TouchEvent) => {
     console.log('stopErasing called, isErasing:', isErasingRef.current);
+    
+    // Reset direction constraint
+    directionRef.current = "none";
     
     if (!isErasingRef.current) {
       // Always reset the progress flag even if we weren't erasing
@@ -263,11 +310,13 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     if (e) e.preventDefault();
   }, [options.onImageChange, options.manualImageDataRef, options.erasingInProgressRef]);
 
-  // Get brush cursor style - FIXED to match erasing radius exactly
+  // Get brush cursor style - FIXED to scale with zoom
   const getBrushCursor = useCallback(() => {
     // Use the same radius calculation as erasing: Math.floor(brushSize / 2)
     const radius = Math.floor(options.brushSize / 2);
-    const size = Math.max(4, radius * 2); // Minimum 4px for visibility
+    // Scale cursor size with zoom for proper visual feedback
+    const zoom = Math.max(options.zoom || 1, 0.01); // Prevent division by zero
+    const size = Math.max(4, radius * 2 * zoom); // Scale with zoom
     
     // Dynamic stroke width for better visibility
     const strokeWidth = Math.max(1, Math.min(2, options.brushSize / 20));
@@ -275,19 +324,20 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     console.log('Cursor calculation:', {
       brushSize: options.brushSize,
       radius,
+      zoom: options.zoom,
       size,
       strokeWidth
     });
     
     const svg = `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${size/2}" cy="${size/2}" r="${radius - strokeWidth/2}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
+        <circle cx="${size/2}" cy="${size/2}" r="${radius * zoom - strokeWidth/2}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
         <circle cx="${size/2}" cy="${size/2}" r="1" fill="rgba(255, 0, 0, 0.8)"/>
       </svg>
     `;
     const encodedSvg = encodeURIComponent(svg);
     return `url("data:image/svg+xml,${encodedSvg}") ${size/2} ${size/2}, crosshair`;
-  }, [options.brushSize]);
+  }, [options.brushSize, options.zoom]);
 
   return {
     startErasing,
