@@ -291,6 +291,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
+  
+  // Get original image data lazily only when needed for processing
+  const getOriginalImageData = useCallback((): ImageData | null => {
+    if (originalImageData) return originalImageData;
+    
+    if (!canvasRef.current) return null;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    setOriginalImageData(imageData);
+    return imageData;
+  }, [originalImageData]);
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
@@ -851,21 +866,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       
-      // Store original image data
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setOriginalImageData(imageData);
+      // OPTIMIZATION: Don't extract image data on load - only when needed for processing
+      // This makes image loading instant instead of slow
+      setOriginalImageData(null);
       
       // Reset manual edits when new image is loaded
       hasManualEditsRef.current = false;
       setManualImageData(null);
       setUndoStack([]);
       setRedoStack([]);
-      
-      // Update image with original data if not already set
-      if (!image.originalData) {
-        const updatedImage = { ...image, originalData: imageData };
-        onImageUpdate(updatedImage);
-      }
       
       // Calculate center offset for the image
       if (containerRef.current) {
@@ -912,7 +921,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
     
     // Prevent processing if requirements not met or already processing
-    if (!originalImageData || !canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
+    if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
       return;
     }
      
@@ -959,7 +968,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         // Store pre-speckle state if we haven't already (BEFORE any effects are applied)
         if (!preSpeckleImageData) {
           // Always use the clean manual data without any speckle effects
-          const cleanData = manualImageData || originalImageData;
+          const cleanData = manualImageData || getOriginalImageData();
           if (cleanData) {
             setPreSpeckleImageData(new ImageData(
               new Uint8ClampedArray(cleanData.data),
@@ -1183,7 +1192,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setIsProcessing(true);
 
     // Use manual image data if available, otherwise original
-    const baseImageData = manualImageData || originalImageData;
+    const baseImageData = manualImageData || getOriginalImageData();
 
     // Use synchronous processing for now to avoid complexity
     let processedData = processImageData(baseImageData, colorSettings, effectSettings);
@@ -1220,7 +1229,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       setIsProcessing(false);
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, onSpeckCountUpdate]);
+  }, [getOriginalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -1294,7 +1303,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
+    const origData = getOriginalImageData();
+    if (!canvasRef.current || !image || !origData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -1336,10 +1346,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     if (tool === 'color-stack') {
       // Get color at clicked position from original image
-      const index = (y * originalImageData.width + x) * 4;
-      const r = originalImageData.data[index];
-      const g = originalImageData.data[index + 1];
-      const b = originalImageData.data[index + 2];
+      const index = (y * origData.width + x) * 4;
+      const r = origData.data[index];
+      const g = origData.data[index + 1];
+      const b = origData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
       // Add to picked colors and immediately remove this color
@@ -1409,10 +1419,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setPreSpeckleImageData(null);
       
       // Get color at clicked position from original image
-      const index = (y * originalImageData.width + x) * 4;
-      const r = originalImageData.data[index];
-      const g = originalImageData.data[index + 1];
-      const b = originalImageData.data[index + 2];
+      const index = (y * origData.width + x) * 4;
+      const r = origData.data[index];
+      const g = origData.data[index + 1];
+      const b = origData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
       // Save current state for undo (both local canvas undo and global undo)
@@ -1503,7 +1513,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }, 100);
       }
     }
-  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
+  }, [image, getOriginalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1929,7 +1939,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
   const handleReset = useCallback(() => {
-    if (!originalImageData || !canvasRef.current) return;
+    const origData = getOriginalImageData();
+    if (!origData || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -1942,14 +1953,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setRedoStack([]);
     
     // Reprocess the original image with current settings
-    const processedData = processImageData(originalImageData, colorSettings, effectSettings);
+    const processedData = processImageData(origData, colorSettings, effectSettings);
     ctx.putImageData(processedData, 0, 0);
     
     if (image) {
       const updatedImage = { ...image, processedData };
       onImageUpdate(updatedImage);
     }
-  }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+  }, [getOriginalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current || isDownloading) return;
@@ -2194,8 +2205,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 style={{
                   transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
                   transformOrigin: '0 0',
-                  width: originalImageData?.width || 0,
-                  height: originalImageData?.height || 0,
+                  width: originalImageData?.width || canvasRef.current?.width || 0,
+                  height: originalImageData?.height || canvasRef.current?.height || 0,
                   backgroundColor: effectSettings.background.color,
                 }}
               />
