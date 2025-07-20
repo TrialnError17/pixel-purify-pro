@@ -1228,7 +1228,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       setIsProcessing(false);
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
