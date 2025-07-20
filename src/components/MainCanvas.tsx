@@ -311,7 +311,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     hasManualEditsRef,
     erasingInProgressRef,
     onImageChange: (imageData) => {
-      // Add to undo stack when erasing is complete
+      if (!canvasRef.current) return;
+      
+      // Save current state to undo stack before applying eraser change
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx && manualImageData) {
+        setUndoStack(prev => [...prev, manualImageData]);
+        setRedoStack([]); // Clear redo stack when new action is performed
+      }
+      
+      // Add to global undo system as well
       addUndoAction?.({
         type: 'manual-edit',
         description: 'Eraser tool',
@@ -331,7 +340,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           }
         }
       });
+      
       setManualImageData(imageData);
+      
       // Update the image so changes persist
       if (image) {
         const updatedImage = { ...image, processedData: imageData };
@@ -1999,8 +2010,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const updatedImage = { ...image, processedData: restoredImageData };
     
-    // Update manual image data to preserve the undo state
+    // Update manual image data and references to preserve the undo state
     hasManualEditsRef.current = true;
+    manualImageDataRef.current = restoredImageData;
     setManualImageData(restoredImageData);
     
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
@@ -2028,8 +2040,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const updatedImage = { ...image, processedData: restoredImageData };
     
-    // Update manual image data to preserve the redo state
+    // Update manual image data and references to preserve the redo state
     hasManualEditsRef.current = true;
+    manualImageDataRef.current = restoredImageData;
     setManualImageData(restoredImageData);
     
     console.log('Local redo completed, redoStack length:', redoStack.length - 1);
