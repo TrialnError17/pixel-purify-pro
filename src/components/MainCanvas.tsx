@@ -3,8 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
-import { useEraserTool } from '@/hooks/useEraserTool';
-import { debounce, throttle, areImageDataEqual } from '@/utils/performance';
 import { 
   Move, 
   Pipette, 
@@ -20,8 +18,7 @@ import {
   Wand,
   Undo,
   Redo,
-  Loader2,
-  Eraser
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -231,15 +228,13 @@ const MainCanvasTips: React.FC = () => {
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
-  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser') => void;
+  tool: 'pan' | 'color-stack' | 'magic-wand';
+  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
   colorSettings: ColorRemovalSettings;
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   speckleSettings: SpeckleSettings;
   edgeCleanupSettings: EdgeCleanupSettings;
-  eraserSettings: { brushSize: number };
-  erasingInProgressRef: React.MutableRefObject<boolean>;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -264,8 +259,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   effectSettings,
   speckleSettings,
   edgeCleanupSettings,
-  eraserSettings,
-  erasingInProgressRef,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -282,7 +275,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const { processSpecks } = useSpeckleTools();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
@@ -291,66 +283,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
-  
-  // Get original image data lazily only when needed for processing
-  const getOriginalImageData = useCallback((): ImageData | null => {
-    if (originalImageData) return originalImageData;
-    
-    if (!canvasRef.current) return null;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    setOriginalImageData(imageData);
-    return imageData;
-  }, [originalImageData]);
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
-  const manualImageDataRef = useRef<ImageData | null>(null);
-  
-  // Sync manualImageDataRef with manualImageData state
-  useEffect(() => {
-    manualImageDataRef.current = manualImageData;
-  }, [manualImageData]);
-  
-  // Eraser tool integration
-  const eraserTool = useEraserTool(canvasRef.current, {
-    brushSize: eraserSettings.brushSize,
-    zoom,
-    pan,
-    centerOffset,
-    containerRef,
-    manualImageDataRef,
-    hasManualEditsRef,
-    erasingInProgressRef,
-    onImageChange: (imageData) => {
-      if (!canvasRef.current) return;
-      
-      // Save current state to local undo stack before applying eraser change
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx && manualImageData) {
-        setUndoStack(prev => [...prev, manualImageData]);
-        setRedoStack([]); // Clear redo stack when new action is performed
-        
-      }
-      
-      setManualImageData(imageData);
-      
-      // Update the image so changes persist
-      if (image) {
-        const updatedImage = { ...image, processedData: imageData };
-        onImageUpdate(updatedImage);
-      }
-    }
-  });
   const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
+  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -421,7 +361,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
     return true;
   }, []);
-
 
   const processImageData = useCallback((imageData: ImageData, settings: ColorRemovalSettings, effects: EffectSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
@@ -602,33 +541,42 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Apply ink stamp effect
     if (effects.inkStamp.enabled) {
+      console.log('Applying ink stamp effect', effects.inkStamp);
       const hex = effects.inkStamp.color.replace('#', '');
       const stampR = parseInt(hex.substr(0, 2), 16);
       const stampG = parseInt(hex.substr(2, 2), 16);
       const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = effects.inkStamp.threshold === 1 ? 255 : (100 - effects.inkStamp.threshold) * 2.55;
+      const threshold = effects.inkStamp.threshold === 1 ? 255 : (100 - effects.inkStamp.threshold) * 2.55; // Show all pixels when value is 1
 
+      let processedPixels = 0;
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] > 0) { // Only process non-transparent pixels
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
           // Convert to luminance (perceived brightness)
-          const luminance = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
           
           if (luminance < threshold) {
             // Dark areas become stamp color
             data[i] = stampR;
             data[i + 1] = stampG;
             data[i + 2] = stampB;
-            data[i + 3] = 255;
+            data[i + 3] = 255; // Fully opaque
+            processedPixels++;
           } else {
             // Light areas become transparent
             data[i + 3] = 0;
           }
         }
       }
+      console.log('Ink stamp processed', processedPixels, 'pixels with threshold', threshold);
     }
 
     // Apply image effects at the end of the processing chain
     if (effects.imageEffects.enabled) {
+      console.log('Applying image effects:', effects.imageEffects);
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) continue; // Skip transparent pixels
         
@@ -769,7 +717,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Edge cleanup processing function - only edge trimming for preview
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
+    console.log('processEdgeCleanup called:', { 
+      edgeTrimming: settings.enabled, 
+      trimRadius: settings.trimRadius
+    });
+    
     if (!settings.enabled) {
+      console.log('Edge trimming disabled, returning original data');
       return imageData;
     }
 
@@ -779,6 +733,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Edge trimming - removes pixels layer by layer
     if (settings.trimRadius > 0) {
+      console.log('Processing edge trimming with radius:', settings.trimRadius);
       const radius = settings.trimRadius;
       
       // Apply trimming layer by layer
@@ -825,11 +780,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
     const result = new ImageData(data, width, height);
+    console.log('processEdgeCleanup completed');
     return result;
   }, []);
 
   // Load original image and store image data
   useEffect(() => {
+    console.log('Image loading effect triggered:', { 
+      hasImage: !!image, 
+      hasCanvas: !!canvasRef.current, 
+      imageId: image?.id, 
+      hasProcessedData: !!image?.processedData,
+      hasManualEdits: hasManualEditsRef.current,
+      hasOriginalData: !!originalImageData 
+    });
     if (!image || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
@@ -838,6 +802,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // If we have manual edits and processedData, use that instead of reloading
     if (hasManualEditsRef.current && image.processedData && manualImageData) {
+      console.log('Preserving manual edits, using processedData');
+      // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
       });
@@ -846,6 +812,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // If image has processedData and no manual edits, use that
     if (image.processedData && !hasManualEditsRef.current) {
+      console.log('Using existing processedData');
+      // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
       });
@@ -856,25 +824,45 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       return;
     }
+
+    console.log('Loading image from file');
     const img = new Image();
     img.onload = () => {
+      console.log('Image loaded successfully:', { 
+        naturalWidth: img.naturalWidth, 
+        naturalHeight: img.naturalHeight 
+      });
+      
       // Set canvas size to image size
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
+      
+      console.log('Canvas size set to:', { width: canvas.width, height: canvas.height });
       
       // Clear and draw image
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       
-      // OPTIMIZATION: Don't extract image data on load - only when needed for processing
-      // This makes image loading instant instead of slow
-      setOriginalImageData(null);
+      console.log('Image drawn to canvas');
+      
+      // Store original image data
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setOriginalImageData(imageData);
+      
+      console.log('Original image data stored');
+      setOriginalImageData(imageData);
       
       // Reset manual edits when new image is loaded
       hasManualEditsRef.current = false;
       setManualImageData(null);
       setUndoStack([]);
       setRedoStack([]);
+      
+      // Update image with original data if not already set
+      if (!image.originalData) {
+        const updatedImage = { ...image, originalData: imageData };
+        onImageUpdate(updatedImage);
+      }
       
       // Calculate center offset for the image
       if (containerRef.current) {
@@ -906,22 +894,34 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, [image]);
 
   // Debounced processing to prevent flashing
-  const debouncedProcessImageData = useMemo(
-    () => debounce((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
-      return Promise.resolve(processImageData(imageData, colorSettings, effectSettings));
-    }, 100),
-    [processImageData]
-  );
+  const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
+    return new Promise<ImageData>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        const result = processImageData(imageData, colorSettings, effectSettings);
+        resolve(result);
+      }, 50); // 50ms debounce
+      
+      // Return cleanup function
+      return () => clearTimeout(timeoutId);
+    });
+  }, [processImageData]);
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    // SKIP ALL AUTOMATIC PROCESSING - images load instantly, user can enable features when needed
-    if (!hasManualEditsRef.current) {
-      return;
-    }
+    console.log('Processing effect triggered - checking conditions:', {
+      hasOriginalImageData: !!originalImageData,
+      hasCanvas: !!canvasRef.current,
+      hasManualEdits: hasManualEditsRef.current,
+      isProcessing,
+      imageHasProcessedData: !!image?.processedData,
+      colorSettingsEnabled: colorSettings.enabled,
+      backgroundEnabled: effectSettings.background.enabled,
+      inkStampEnabled: effectSettings.inkStamp.enabled,
+      edgeCleanupEnabled: edgeCleanupSettings.enabled
+    });
     
-    // Prevent processing if requirements not met or already processing
-    if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
+    if (!originalImageData || !canvasRef.current || isProcessing) {
+      console.log('Early return - missing requirements or processing in progress');
       return;
     }
      
@@ -929,7 +929,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (hasManualEditsRef.current) {
       // If we have manual edits, handle speckle and edge cleanup specially
       // Add additional guard: don't process during panning/dragging
-      if (isDragging) {
+      if (isProcessingEdgeCleanupRef.current || isDragging) {
+        console.log('Early return - already processing or dragging');
         return;
       }
       
@@ -943,6 +944,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsImageEffectsRestore = !effectSettings.imageEffects.enabled && preImageEffectsImageData;
       
       if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects && !needsImageEffectsRestore) {
+        console.log('Early return - no processing needed');
         return;
       }
       
@@ -956,6 +958,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         return;
       }
       
+      // Prevent infinite loop by checking if already processing
+      const wasProcessing = isProcessing;
+      if (wasProcessing) {
+        console.log('Already processing, skipping to prevent loop');
+        isProcessingEdgeCleanupRef.current = false;
+        return;
+      }
       
       setIsProcessing(true);
       
@@ -964,29 +973,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Handle speckle processing first if needed
       if (needsSpeckleProcessing) {
+        console.log('Manual edits detected, applying speckle processing');
         
         // Store pre-speckle state if we haven't already (BEFORE any effects are applied)
         if (!preSpeckleImageData) {
           // Always use the clean manual data without any speckle effects
-          const cleanData = manualImageData || getOriginalImageData();
+          const cleanData = manualImageData || originalImageData;
           if (cleanData) {
             setPreSpeckleImageData(new ImageData(
               new Uint8ClampedArray(cleanData.data),
               cleanData.width,
               cleanData.height
             ));
+            console.log('Stored pre-speckle state (clean data)');
           }
         }
         
         // Always apply speckle processing to the clean pre-speckle data (no effects applied)
         const baseData = preSpeckleImageData || manualImageData || currentImageData;
         
-        // OPTIMIZED: Process specks only once instead of 3 times
-        const speckleResult = processSpecks(baseData, speckleSettings);
-        
         // Handle speckle removal vs highlighting differently
         if (speckleSettings.removeSpecks) {
           // Apply actual speckle removal - this permanently modifies the data
+          const speckleResult = processSpecks(baseData, speckleSettings);
           currentImageData = speckleResult.processedData;
           
           // Update the manual image data to reflect the removal
@@ -999,23 +1008,32 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           // Apply to canvas
           ctx.putImageData(currentImageData, 0, 0);
+          console.log('Speckle removal applied permanently to image data');
         } else if (speckleSettings.highlightSpecks) {
           // Apply highlighting for display only - don't modify permanent data
+          const speckleResult = processSpecks(baseData, speckleSettings);
+          
+          // Display the highlighted version on canvas but don't save it
           ctx.putImageData(speckleResult.processedData, 0, 0);
+          console.log('Speckle highlighting applied for display only (not saved)');
           
           // Keep the original data unchanged
           currentImageData = baseData;
         }
         
-        // Update speck count using the already calculated result
+        // Update speck count
+        const speckleResult = processSpecks(baseData, speckleSettings);
         if (onSpeckCountUpdate) {
           onSpeckCountUpdate(speckleResult.speckCount);
         }
       } else if (needsSpeckleRestore) {
+        console.log('Speckle disabled, restoring pre-speckle state');
+        
         // Restore the pre-speckle state if available
         if (preSpeckleImageData) {
           currentImageData = preSpeckleImageData;
           ctx.putImageData(currentImageData, 0, 0);
+          console.log('Restored pre-speckle state');
           
           // Clear the pre-speckle state since we're done with it
           setPreSpeckleImageData(null);
@@ -1024,10 +1042,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Handle image effects restoration
       if (needsImageEffectsRestore) {
+        console.log('Image effects disabled, restoring pre-image-effects state');
+        
         // Restore the pre-image-effects state if available
         if (preImageEffectsImageData) {
           currentImageData = preImageEffectsImageData;
           ctx.putImageData(currentImageData, 0, 0);
+          console.log('Restored pre-image-effects state');
           
           // Clear the pre-image-effects state since we're done with it
           setPreImageEffectsImageData(null);
@@ -1036,12 +1057,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Handle ink stamp and image effects
       if (needsInkStamp || needsImageEffects) {
+        console.log('Manual edits detected, applying ink stamp and/or image effects');
         
         // Get the current canvas data after speckle processing
         currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         
         // Apply ink stamp effect if enabled
         if (needsInkStamp) {
+          console.log('Applying ink stamp effect');
           const data = currentImageData.data;
           const threshold = effectSettings.inkStamp.threshold === 1 ? 255 : (100 - effectSettings.inkStamp.threshold) * 2.55;
           
@@ -1062,10 +1085,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             currentImageData.width,
             currentImageData.height
           ));
+          console.log('Stored pre-image-effects state');
         }
         
         // Apply image effects if enabled
         if (needsImageEffects) {
+          console.log('Applying image effects');
           const data = currentImageData.data;
           
           for (let i = 0; i < data.length; i += 4) {
@@ -1144,10 +1169,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         
         // Apply the processed data back to canvas
         ctx.putImageData(currentImageData, 0, 0);
+        console.log('Ink stamp and/or image effects applied to manual edits');
       }
       
       // Handle edge cleanup
       if (needsEdgeCleanup) {
+        console.log('Manual edits detected, applying edge cleanup');
         
         // Get the current canvas data after all previous processing
         currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1182,6 +1209,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     // Skip auto-processing if we already have processed data and no settings changed
     if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !edgeCleanupSettings.enabled) {
+      console.log('Early return - no active settings requiring processing');
       return;
     }
     
@@ -1189,16 +1217,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    console.log('Auto-processing triggered');
     setIsProcessing(true);
 
     // Use manual image data if available, otherwise original
-    const baseImageData = manualImageData || getOriginalImageData();
+    const baseImageData = manualImageData || originalImageData;
 
-    // Use synchronous processing for now to avoid complexity
-    let processedData = processImageData(baseImageData, colorSettings, effectSettings);
-    
-    // Only apply if we're still on the same canvas and no manual edits occurred during processing
-    if (canvasRef.current === canvas && !hasManualEditsRef.current) {
+    // Use debounced processing to prevent rapid updates
+    debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
+      // Only apply if we're still on the same canvas and no manual edits occurred during processing
+      if (canvasRef.current === canvas && !hasManualEditsRef.current) {
+        console.log('Applying auto-processed data');
         
         // Apply speckle processing if enabled
         if (speckleSettings.enabled) {
@@ -1212,8 +1241,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
         
         // Apply edge cleanup processing if enabled
+        console.log('Edge cleanup check:', { 
+          enabled: edgeCleanupSettings.enabled, 
+          trimRadius: edgeCleanupSettings.trimRadius
+        });
+        
         if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
+          console.log('Calling processEdgeCleanup...');
           processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
+          console.log('processEdgeCleanup completed');
+        } else {
+          console.log('Edge cleanup is disabled, skipping');
         }
         
         // Only update canvas if the processed data is different
@@ -1226,10 +1264,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             ctx.putImageData(processedData, 0, 0);
           });
         }
+      } else {
+        console.log('Skipping auto-processed data application');
       }
       setIsProcessing(false);
+    }).catch((error) => {
+      console.error('Auto-processing error:', error);
+      setIsProcessing(false);
+    });
 
-  }, [getOriginalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, onSpeckCountUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, isDragging]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -1303,8 +1347,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    const origData = getOriginalImageData();
-    if (!canvasRef.current || !image || !origData || !containerRef.current) return;
+    if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -1346,10 +1389,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     if (tool === 'color-stack') {
       // Get color at clicked position from original image
-      const index = (y * origData.width + x) * 4;
-      const r = origData.data[index];
-      const g = origData.data[index + 1];
-      const b = origData.data[index + 2];
+      const index = (y * originalImageData.width + x) * 4;
+      const r = originalImageData.data[index];
+      const g = originalImageData.data[index + 1];
+      const b = originalImageData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
       // Add to picked colors and immediately remove this color
@@ -1410,6 +1453,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     } else if (tool === 'magic-wand') {
       // Magic wand tool - removes only connected pixels of clicked color
+      console.log('Magic wand tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
       
       // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
       hasManualEditsRef.current = true;
@@ -1419,10 +1463,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setPreSpeckleImageData(null);
       
       // Get color at clicked position from original image
-      const index = (y * origData.width + x) * 4;
-      const r = origData.data[index];
-      const g = origData.data[index + 1];
-      const b = origData.data[index + 2];
+      const index = (y * originalImageData.width + x) * 4;
+      const r = originalImageData.data[index];
+      const g = originalImageData.data[index + 1];
+      const b = originalImageData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
       // Save current state for undo (both local canvas undo and global undo)
@@ -1476,7 +1520,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Apply edge cleanup only to newly removed areas if enabled
       if ((edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) && removedPixelsMap.size > 0) {
+        console.log('Applying edge cleanup to newly removed pixels only');
         newImageData = processEdgeCleanupSelective(newImageData, edgeCleanupSettings, removedPixelsMap);
+        console.log('Edge cleanup applied to magic wand selection');
         // Apply the edge-cleaned data back to canvas
         ctx.putImageData(newImageData, 0, 0);
       }
@@ -1513,7 +1559,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }, 100);
       }
     }
-  }, [image, getOriginalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
+  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1567,6 +1613,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
     
+    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
+    console.log(`Canvas dimensions: ${width}x${height}`);
     
     // Get target color
     const index = (startY * width + startX) * 4;
@@ -1641,7 +1689,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const height = imageData.height;
     const removedPixels = new Set<number>();
     
-    
+    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
     
     // Get target color
     const targetIndex = (startY * width + startX) * 4;
@@ -1802,32 +1850,24 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (tool === 'eraser') {
-      eraserTool.startErasing(e.nativeEvent);
-    } else if (tool === 'pan') {
+    if (tool === 'pan') {
       setIsDragging(true);
       setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [tool, eraserTool]);
+  }, [tool]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (tool === 'eraser') {
-      eraserTool.continueErasing(e.nativeEvent);
-    } else if (isDragging && tool === 'pan') {
+    if (isDragging && tool === 'pan') {
       const dx = e.clientX - lastMousePos.x;
       const dy = e.clientY - lastMousePos.y;
       setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
       setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [tool, eraserTool, isDragging, lastMousePos]);
+  }, [isDragging, tool, lastMousePos]);
 
-  const handleMouseUp = useCallback((e?: React.MouseEvent) => {
-    if (tool === 'eraser') {
-      eraserTool.stopErasing(e?.nativeEvent);
-    } else {
-      setIsDragging(false);
-    }
-  }, [tool, eraserTool]);
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
 
   const handleZoom = useCallback((direction: 'in' | 'out', centerX?: number, centerY?: number) => {
     if (!containerRef.current || !canvasRef.current) return;
@@ -1898,9 +1938,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const updatedImage = { ...image, processedData: restoredImageData };
     
-    // Update manual image data and references to preserve the undo state
+    // Update manual image data to preserve the undo state
     hasManualEditsRef.current = true;
-    manualImageDataRef.current = restoredImageData;
     setManualImageData(restoredImageData);
     
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
@@ -1928,9 +1967,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const updatedImage = { ...image, processedData: restoredImageData };
     
-    // Update manual image data and references to preserve the redo state
+    // Update manual image data to preserve the redo state
     hasManualEditsRef.current = true;
-    manualImageDataRef.current = restoredImageData;
     setManualImageData(restoredImageData);
     
     console.log('Local redo completed, redoStack length:', redoStack.length - 1);
@@ -1939,8 +1977,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
   const handleReset = useCallback(() => {
-    const origData = getOriginalImageData();
-    if (!origData || !canvasRef.current) return;
+    if (!originalImageData || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -1953,14 +1990,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setRedoStack([]);
     
     // Reprocess the original image with current settings
-    const processedData = processImageData(origData, colorSettings, effectSettings);
+    const processedData = processImageData(originalImageData, colorSettings, effectSettings);
     ctx.putImageData(processedData, 0, 0);
     
     if (image) {
       const updatedImage = { ...image, processedData };
       onImageUpdate(updatedImage);
     }
-  }, [getOriginalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current || isDownloading) return;
@@ -2106,19 +2143,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <Wand className="w-4 h-4 mr-1" />
             Magic Wand
           </Button>
-          
-          <Button
-            variant={tool === 'eraser' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onToolChange('eraser')}
-            className={tool === 'eraser' 
-              ? "bg-accent-red text-white" 
-              : "border-accent-red text-accent-red hover:bg-accent-red/10"}
-            title="Eraser - Remove pixels with brush"
-          >
-            <Eraser className="w-4 h-4 mr-1" />
-            Eraser
-          </Button>
         </div>
         
         <div className="flex items-center gap-1">
@@ -2205,8 +2229,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 style={{
                   transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
                   transformOrigin: '0 0',
-                  width: originalImageData?.width || canvasRef.current?.width || 0,
-                  height: originalImageData?.height || canvasRef.current?.height || 0,
+                  width: originalImageData?.width || 0,
+                  height: originalImageData?.height || 0,
                   backgroundColor: effectSettings.background.color,
                 }}
               />
@@ -2219,23 +2243,18 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 "absolute cursor-crosshair",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'color-stack' && 'cursor-crosshair',
-                tool === 'magic-wand' && 'cursor-crosshair',
-                tool === 'eraser' && 'cursor-none'
+                tool === 'magic-wand' && 'cursor-crosshair'
               )}
               style={{
                 transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
                 transformOrigin: '0 0',
-                imageRendering: zoom > 2 ? 'pixelated' : 'auto',
-                cursor: tool === 'eraser' ? eraserTool.getBrushCursor() : undefined
+                imageRendering: zoom > 2 ? 'pixelated' : 'auto'
               }}
               onClick={handleCanvasClick}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              onTouchStart={(e) => tool === 'eraser' && eraserTool.startErasing(e.nativeEvent)}
-              onTouchMove={(e) => tool === 'eraser' && eraserTool.continueErasing(e.nativeEvent)}
-              onTouchEnd={(e) => tool === 'eraser' && eraserTool.stopErasing(e.nativeEvent)}
             />
           </>
         ) : (
