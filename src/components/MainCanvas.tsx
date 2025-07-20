@@ -313,33 +313,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     onImageChange: (imageData) => {
       if (!canvasRef.current) return;
       
-      // Save current state to undo stack before applying eraser change
+      // Save current state to local undo stack before applying eraser change
       const ctx = canvasRef.current.getContext('2d');
       if (ctx && manualImageData) {
         setUndoStack(prev => [...prev, manualImageData]);
         setRedoStack([]); // Clear redo stack when new action is performed
+        console.log('Added eraser action to local undo stack, new stack size:', undoStack.length + 1);
       }
-      
-      // Add to global undo system as well
-      addUndoAction?.({
-        type: 'manual-edit',
-        description: 'Eraser tool',
-        undo: () => {
-          const ctx = canvasRef.current?.getContext('2d');
-          if (ctx && manualImageData) {
-            ctx.putImageData(manualImageData, 0, 0);
-            manualImageDataRef.current = manualImageData;
-          }
-        },
-        redo: () => {
-          const ctx = canvasRef.current?.getContext('2d');
-          if (ctx) {
-            ctx.putImageData(imageData, 0, 0);
-            manualImageDataRef.current = imageData;
-            hasManualEditsRef.current = true;
-          }
-        }
-      });
       
       setManualImageData(imageData);
       
