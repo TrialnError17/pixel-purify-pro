@@ -961,17 +961,18 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               cleanData.width,
               cleanData.height
             ));
-            console.log('Stored pre-speckle state (clean data)');
           }
         }
         
         // Always apply speckle processing to the clean pre-speckle data (no effects applied)
         const baseData = preSpeckleImageData || manualImageData || currentImageData;
         
+        // OPTIMIZED: Process specks only once instead of 3 times
+        const speckleResult = processSpecks(baseData, speckleSettings);
+        
         // Handle speckle removal vs highlighting differently
         if (speckleSettings.removeSpecks) {
           // Apply actual speckle removal - this permanently modifies the data
-          const speckleResult = processSpecks(baseData, speckleSettings);
           currentImageData = speckleResult.processedData;
           
           // Update the manual image data to reflect the removal
@@ -984,32 +985,23 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           // Apply to canvas
           ctx.putImageData(currentImageData, 0, 0);
-          console.log('Speckle removal applied permanently to image data');
         } else if (speckleSettings.highlightSpecks) {
           // Apply highlighting for display only - don't modify permanent data
-          const speckleResult = processSpecks(baseData, speckleSettings);
-          
-          // Display the highlighted version on canvas but don't save it
           ctx.putImageData(speckleResult.processedData, 0, 0);
-          console.log('Speckle highlighting applied for display only (not saved)');
           
           // Keep the original data unchanged
           currentImageData = baseData;
         }
         
-        // Update speck count
-        const speckleResult = processSpecks(baseData, speckleSettings);
+        // Update speck count using the already calculated result
         if (onSpeckCountUpdate) {
           onSpeckCountUpdate(speckleResult.speckCount);
         }
       } else if (needsSpeckleRestore) {
-        console.log('Speckle disabled, restoring pre-speckle state');
-        
         // Restore the pre-speckle state if available
         if (preSpeckleImageData) {
           currentImageData = preSpeckleImageData;
           ctx.putImageData(currentImageData, 0, 0);
-          console.log('Restored pre-speckle state');
           
           // Clear the pre-speckle state since we're done with it
           setPreSpeckleImageData(null);
@@ -1018,13 +1010,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Handle image effects restoration
       if (needsImageEffectsRestore) {
-        console.log('Image effects disabled, restoring pre-image-effects state');
-        
         // Restore the pre-image-effects state if available
         if (preImageEffectsImageData) {
           currentImageData = preImageEffectsImageData;
           ctx.putImageData(currentImageData, 0, 0);
-          console.log('Restored pre-image-effects state');
           
           // Clear the pre-image-effects state since we're done with it
           setPreImageEffectsImageData(null);
@@ -1059,12 +1048,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             currentImageData.width,
             currentImageData.height
           ));
-          console.log('Stored pre-image-effects state');
         }
         
         // Apply image effects if enabled
         if (needsImageEffects) {
-          console.log('Applying image effects');
           const data = currentImageData.data;
           
           for (let i = 0; i < data.length; i += 4) {
