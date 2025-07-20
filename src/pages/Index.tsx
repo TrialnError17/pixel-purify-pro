@@ -8,6 +8,7 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
+import { createOptimizedImage, createThumbnail } from '@/utils/imageOptimization';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
@@ -96,7 +97,6 @@ export interface EraserSettings {
 }
 
 const Index = () => {
-  console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
@@ -198,8 +198,11 @@ const Index = () => {
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
-  const handleFilesSelected = useCallback((files: FileList) => {
-    const newImages: ImageItem[] = Array.from(files).map(file => ({
+  const handleFilesSelected = useCallback(async (files: FileList) => {
+    const fileArray = Array.from(files);
+    
+    // Create initial image items
+    const newImages: ImageItem[] = fileArray.map(file => ({
       id: crypto.randomUUID(),
       file,
       name: file.name,
@@ -218,6 +221,25 @@ const Index = () => {
 
     // Show queue when images are added
     setQueueVisible(true);
+
+    // Optimize images in the background for fast loading
+    fileArray.forEach(async (file, index) => {
+      try {
+        const { optimizedFile, wasOptimized } = await createOptimizedImage(file);
+        
+        if (wasOptimized) {
+          // Update with optimized file for faster display
+          setImages(prev => prev.map(img => 
+            img.id === newImages[index].id 
+              ? { ...img, file: optimizedFile }
+              : img
+          ));
+        }
+      } catch (error) {
+        console.warn('Failed to optimize image:', file.name, error);
+        // Continue with original file
+      }
+    });
   }, [selectedImageId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
