@@ -910,6 +910,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (!originalImageData || !canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
       return;
     }
+    
+    // SKIP AUTOMATIC PROCESSING ON INITIAL LOAD - only process when settings explicitly change
+    // This makes image loading instant instead of slow
+    if (!hasManualEditsRef.current && colorSettings.enabled === false) {
+      return;
+    }
      
     // Allow speckle and edge cleanup to run even with manual edits, but skip other auto-processing
     if (hasManualEditsRef.current) {
