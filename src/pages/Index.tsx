@@ -201,7 +201,7 @@ const Index = () => {
   const handleFilesSelected = useCallback(async (files: FileList) => {
     const fileArray = Array.from(files);
     
-    // Create initial image items
+    // Create initial image items - no optimization for instant loading
     const newImages: ImageItem[] = fileArray.map(file => ({
       id: crypto.randomUUID(),
       file,
@@ -221,25 +221,6 @@ const Index = () => {
 
     // Show queue when images are added
     setQueueVisible(true);
-
-    // Optimize images in the background for fast loading
-    fileArray.forEach(async (file, index) => {
-      try {
-        const { optimizedFile, wasOptimized } = await createOptimizedImage(file);
-        
-        if (wasOptimized) {
-          // Update with optimized file for faster display
-          setImages(prev => prev.map(img => 
-            img.id === newImages[index].id 
-              ? { ...img, file: optimizedFile }
-              : img
-          ));
-        }
-      } catch (error) {
-        console.warn('Failed to optimize image:', file.name, error);
-        // Continue with original file
-      }
-    });
   }, [selectedImageId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
