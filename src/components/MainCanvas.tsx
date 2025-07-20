@@ -318,7 +318,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       if (ctx && manualImageData) {
         setUndoStack(prev => [...prev, manualImageData]);
         setRedoStack([]); // Clear redo stack when new action is performed
-        console.log('Added eraser action to local undo stack, new stack size:', undoStack.length + 1);
+        
       }
       
       setManualImageData(imageData);
@@ -952,20 +952,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    console.log('Processing effect triggered - checking conditions:', {
-      hasOriginalImageData: !!originalImageData,
-      hasCanvas: !!canvasRef.current,
-      hasManualEdits: hasManualEditsRef.current,
-      isProcessing,
-      imageHasProcessedData: !!image?.processedData,
-      colorSettingsEnabled: colorSettings.enabled,
-      backgroundEnabled: effectSettings.background.enabled,
-      inkStampEnabled: effectSettings.inkStamp.enabled,
-      edgeCleanupEnabled: edgeCleanupSettings.enabled
-    });
-    
-    if (!originalImageData || !canvasRef.current || isProcessing) {
-      console.log('Early return - missing requirements or processing in progress');
+    // Prevent processing if requirements not met or already processing
+    if (!originalImageData || !canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
       return;
     }
      
@@ -973,8 +961,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (hasManualEditsRef.current) {
       // If we have manual edits, handle speckle and edge cleanup specially
       // Add additional guard: don't process during panning/dragging
-      if (isProcessingEdgeCleanupRef.current || isDragging) {
-        console.log('Early return - already processing or dragging');
+      if (isDragging) {
         return;
       }
       
@@ -988,7 +975,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsImageEffectsRestore = !effectSettings.imageEffects.enabled && preImageEffectsImageData;
       
       if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects && !needsImageEffectsRestore) {
-        console.log('Early return - no processing needed');
         return;
       }
       
@@ -1002,13 +988,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         return;
       }
       
-      // Prevent infinite loop by checking if already processing
-      const wasProcessing = isProcessing;
-      if (wasProcessing) {
-        console.log('Already processing, skipping to prevent loop');
-        isProcessingEdgeCleanupRef.current = false;
-        return;
-      }
       
       setIsProcessing(true);
       
@@ -1317,7 +1296,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, isDragging]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {

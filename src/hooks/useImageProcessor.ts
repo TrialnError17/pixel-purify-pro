@@ -38,6 +38,59 @@ export const useImageProcessor = () => {
   }, []);
 
   // Color distance calculation with multiple color space support
+  // RGB to HSL conversion
+  const rgbToHsl = useCallback((r: number, g: number, b: number): [number, number, number] => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max === min) {
+      h = s = 0; // achromatic
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+
+    return [h * 360, s, l];
+  }, []);
+
+  // HSL to RGB conversion
+  const hslToRgb = useCallback((h: number, s: number, l: number): [number, number, number] => {
+    h /= 360;
+    
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+
+    if (s === 0) {
+      const gray = l * 255;
+      return [gray, gray, gray]; // achromatic
+    } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      const r = hue2rgb(p, q, h + 1/3);
+      const g = hue2rgb(p, q, h);
+      const b = hue2rgb(p, q, h - 1/3);
+      return [r * 255, g * 255, b * 255];
+    }
+  }, []);
+
   const calculateColorDistance = useCallback((
     r1: number, g1: number, b1: number, 
     r2: number, g2: number, b2: number, 
@@ -77,7 +130,7 @@ export const useImageProcessor = () => {
       default:
         return 0;
     }
-  }, [rgbToLab]);
+  }, [rgbToLab, rgbToHsl]);
 
 
   // Auto color removal - removes top-left corner color and similar colors
@@ -95,7 +148,6 @@ export const useImageProcessor = () => {
     const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     
     const [targetL, targetA, targetBLab] = rgbToLab(targetR, targetG, targetB);
-    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, `lab(${targetL.toFixed(1)}, ${targetA.toFixed(1)}, ${targetBLab.toFixed(1)})`, 'threshold:', threshold);
     
     let pixelsRemoved = 0;
     for (let i = 0; i < data.length; i += 4) {
@@ -111,7 +163,7 @@ export const useImageProcessor = () => {
       }
     }
     
-    console.log('Auto color removal complete - pixels removed:', pixelsRemoved, 'out of', data.length / 4);
+    
 
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
@@ -499,60 +551,6 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, []);
 
-  // Helper functions for HSL conversion
-  const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const diff = max - min;
-    
-    let h = 0;
-    let s = 0;
-    const l = (max + min) / 2;
-    
-    if (diff !== 0) {
-      s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
-      
-      switch (max) {
-        case r: h = (g - b) / diff + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / diff + 2; break;
-        case b: h = (r - g) / diff + 4; break;
-      }
-      h /= 6;
-    }
-    
-    return [h * 360, s, l];
-  };
-
-  const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
-    h /= 360;
-    
-    const hue2rgb = (p: number, q: number, t: number): number => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    
-    let r, g, b;
-    
-    if (s === 0) {
-      r = g = b = l;
-    } else {
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1/3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1/3);
-    }
-    
-    return [r * 255, g * 255, b * 255];
-  };
 
   // Apply effects for display only (non-destructive background)
   const applyDisplayEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
