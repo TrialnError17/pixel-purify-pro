@@ -252,6 +252,7 @@ interface MainCanvasProps {
   addUndoAction?: (action: { type: string; description: string; undo: () => void; redo?: () => void }) => void;
   
   onSpeckCountUpdate?: (count: number) => void;
+  triggerExplicitProcessing?: React.MutableRefObject<(() => void) | null>;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -276,7 +277,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   onDownloadImage,
   setSingleImageProgress,
   addUndoAction,
-  onSpeckCountUpdate
+  onSpeckCountUpdate,
+  triggerExplicitProcessing
 }) => {
   const { processSpecks } = useSpeckleTools();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -292,6 +294,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
+  const explicitProcessingRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const manualImageDataRef = useRef<ImageData | null>(null);
   
@@ -1014,14 +1017,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
 
-    // Early return guard to prevent overwriting eraser edits
-    if (
-      hasManualEditsRef.current === true &&
-      previousTool === 'eraser'
-    ) {
-      console.log('Early return - eraser edits protection active');
-      return;
-    }
+  // Early return guard to prevent overwriting eraser edits
+  if (
+    hasManualEditsRef.current === true &&
+    previousTool === 'eraser' &&
+    !explicitProcessingRef.current
+  ) {
+    console.log('Early return - eraser edits protection active');
+    return;
+  }
     
     // Skip ALL processing if color removal is disabled and no other effects are enabled
     const hasAnyProcessingEnabled = colorSettings.enabled || 
@@ -1417,9 +1421,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         console.log('Skipping auto-processed data application');
       }
       setIsProcessing(false);
+      // Reset explicit processing flag after completion
+      explicitProcessingRef.current = false;
     }).catch((error) => {
       console.error('Auto-processing error:', error);
       setIsProcessing(false);
+      // Reset explicit processing flag after error
+      explicitProcessingRef.current = false;
     });
 
   }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, isDragging]);
@@ -1993,6 +2001,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       onImageUpdate(updatedImage);
     }
   }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+
+  // Function to trigger explicit processing (overrides eraser protection)
+  const handleTriggerExplicitProcessing = useCallback(() => {
+    console.log('Explicit processing triggered');
+    explicitProcessingRef.current = true;
+    // The processing effect will be triggered by dependency changes
+  }, []);
+
+  // Expose triggerExplicitProcessing to parent component
+  useEffect(() => {
+    if (triggerExplicitProcessing) {
+      triggerExplicitProcessing.current = handleTriggerExplicitProcessing;
+    }
+  }, [triggerExplicitProcessing, handleTriggerExplicitProcessing]);
 
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current || isDownloading) return;
