@@ -1391,11 +1391,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           console.log('Edge cleanup is disabled, skipping');
         }
         
-        // Always update canvas when effects are being applied
-        // Use requestAnimationFrame to ensure smooth canvas update
-        requestAnimationFrame(() => {
-          ctx.putImageData(processedData, 0, 0);
-        });
+        // Double-check no manual edits occurred before applying processed data
+        if (!hasManualEditsRef.current) {
+          console.log('Updating canvas with processed data');
+          // Use requestAnimationFrame to ensure smooth canvas update
+          requestAnimationFrame(() => {
+            ctx.putImageData(processedData, 0, 0);
+          });
+        } else {
+          console.log('Manual edits detected, skipping processed data application');
+        }
       } else {
         console.log('Skipping auto-processed data application');
       }
