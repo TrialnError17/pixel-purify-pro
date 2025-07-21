@@ -12,8 +12,6 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
 
-console.log('Index.tsx is loading');
-
 export interface ImageItem {
   id: string;
   file: File;
@@ -92,7 +90,6 @@ export interface ContiguousToolSettings {
 }
 
 const Index = () => {
-  console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
@@ -350,14 +347,6 @@ const Index = () => {
               const prevSpeckleSettings = { ...speckleSettings };
               setSpeckleSettings(newSpeckleSettings);
               
-              console.log('Speckle settings changed:', { 
-                enabled: newSpeckleSettings.enabled, 
-                highlight: newSpeckleSettings.highlightSpecks,
-                remove: newSpeckleSettings.removeSpecks,
-                hasProcessedData: !!selectedImage?.processedData,
-                hasOriginalData: !!selectedImage?.originalData,
-                isProcessingSpeckles
-              });
               
               // Only process speckles if not already processing to prevent feedback loop
               if (!isProcessingSpeckles && (selectedImage?.processedData || selectedImage?.originalData)) {
@@ -373,7 +362,7 @@ const Index = () => {
                   baseData.height
                 );
                 
-                console.log('Processing speckles from', selectedImage.processedData ? 'processed' : 'original', 'data');
+                
                 const result = processSpecks(cleanBaseData, newSpeckleSettings);
                 setSpeckCount(result.speckCount);
                 
