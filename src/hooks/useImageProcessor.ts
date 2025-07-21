@@ -1,10 +1,66 @@
 import { useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
+import type { WorkerMessage, WorkerResponse } from '@/workers/imageProcessor.worker';
 
 export const useImageProcessor = () => {
   const { toast } = useToast();
   const cancelTokenRef = useRef({ cancelled: false });
+  const workerRef = useRef<Worker | null>(null);
+  const taskIdRef = useRef(0);
+
+  // Initialize worker on first use
+  const getWorker = useCallback(() => {
+    if (!workerRef.current) {
+      workerRef.current = new Worker(
+        new URL('@/workers/imageProcessor.worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+    }
+    return workerRef.current;
+  }, []);
+
+  // Wrapper for worker operations with timeout and error handling
+  const processWithWorker = useCallback(async (
+    type: 'processImage' | 'applyEffects' | 'downloadEffects',
+    imageData: ImageData,
+    settings?: any,
+    effectSettings?: any
+  ): Promise<ImageData> => {
+    return new Promise((resolve, reject) => {
+      const worker = getWorker();
+      const id = (++taskIdRef.current).toString();
+      const timeout = setTimeout(() => reject(new Error('Worker timeout')), 30000);
+
+      const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+        if (event.data.id !== id) return;
+        
+        clearTimeout(timeout);
+        worker.removeEventListener('message', handleMessage);
+        
+        if (event.data.type === 'success' && event.data.data) {
+          resolve(event.data.data);
+        } else {
+          reject(new Error(event.data.error || 'Worker processing failed'));
+        }
+      };
+
+      worker.addEventListener('message', handleMessage);
+      worker.postMessage({
+        type,
+        data: { imageData, settings, effectSettings },
+        id
+      } as WorkerMessage);
+    });
+  }, [getWorker]);
+
+  // Cleanup worker on unmount
+  const cleanup = useCallback(() => {
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+  }, []);
 
   // Color space conversion utilities
   const rgbToLab = useCallback((r: number, g: number, b: number): [number, number, number] => {
@@ -197,8 +253,13 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
 
-  // Unified processing function that matches MainCanvas logic
-  const processImageDataUnified = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
+  // Unified processing function that matches MainCanvas logic - Now uses Web Worker
+  const processImageDataUnified = useCallback(async (imageData: ImageData, settings: ColorRemovalSettings): Promise<ImageData> => {
+    try {
+      return await processWithWorker('processImage', imageData, settings);
+    } catch (error) {
+      console.warn('Worker failed, falling back to main thread:', error);
+      // Fallback to main thread processing
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
@@ -300,8 +361,9 @@ export const useImageProcessor = () => {
       }
     }
 
-    return new ImageData(data, width, height);
-  }, [calculateColorDistance]);
+      return new ImageData(data, width, height);
+    }
+  }, [processWithWorker, calculateColorDistance]);
 
   // Contiguous color removal from borders
   const borderFloodFill = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
@@ -461,36 +523,41 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, []);
 
-  // Apply image effects (brightness, contrast, etc.)
-  const applyImageEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
+  // Apply image effects (brightness, contrast, etc.) - Now uses Web Worker for heavy processing
+  const applyImageEffects = useCallback(async (imageData: ImageData, settings: EffectSettings): Promise<ImageData> => {
     if (!settings.imageEffects.enabled) return imageData;
     
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
+    try {
+      return await processWithWorker('applyEffects', imageData, undefined, settings);
+    } catch (error) {
+      console.warn('Worker failed, falling back to main thread:', error);
+      // Fallback to main thread processing
+      const data = new Uint8ClampedArray(imageData.data);
+      const width = imageData.width;
+      const height = imageData.height;
 
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] === 0) continue; // Skip transparent pixels
-      
-      let r = data[i];
-      let g = data[i + 1];
-      let b = data[i + 2];
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) continue; // Skip transparent pixels
+        
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
 
-      // Apply brightness
-      if (settings.imageEffects.brightness !== 0) {
-        const brightness = settings.imageEffects.brightness * 2.55; // Scale to 0-255
-        r = Math.max(0, Math.min(255, r + brightness));
-        g = Math.max(0, Math.min(255, g + brightness));
-        b = Math.max(0, Math.min(255, b + brightness));
-      }
+        // Apply brightness
+        if (settings.imageEffects.brightness !== 0) {
+          const brightness = settings.imageEffects.brightness * 2.55; // Scale to 0-255
+          r = Math.max(0, Math.min(255, r + brightness));
+          g = Math.max(0, Math.min(255, g + brightness));
+          b = Math.max(0, Math.min(255, b + brightness));
+        }
 
-      // Apply contrast
-      if (settings.imageEffects.contrast !== 0) {
-        const contrast = (settings.imageEffects.contrast + 100) / 100; // Convert to multiplier
-        r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
-        g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
-        b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
-      }
+        // Apply contrast
+        if (settings.imageEffects.contrast !== 0) {
+          const contrast = (settings.imageEffects.contrast + 100) / 100; // Convert to multiplier
+          r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
+          g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
+          b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
+        }
 
       // Apply vibrance (enhance muted colors)
       if (settings.imageEffects.vibrance !== 0) {
@@ -548,12 +615,13 @@ export const useImageProcessor = () => {
       data[i + 2] = Math.round(b);
     }
 
-    return new ImageData(data, width, height);
-  }, []);
+      return new ImageData(data, width, height);
+    }
+  }, [processWithWorker, rgbToHsl, hslToRgb]);
 
 
   // Apply effects for display only (non-destructive background)
-  const applyDisplayEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
+  const applyDisplayEffects = useCallback(async (imageData: ImageData, settings: EffectSettings): Promise<ImageData> => {
     let processedData = new ImageData(
       new Uint8ClampedArray(imageData.data),
       imageData.width,
@@ -561,7 +629,7 @@ export const useImageProcessor = () => {
     );
 
     // Apply image effects at the end of the processing chain
-    processedData = applyImageEffects(processedData, settings);
+    processedData = await applyImageEffects(processedData, settings);
 
     const data = processedData.data;
     const width = processedData.width;
@@ -618,16 +686,24 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [applyImageEffects]);
 
-  // Apply effects for download (only applies background if saveWithBackground is true)
-  const applyDownloadEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
+  // Apply effects for download (only applies background if saveWithBackground is true) - Now uses Web Worker
+  const applyDownloadEffects = useCallback(async (imageData: ImageData, settings: EffectSettings): Promise<ImageData> => {
+    try {
+      return await processWithWorker('downloadEffects', imageData, {
+        backgroundColor: settings.background.enabled && settings.background.saveWithBackground ? settings.background.color : 'transparent',
+        inkStamp: settings.inkStamp.enabled
+      });
+    } catch (error) {
+      console.warn('Worker failed, falling back to main thread:', error);
+      // Fallback to main thread processing
     let processedData = new ImageData(
       new Uint8ClampedArray(imageData.data),
       imageData.width,
       imageData.height
     );
 
-    // Apply image effects at the end of the processing chain
-    processedData = applyImageEffects(processedData, settings);
+      // Apply image effects at the end of the processing chain
+      processedData = await applyImageEffects(processedData, settings);
 
     const data = processedData.data;
     const width = processedData.width;
@@ -679,10 +755,11 @@ export const useImageProcessor = () => {
           }
         }
       }
-    }
+      }
 
-    return new ImageData(data, width, height);
-  }, [applyImageEffects]);
+      return new ImageData(data, width, height);
+    }
+  }, [processWithWorker, applyImageEffects]);
 
   // Alpha feathering function
   const applyAlphaFeathering = useCallback((imageData: ImageData, radius: number): ImageData => {
@@ -1010,7 +1087,7 @@ export const useImageProcessor = () => {
           }
           
           // Download the processed image - notification handled in queue header
-          downloadImage(processedImage, colorSettings, effectSettings);
+          await downloadImage(processedImage, colorSettings, effectSettings);
         } else {
           throw new Error('Processing failed');
         }
@@ -1094,7 +1171,7 @@ export const useImageProcessor = () => {
   }, []);
 
   // Download single image
-  const downloadImage = useCallback((image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings, setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void, setIsFullscreen?: (value: boolean) => void) => {
+  const downloadImage = useCallback(async (image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings, setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void, setIsFullscreen?: (value: boolean) => void) => {
     // Prioritize processedData (includes manual edits) over originalData
     if (!image.processedData && !image.originalData) {
       console.error('No image data available for download');
@@ -1135,7 +1212,7 @@ export const useImageProcessor = () => {
       // Apply the same color removal logic as preview using current settings
       if (colorSettings.enabled) {
         // Use the same unified processing logic as MainCanvas
-        processedData = processImageDataUnified(processedData, colorSettings);
+        processedData = await processImageDataUnified(processedData, colorSettings);
         
         // Region cleanup is now handled by edge cleanup settings  
         // if (colorSettings.minRegionSize > 0) {
@@ -1164,7 +1241,7 @@ export const useImageProcessor = () => {
     
     // Apply download effects if provided
     if (effectSettings) {
-      imageDataToDownload = applyDownloadEffects(imageDataToDownload, effectSettings);
+      imageDataToDownload = await applyDownloadEffects(imageDataToDownload, effectSettings);
       console.log('Applied download effects');
       
       // Count non-transparent pixels after applying effects
@@ -1236,6 +1313,9 @@ export const useImageProcessor = () => {
     processImage,
     processAllImages,
     downloadImage,
-    cancelProcessing
+    cancelProcessing,
+    cleanup,
+    processImageDataUnified,
+    applyDisplayEffects
   };
 };

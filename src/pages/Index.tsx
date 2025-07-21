@@ -354,13 +354,17 @@ const Index = () => {
               });
               
               setIsProcessing(true);
-              processImage(selectedImage, colorSettings, effectSettings, setImages).finally(() => {
-                setIsProcessing(false);
-                // Auto-hide queue after processing if it wasn't visible before
-                if (!wasQueueVisible) {
-                  setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
+              (async () => {
+                try {
+                  await processImage(selectedImage, colorSettings, effectSettings, setImages);
+                } finally {
+                  setIsProcessing(false);
+                  // Auto-hide queue after processing if it wasn't visible before
+                  if (!wasQueueVisible) {
+                    setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
+                  }
                 }
-              });
+              })();
             }
           }}
           canDownload={selectedImage?.status === 'completed'}
@@ -557,7 +561,9 @@ const Index = () => {
               totalImages={images.length}
               onDownloadImage={() => {
                 if (selectedImage) {
-                  downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
+                  (async () => {
+                    await downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
+                  })();
                 }
               }}
               setSingleImageProgress={setSingleImageProgress}
@@ -630,26 +636,35 @@ const Index = () => {
                 });
                 
                 setIsProcessing(true);
-                processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
-                  setIsProcessing(false);
-                });
+                (async () => {
+                  try {
+                    await processAllImages(images, colorSettings, effectSettings, setImages);
+                  } finally {
+                    setIsProcessing(false);
+                  }
+                })();
               }}
               onProcessImage={(image) => {
                 setIsProcessing(true);
-                processImage(image, colorSettings, effectSettings, setImages).then(() => {
-                  // After processing is complete, automatically download the image
-                  // Find the processed image in the updated state
-                  setImages(currentImages => {
-                    const processedImage = currentImages.find(img => img.id === image.id);
-                     if (processedImage && processedImage.status === 'completed') {
-                       // Trigger download
-                       downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
-                     }
-                    return currentImages;
-                  });
-                }).finally(() => {
-                  setIsProcessing(false);
-                });
+                (async () => {
+                  try {
+                    await processImage(image, colorSettings, effectSettings, setImages);
+                    // After processing is complete, automatically download the image
+                    // Find the processed image in the updated state
+                    setImages(currentImages => {
+                      const processedImage = currentImages.find(img => img.id === image.id);
+                       if (processedImage && processedImage.status === 'completed') {
+                         // Trigger download
+                         (async () => {
+                           await downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
+                         })();
+                       }
+                      return currentImages;
+                    });
+                  } finally {
+                    setIsProcessing(false);
+                  }
+                })();
               }}
               onCancelProcessing={() => {
                 cancelProcessing();
