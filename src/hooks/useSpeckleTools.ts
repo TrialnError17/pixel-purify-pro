@@ -165,13 +165,9 @@ export const useSpeckleTools = () => {
     };
   }, [findConnectedComponents]);
 
-  // Remove specks by making them transparent, and highlight remaining smaller specks
+  // Remove specks by making them transparent
   const removeSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
-    console.log('🗑️ removeSpecks function called with minSpeckSize:', settings.minSpeckSize);
-    
     const { components, speckCount, largestSpeck } = findConnectedComponents(imageData);
-    console.log(`📊 Found ${components.length} components with sizes:`, components.map(c => c.length).sort((a, b) => a - b));
-    
     const processedData = new ImageData(
       new Uint8ClampedArray(imageData.data),
       imageData.width,
@@ -179,57 +175,20 @@ export const useSpeckleTools = () => {
     );
     
     const data = processedData.data;
-    const width = imageData.width;
     let removedSpecks = 0;
-    let totalPixelsRemoved = 0;
 
-    // Simple removal: remove components smaller than threshold
-    components.forEach((component, componentIndex) => {
-      const componentSize = component.length;
-      console.log(`🔍 Component ${componentIndex}: ${componentSize} pixels (threshold: ${settings.minSpeckSize})`);
-      
-      if (componentSize <= settings.minSpeckSize) {
-        console.log(`🗑️ Removing speck ${componentIndex} of size ${componentSize} pixels`);
-        
-        // Calculate component bounds for debugging
-        let minX = width, maxX = 0, minY = imageData.height, maxY = 0;
-        component.forEach(index => {
-          const x = index % width;
-          const y = Math.floor(index / width);
-          minX = Math.min(minX, x);
-          maxX = Math.max(maxX, x);
-          minY = Math.min(minY, y);
-          maxY = Math.max(maxY, y);
-        });
-        console.log(`📐 Component ${componentIndex} bounds: (${minX},${minY}) to (${maxX},${maxY}), area: ${(maxX-minX+1) * (maxY-minY+1)}`);
-        
+    // Remove small components (specks) by making them transparent
+    components.forEach(component => {
+      if (component.length <= settings.minSpeckSize) {
         component.forEach(index => {
           const pixelIndex = index * 4;
-          // Check if pixel is actually non-transparent before removing
-          if (data[pixelIndex + 3] > 0) {
-            data[pixelIndex + 3] = 0; // Make transparent
-            totalPixelsRemoved++;
-          }
+          data[pixelIndex + 3] = 0; // Make transparent
         });
         removedSpecks++;
-      } else {
-        console.log(`✅ Keeping component ${componentIndex} of size ${componentSize} pixels (larger than ${settings.minSpeckSize})`);
-        
-        // Show bounds of kept components for debugging
-        let minX = width, maxX = 0, minY = imageData.height, maxY = 0;
-        component.forEach(index => {
-          const x = index % width;
-          const y = Math.floor(index / width);
-          minX = Math.min(minX, x);
-          maxX = Math.max(maxX, x);
-          minY = Math.min(minY, y);
-          maxY = Math.max(maxY, y);
-        });
-        console.log(`📐 Large component ${componentIndex} bounds: (${minX},${minY}) to (${maxX},${maxY}), visual area: ${(maxX-minX+1) * (maxY-minY+1)}`);
       }
     });
 
-    console.log(`🗑️ Removed ${removedSpecks} specks (${totalPixelsRemoved} total pixels) with threshold ${settings.minSpeckSize}`);
+    console.log(`Removed ${removedSpecks} specks (components <= ${settings.minSpeckSize} pixels)`);
 
     return {
       processedData,
@@ -240,39 +199,21 @@ export const useSpeckleTools = () => {
 
   // Process specks based on settings
   const processSpecks = useCallback((imageData: ImageData, settings: SpeckleSettings): SpeckleResult => {
-    console.log('processSpecks called with settings:', {
-      enabled: settings.enabled,
-      highlightSpecks: settings.highlightSpecks,
-      removeSpecks: settings.removeSpecks,
-      minSpeckSize: settings.minSpeckSize
-    });
-    
     if (!settings.enabled) {
-      console.log('Speckle processing disabled');
       return {
         processedData: imageData,
         speckCount: 0
       };
     }
 
-    // Create clean copy of image data to avoid contamination from previous highlighting
-    const cleanImageData = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height
-    );
-
     if (settings.removeSpecks) {
-      console.log('Running removeSpecks function on clean data');
-      return removeSpecks(cleanImageData, settings);
+      return removeSpecks(imageData, settings);
     } else if (settings.highlightSpecks) {
-      console.log('Running highlightSpecks function on clean data');
-      return highlightSpecks(cleanImageData, settings);
+      return highlightSpecks(imageData, settings);
     }
 
-    console.log('No speckle processing mode selected');
     return {
-      processedData: cleanImageData,
+      processedData: imageData,
       speckCount: 0
     };
   }, [highlightSpecks, removeSpecks]);

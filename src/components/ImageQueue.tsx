@@ -20,179 +20,6 @@ import {
   Minimize
 } from 'lucide-react';
 
-// Random tip sets for Image Queue empty state
-const ImageQueueTips: React.FC = () => {
-  const tipSets = [
-    // Set 1: Quick Start & Pro Tips
-    {
-      tips: [
-        {
-          icon: "🚀",
-          title: "Quick Start Tips",
-          gradient: "from-accent-blue/10 to-accent-cyan/10",
-          border: "border-accent-blue/30",
-          textColor: "text-accent-blue",
-          items: [
-            "Drag & drop images directly onto the canvas",
-            "Use \"Add Images\" button in the header",
-            "Process multiple images at once for efficiency"
-          ]
-        },
-        {
-          icon: "💡",
-          title: "Pro Tips",
-          gradient: "from-accent-green/10 to-accent-lime/10",
-          border: "border-accent-green/30",
-          textColor: "text-accent-green",
-          items: [
-            "Higher resolution images = better precision",
-            "PNG format preserves transparency",
-            "Good lighting reduces color variation"
-          ]
-        }
-      ]
-    },
-    // Set 2: Workflow & Quality
-    {
-      tips: [
-        {
-          icon: "🔄",
-          title: "Workflow Optimization",
-          gradient: "from-accent-purple/10 to-accent-pink/10",
-          border: "border-accent-purple/30",
-          textColor: "text-accent-purple",
-          items: [
-            "Sort similar images together for batch processing",
-            "Save intermediate results before major changes",
-            "Use queue fullscreen mode for better overview"
-          ]
-        },
-        {
-          icon: "⭐",
-          title: "Quality Guidelines",
-          gradient: "from-accent-orange/10 to-accent-red/10",
-          border: "border-accent-orange/30",
-          textColor: "text-accent-orange",
-          items: [
-            "Avoid blurry or low-contrast images",
-            "JPEG for smaller files, PNG for transparency",
-            "Even lighting prevents color variation issues"
-          ]
-        }
-      ]
-    },
-    // Set 3: Tools & Techniques
-    {
-      tips: [
-        {
-          icon: "🛠️",
-          title: "Tool Mastery",
-          gradient: "from-accent-cyan/10 to-accent-blue/10",
-          border: "border-accent-cyan/30",
-          textColor: "text-accent-cyan",
-          items: [
-            "Start with Magic Wand for precise selection",
-            "Use Color Stack for multiple color removal",
-            "Edge cleanup smooths jagged boundaries"
-          ]
-        },
-        {
-          icon: "🎯",
-          title: "Advanced Techniques",
-          gradient: "from-accent-lime/10 to-accent-green/10",
-          border: "border-accent-lime/30",
-          textColor: "text-accent-lime",
-          items: [
-            "Lower thresholds for precise removal",
-            "Higher thresholds for broader selection",
-            "Combine tools for complex backgrounds"
-          ]
-        }
-      ]
-    },
-    // Set 4: Troubleshooting & Performance
-    {
-      tips: [
-        {
-          icon: "🔧",
-          title: "Troubleshooting",
-          gradient: "from-accent-indigo/10 to-accent-purple/10",
-          border: "border-accent-indigo/30",
-          textColor: "text-accent-indigo",
-          items: [
-            "Color won't remove? Try different thresholds",
-            "Too much removed? Switch to manual mode",
-            "Jagged edges? Enable edge cleanup"
-          ]
-        },
-        {
-          icon: "⚡",
-          title: "Performance Tips",
-          gradient: "from-accent-yellow/10 to-accent-orange/10",
-          border: "border-accent-yellow/30",
-          textColor: "text-accent-yellow",
-          items: [
-            "Resize large images for faster processing",
-            "Process smaller areas for complex removal",
-            "Use auto mode for simple backgrounds"
-          ]
-        }
-      ]
-    },
-    // Set 5: Best Practices & Shortcuts
-    {
-      tips: [
-        {
-          icon: "🏆",
-          title: "Best Practices",
-          gradient: "from-accent-rose/10 to-accent-pink/10",
-          border: "border-accent-rose/30",
-          textColor: "text-accent-rose",
-          items: [
-            "Always keep backups of original images",
-            "Preview changes before applying permanently",
-            "Start conservative, increase settings gradually"
-          ]
-        },
-        {
-          icon: "⌨️",
-          title: "Keyboard Shortcuts",
-          gradient: "from-accent-teal/10 to-accent-cyan/10",
-          border: "border-accent-teal/30",
-          textColor: "text-accent-teal",
-          items: [
-            "Space + drag to pan around image",
-            "Mouse wheel to zoom in/out",
-            "Triple-click for auto-zoom to fit"
-          ]
-        }
-      ]
-    }
-  ];
-
-  // Select random tip set on component mount
-  const selectedTipSet = React.useMemo(() => {
-    return tipSets[Math.floor(Math.random() * tipSets.length)];
-  }, []);
-
-  return (
-    <div className="space-y-3 text-sm animate-fade-in">
-      {selectedTipSet.tips.map((tip, index) => (
-        <div key={index} className={`bg-gradient-to-r ${tip.gradient} border ${tip.border} rounded-lg p-3`}>
-          <div className={`font-medium ${tip.textColor} mb-2`}>
-            {tip.icon} <span>{tip.title}</span>
-          </div>
-          <div className="text-xs space-y-1">
-            {tip.items.map((item, itemIndex) => (
-              <div key={itemIndex}>• {item}</div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
 interface ImageQueueProps {
   images: ImageItem[];
   selectedImageId: string | null;
@@ -306,9 +133,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen
-        ? "fixed top-14 bottom-0 left-80 right-80 lg:left-96 lg:right-96 z-40"
+        ? "fixed inset-0 z-40 md:top-14 md:left-80 lg:md:left-96 md:right-96" // Responsive fullscreen with sidebar width
         : visible 
-          ? "h-48" 
+          ? "h-32 sm:h-40 md:h-48" 
           : "h-12"
     )}>
       {/* Header */}
@@ -439,15 +266,15 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
         <div className={cn(
           "overflow-y-auto",
           isFullscreen 
-            ? "h-[calc(100vh-8rem)]" // Full height minus header and queue header
-            : "h-36"
+            ? "h-[calc(100vh-8rem)] md:h-[calc(100vh-8rem)]" // Full height minus header and queue header
+            : "h-20 sm:h-28 md:h-36"
         )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center max-w-md mx-auto px-4">
+              <div className="text-center">
                 <div className="text-4xl mb-4">📁</div>
-                <p className="text-lg font-medium mb-4">No images in queue</p>
-                <ImageQueueTips />
+                <p className="text-lg font-medium mb-2">No images in queue</p>
+                <p className="text-sm">Add images or drag & drop files to get started</p>
               </div>
             </div>
           ) : (
@@ -474,9 +301,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Thumbnail */}
+                    {/* Thumbnail with Progress Overlay */}
                     <div className={cn(
-                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center relative",
                       isFullscreen ? "w-16 h-16" : "w-12 h-12"
                     )}>
                       <img
@@ -485,6 +312,20 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         className="w-full h-full object-cover rounded"
                         onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
                       />
+                      
+                      {/* Progress Overlay for Individual Image Processing */}
+                      {singleImageProgress && singleImageProgress.imageId === image.id && (
+                        <div className="absolute inset-0 bg-gray-800/75 rounded flex items-center justify-center">
+                          <div className="w-full px-1">
+                            <div className="bg-gray-600 h-1 rounded-full overflow-hidden">
+                              <div 
+                                className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                                style={{ width: `${singleImageProgress.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Info */}
