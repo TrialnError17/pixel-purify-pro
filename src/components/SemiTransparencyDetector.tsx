@@ -44,22 +44,7 @@ export const SemiTransparencyDetector: React.FC<SemiTransparencyDetectorProps> =
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const scanResult = await scanImageData(imageData);
     setHasScanned(true);
-    
-    // Show toast notification with results
-    if (scanResult.hasSemiTransparent) {
-      toast({
-        title: "⚠️ Semi-transparent pixels detected",
-        description: `Found ${scanResult.count.toLocaleString()} semi-transparent pixel${scanResult.count !== 1 ? 's' : ''}. Use overlay controls below to visualize them.`,
-        duration: 5000,
-      });
-    } else {
-      toast({
-        title: "✅ No semi-transparent pixels found",
-        description: "Your image is clean - no ghost pixels detected.",
-        duration: 3000,
-      });
-    }
-  }, [canvas, scanImageData, onFeatureInteraction, toast]);
+  }, [canvas, scanImageData, onFeatureInteraction]);
 
   // Update overlay when settings change
   const updateOverlay = useCallback(() => {
@@ -139,6 +124,32 @@ export const SemiTransparencyDetector: React.FC<SemiTransparencyDetectorProps> =
               )}
             </Button>
           </div>
+
+          {/* Results Display */}
+          {hasScanned && !isScanning && (
+            <div className="p-2 bg-gradient-to-r from-accent-orange/5 to-accent-red/5 rounded border border-accent-orange/20">
+              <div className="flex items-center gap-2">
+                {result.hasSemiTransparent ? (
+                  <AlertTriangle className="w-4 h-4 text-accent-orange flex-shrink-0" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 text-accent-green flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">
+                    {result.hasSemiTransparent 
+                      ? "Semi-transparent pixels detected" 
+                      : "No semi-transparent pixels found"
+                    }
+                  </div>
+                  {result.hasSemiTransparent && (
+                    <Badge variant="outline" className="mt-1 border-accent-orange text-accent-orange text-xs">
+                      {result.count.toLocaleString()} pixel{result.count !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Overlay Controls - Only show if pixels were detected */}
           {hasScanned && !isScanning && result.hasSemiTransparent && (
