@@ -342,6 +342,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
+  const [preInkStampImageData, setPreInkStampImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -1038,10 +1039,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       const needsInkStamp = effectSettings.inkStamp.enabled;
+      const needsInkStampRestore = !effectSettings.inkStamp.enabled && preInkStampImageData;
       const needsImageEffects = effectSettings.imageEffects.enabled;
       const needsImageEffectsRestore = !effectSettings.imageEffects.enabled && preImageEffectsImageData;
       
-      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects && !needsImageEffectsRestore) {
+      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsInkStampRestore && !needsImageEffects && !needsImageEffectsRestore) {
         console.log('Early return - no processing needed');
         return;
       }
@@ -1153,12 +1155,37 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
       
+      // Handle ink stamp restoration
+      if (needsInkStampRestore) {
+        console.log('Ink stamp disabled, restoring pre-ink-stamp state');
+        
+        // Restore the pre-ink-stamp state if available
+        if (preInkStampImageData) {
+          currentImageData = preInkStampImageData;
+          ctx.putImageData(currentImageData, 0, 0);
+          console.log('Restored pre-ink-stamp state');
+          
+          // Clear the pre-ink-stamp state since we're done with it
+          setPreInkStampImageData(null);
+        }
+      }
+      
       // Handle ink stamp and image effects
       if (needsInkStamp || needsImageEffects) {
         console.log('Manual edits detected, applying ink stamp and/or image effects');
         
         // Get the current canvas data after speckle processing
         currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        
+        // Store pre-ink-stamp state if we haven't already and ink stamp is enabled
+        if (needsInkStamp && !preInkStampImageData) {
+          setPreInkStampImageData(new ImageData(
+            new Uint8ClampedArray(currentImageData.data),
+            currentImageData.width,
+            currentImageData.height
+          ));
+          console.log('Stored pre-ink-stamp state');
+        }
         
         // Apply ink stamp effect if enabled
         if (needsInkStamp) {
@@ -1542,6 +1569,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Clear any stored pre-edge-cleanup and pre-speckle state since we're making new manual edits  
       setPreEdgeCleanupImageData(null);
       setPreSpeckleImageData(null);
+      setPreInkStampImageData(null);
       
       // Store the result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1559,6 +1587,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Clear any stored pre-edge-cleanup and pre-speckle state since we're making new manual edits
       setPreEdgeCleanupImageData(null);
       setPreSpeckleImageData(null);
+      setPreInkStampImageData(null);
       
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
@@ -1629,10 +1658,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setManualImageData(newImageData);
       
       // Clear ALL effect states to ensure clean processing with fresh manual edits
-      if (preSpeckleImageData || preEdgeCleanupImageData || preImageEffectsImageData) {
+      if (preSpeckleImageData || preEdgeCleanupImageData || preImageEffectsImageData || preInkStampImageData) {
         setPreSpeckleImageData(null);
         setPreEdgeCleanupImageData(null);
         setPreImageEffectsImageData(null);
+        setPreInkStampImageData(null);
         console.log('Cleared all effect states for fresh magic wand processing');
       }
       
