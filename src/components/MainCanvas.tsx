@@ -1013,6 +1013,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       console.log('Early return - missing requirements or processing in progress');
       return;
     }
+
+    // Early return guard to prevent overwriting eraser edits
+    if (
+      hasManualEditsRef.current === true &&
+      previousTool === 'eraser'
+    ) {
+      console.log('Early return - eraser edits protection active');
+      return;
+    }
     
     // Skip ALL processing if color removal is disabled and no other effects are enabled
     const hasAnyProcessingEnabled = colorSettings.enabled || 
