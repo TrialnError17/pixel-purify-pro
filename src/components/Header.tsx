@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, ImagePlus, Download, Undo, Redo, Package, Loader2 } from 'lucide-react';
+import { FolderPlus, ImagePlus, Loader2 } from 'lucide-react';
 
 interface HeaderProps {
   onAddImages: () => void;
@@ -30,15 +30,40 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="h-14 bg-black border-b border-border flex items-center justify-between px-4 shadow-panel">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <img 
-            src="/lovable-uploads/692a11d9-d069-4748-a1fa-f3281996fa0a.png" 
-            alt="iScalePOD Logo" 
-            className="h-8 w-auto"
-          />
-          <h1 className="text-lg font-semibold text-foreground">
-            Image Color Remover
-          </h1>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/692a11d9-d069-4748-a1fa-f3281996fa0a.png" 
+              alt="iScalePOD Logo" 
+              className="h-8 w-auto"
+            />
+            <h1 className="text-lg font-semibold text-foreground">
+              Image Color Remover
+            </h1>
+          </div>
+          
+          {/* Add Images and Folder Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAddImages}
+              className="border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"
+            >
+              <ImagePlus className="w-4 h-4 mr-1" />
+              Images
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onAddFolder}
+              className="border-accent-green text-accent-green hover:bg-accent-green/10"
+            >
+              <FolderPlus className="w-4 h-4 mr-1" />
+              Folder
+            </Button>
+          </div>
         </div>
         
         {/* Processing Indicator */}
@@ -59,74 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAddImages}
-          disabled={isProcessing}
-          className="flex items-center gap-2"
-        >
-          <ImagePlus className="w-4 h-4" />
-          Add Images
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAddFolder}
-          disabled={isProcessing}
-          className="flex items-center gap-2"
-        >
-          <FolderPlus className="w-4 h-4" />
-          Add Folder
-        </Button>
-        
-        <div className="w-px h-6 bg-border mx-2" />
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onDownloadPNG}
-          disabled={!canDownload || isProcessing}
-          className="flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          PNG
-        </Button>
-        
-        {(onUndo || onRedo) && (
-          <>
-            <div className="w-px h-6 bg-border mx-2" />
-            
-            {onUndo && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onUndo}
-                disabled={!canUndo || isProcessing}
-                className="flex items-center gap-2"
-                title="Undo last action"
-              >
-                <Undo className="w-4 h-4" />
-                Undo
-              </Button>
-            )}
-            
-            {onRedo && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRedo}
-                disabled={!canRedo || isProcessing}
-                className="flex items-center gap-2"
-                title="Redo last undone action"
-              >
-                <Redo className="w-4 h-4" />
-                Redo
-              </Button>
-            )}
-          </>
-        )}
+        {/* Empty space for right side */}
       </div>
     </header>
   );

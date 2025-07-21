@@ -89,6 +89,11 @@
       hsl(189 94% 60%), 
       hsl(217 91% 60%));
     
+    --gradient-effect: linear-gradient(135deg, 
+      hsl(330 81% 60%), 
+      hsl(290 84% 60%), 
+      hsl(263 70% 60%));
+    
     /* Professional shadows with color hints */
     --shadow-panel: 0 4px 20px -4px hsl(220 13% 4% / 0.6);
     --shadow-button: 0 2px 8px -2px hsl(217 91% 60% / 0.3);

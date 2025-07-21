@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 
 export interface UndoAction {
@@ -20,15 +21,23 @@ export const useUndoManager = () => {
       timestamp: Date.now()
     };
 
-    console.log('Adding undo action:', undoAction.description, 'Stack size:', undoStack.length + 1);
-    setUndoStack(prev => [...prev, undoAction]);
+    console.log('Adding undo action:', undoAction.description);
+    setUndoStack(prev => {
+      const newStack = [...prev, undoAction];
+      console.log('Undo stack size:', newStack.length);
+      return newStack;
+    });
     setRedoStack([]); // Clear redo stack when new action is added
-  }, [undoStack]);
+  }, []);
 
   const undo = useCallback(() => {
-    if (undoStack.length === 0) return false;
+    if (undoStack.length === 0) {
+      console.log('Cannot undo: stack is empty');
+      return false;
+    }
 
     const lastAction = undoStack[undoStack.length - 1];
+    console.log('Undoing action:', lastAction.description);
     
     try {
       lastAction.undo();
@@ -40,6 +49,7 @@ export const useUndoManager = () => {
         setRedoStack(prev => [...prev, lastAction]);
       }
       
+      console.log('Undo successful');
       return true;
     } catch (error) {
       console.error('Failed to undo action:', error);
@@ -48,11 +58,19 @@ export const useUndoManager = () => {
   }, [undoStack]);
 
   const redo = useCallback(() => {
-    if (redoStack.length === 0) return false;
+    if (redoStack.length === 0) {
+      console.log('Cannot redo: stack is empty');
+      return false;
+    }
 
     const lastRedoAction = redoStack[redoStack.length - 1];
     
-    if (!lastRedoAction.redo) return false;
+    if (!lastRedoAction.redo) {
+      console.log('Cannot redo: no redo function');
+      return false;
+    }
+
+    console.log('Redoing action:', lastRedoAction.description);
 
     try {
       lastRedoAction.redo();
@@ -60,6 +78,7 @@ export const useUndoManager = () => {
       setRedoStack(prev => prev.slice(0, -1));
       setUndoStack(prev => [...prev, lastRedoAction]);
       
+      console.log('Redo successful');
       return true;
     } catch (error) {
       console.error('Failed to redo action:', error);
@@ -68,6 +87,7 @@ export const useUndoManager = () => {
   }, [redoStack]);
 
   const clearHistory = useCallback(() => {
+    console.log('Clearing undo/redo history');
     setUndoStack([]);
     setRedoStack([]);
   }, []);
@@ -78,8 +98,6 @@ export const useUndoManager = () => {
 
   const canUndo = undoStack.length > 0;
   const canRedo = redoStack.length > 0;
-  
-  console.log('Undo manager state - canUndo:', canUndo, 'undoStack.length:', undoStack.length);
 
   return {
     undoStack,
