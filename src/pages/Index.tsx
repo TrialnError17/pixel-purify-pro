@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
-import MainCanvas from '@/components/MainCanvas';
+import { MainCanvas } from '@/components/MainCanvas';
 import { ImageQueue } from '@/components/ImageQueue';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
@@ -91,27 +91,20 @@ export interface ContiguousToolSettings {
   threshold: number;
 }
 
-export interface EraserSettings {
-  brushSize: number;
-}
-
 const Index = () => {
   console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
-  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
+  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Add erasingInProgressRef to prevent auto-processing during erasing
-  const erasingInProgressRef = useRef<boolean>(false);
-  
   const [colorSettings, setColorSettings] = useState<ColorRemovalSettings>({
-    enabled: false,
+    enabled: true,
     mode: 'auto',
     targetColor: '#ffffff',
     threshold: 30,
@@ -185,10 +178,6 @@ const Index = () => {
       enabled: false,
       iterations: 1,
     },
-  });
-
-  const [eraserSettings, setEraserSettings] = useState<EraserSettings>({
-    brushSize: 10
   });
 
   // Track if edge trim was auto-disabled by ink stamp
@@ -468,8 +457,6 @@ const Index = () => {
                 undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
               });
             }}
-            eraserSettings={eraserSettings}
-            onEraserSettingsChange={setEraserSettings}
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
@@ -488,8 +475,6 @@ const Index = () => {
               effectSettings={effectSettings}
               speckleSettings={speckleSettings}
               edgeCleanupSettings={edgeCleanupSettings}
-              eraserSettings={eraserSettings}
-              erasingInProgressRef={erasingInProgressRef}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 

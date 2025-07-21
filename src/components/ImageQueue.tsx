@@ -306,7 +306,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen
-        ? "fixed top-14 bottom-0 left-0 right-0 z-40"
+        ? "fixed top-14 bottom-0 left-80 right-80 lg:left-96 lg:right-96 z-40"
         : visible 
           ? "h-48" 
           : "h-12"
@@ -348,10 +348,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleVisible();
-            }}
+            onClick={onToggleVisible}
             className="flex items-center gap-2"
           >
             {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -430,7 +427,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
               </div>
               <Progress 
                 value={singleImageProgress.progress} 
-                className="h-1 bg-background"
+                className="h-2 bg-background"
               />
             </div>
           </div>
@@ -454,22 +451,34 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
               </div>
             </div>
           ) : (
-            <div className="grid gap-3 p-4 auto-rows-max" 
+            <div className={cn(
+              "grid gap-3 p-4",
+              isFullscreen 
+                ? "grid-cols-auto-fit-large" 
+                : "grid-cols-auto-fit",
+              "auto-rows-max"
+            )} 
             style={{ 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' 
+              gridTemplateColumns: isFullscreen 
+                ? 'repeat(auto-fill, minmax(280px, 1fr))' 
+                : 'repeat(auto-fill, minmax(200px, 1fr))' 
             }}>
               {images.map((image) => (
                 <Card
                   key={image.id}
                   className={cn(
-                    "relative cursor-pointer transition-all hover:bg-accent/5 border p-3",
+                    "relative cursor-pointer transition-all hover:bg-accent/5 border",
+                    isFullscreen ? "p-4" : "p-3",
                     selectedImageId === image.id ? "ring-2 ring-primary border-primary" : "border-border/50"
                   )}
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
                     {/* Thumbnail */}
-                    <div className="bg-muted rounded flex-shrink-0 flex items-center justify-center w-12 h-12">
+                    <div className={cn(
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
+                      isFullscreen ? "w-16 h-16" : "w-12 h-12"
+                    )}>
                       <img
                         src={URL.createObjectURL(image.file)}
                         alt={image.name}
@@ -482,7 +491,10 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         {getStatusIcon(image.status)}
-                        <span className="font-medium truncate text-sm">{image.name}</span>
+                        <span className={cn(
+                          "font-medium truncate",
+                          isFullscreen ? "text-base" : "text-sm"
+                        )}>{image.name}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 mb-2">
@@ -490,16 +502,24 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         <span className="text-xs text-muted-foreground">
                           {(image.file.size / 1024 / 1024).toFixed(1)} MB
                         </span>
+                        {isFullscreen && (
+                          <span className="text-xs text-muted-foreground">
+                            {image.file.type}
+                          </span>
+                        )}
                       </div>
                       
                       {image.status === 'processing' && (
                         <div className="space-y-1">
-                          <Progress value={image.progress} className="h-1" />
+                          <Progress value={image.progress} className="h-2" />
                         </div>
                       )}
                       
                       {image.error && (
-                        <div className="text-error mt-1 text-xs">
+                        <div className={cn(
+                          "text-error mt-1",
+                          isFullscreen ? "text-sm" : "text-xs"
+                        )}>
                           <p>{image.error}</p>
                         </div>
                       )}
@@ -516,10 +536,13 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                             onProcessImage(image);
                           }}
                           disabled={isProcessing}
-                          className="p-0 w-8 h-8"
+                          className={cn(
+                            "p-0",
+                            isFullscreen ? "w-10 h-10" : "w-8 h-8"
+                          )}
                           title="Process this image"
                         >
-                          <Play className="w-3 h-3" />
+                          <Play className={cn(isFullscreen ? "w-4 h-4" : "w-3 h-3")} />
                         </Button>
                       )}
                       
@@ -531,10 +554,13 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                           onRemoveImage(image.id);
                         }}
                         disabled={isProcessing}
-                        className="p-0 text-muted-foreground hover:text-destructive w-8 h-8"
+                        className={cn(
+                          "p-0 text-muted-foreground hover:text-destructive",
+                          isFullscreen ? "w-10 h-10" : "w-8 h-8"
+                        )}
                         title="Remove this image"
                       >
-                        <X className="w-3 h-3" />
+                        <X className={cn(isFullscreen ? "w-4 h-4" : "w-3 h-3")} />
                       </Button>
                     </div>
                   </div>

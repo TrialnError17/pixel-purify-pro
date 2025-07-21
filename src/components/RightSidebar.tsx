@@ -3,7 +3,7 @@ import { ColorRemovalSettings, EffectSettings, EdgeCleanupSettings } from '@/pag
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
 export interface RightSidebarProps {
-  currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
+  currentTool: 'pan' | 'color-stack' | 'magic-wand';
   colorSettings: ColorRemovalSettings;
   speckleSettings: SpeckleSettings;
   effectSettings: EffectSettings;

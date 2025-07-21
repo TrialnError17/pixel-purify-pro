@@ -8,10 +8,9 @@ import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
+import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
-import { useToast } from '@/hooks/use-toast';
 
 interface LeftSidebarProps {
   settings: ColorRemovalSettings;
@@ -25,9 +24,7 @@ interface LeftSidebarProps {
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
   edgeCleanupSettings: EdgeCleanupSettings;
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
-  eraserSettings: EraserSettings;
-  onEraserSettingsChange: (settings: EraserSettings) => void;
-  currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
+  currentTool: 'pan' | 'color-stack' | 'magic-wand';
   onAddImages: () => void;
   onAddFolder: () => void;
   onFeatureInteraction: (feature: string) => void;
@@ -45,17 +42,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onContiguousSettingsChange,
   edgeCleanupSettings,
   onEdgeCleanupSettingsChange,
-  eraserSettings,
-  onEraserSettingsChange,
   currentTool,
   onAddImages,
   onAddFolder,
   onFeatureInteraction
 }) => {
-  const { toast } = useToast();
-  
-  // Check if speckle mode is active (disables other tools)
-  const isSpeckleModeActive = speckleSettings.enabled;
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
   };
@@ -71,15 +62,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       updates.highlightSpecks = false;
     } else if (updates.removeSpecks === false && !speckleSettings.highlightSpecks) {
       updates.highlightSpecks = true; // Turn highlighting back on when remove is disabled
-    }
-    
-    // Show notification when speckle mode is enabled
-    if (updates.enabled === true && !speckleSettings.enabled) {
-      toast({
-        title: "🔧 Speckle Mode Activated",
-        description: "Speckle tools are designed to remove small artifacts, then turn off before using other tools due to their heavy processing nature.",
-        duration: 5000,
-      });
     }
     
     onSpeckleSettingsChange({ ...speckleSettings, ...updates });
@@ -344,26 +326,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       
       <div className="flex-1 p-3 space-y-4 overflow-y-auto min-h-0">
         {/* Background Enable Toggle */}
-        <Card className={`bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 shadow-colorful ${isSpeckleModeActive ? 'opacity-50' : ''}`}>
+        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 shadow-colorful">
           <CardHeader className="pt-2 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Switch
                 checked={effectSettings.background.enabled}
                 onCheckedChange={(enabled) => updateBackground({ enabled })}
-                disabled={isSpeckleModeActive}
                 className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-blue"
               />
               <span className="bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent font-semibold">
                 🎨 Enable Background
               </span>
-              {isSpeckleModeActive && (
-                <span className="text-xs text-muted-foreground ml-auto">(Disabled in Speckle Mode)</span>
-              )}
             </CardTitle>
           </CardHeader>
         </Card>
 
-        {effectSettings.background.enabled && !isSpeckleModeActive && (
+        {effectSettings.background.enabled && (
           <>
             {/* Background Color Picker */}
         <Card className="bg-gradient-to-br from-accent-yellow/10 to-accent-orange/10 border-accent-orange/30">
@@ -409,43 +387,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </>
         )}
 
-        {/* Eraser Tool Settings - only shown when eraser tool is selected */}
-        {currentTool === 'eraser' && (
-          <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30 shadow-colorful">
-            <CardHeader className="pt-2 pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <span className="bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold flex items-center gap-1">
-                  🎨 Eraser Tool
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent">
-                  Brush Size: {eraserSettings.brushSize}px
-                </Label>
-                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <SliderWithInput
-                    value={[eraserSettings.brushSize]}
-                    onValueChange={([brushSize]) => {
-                      onEraserSettingsChange({ brushSize });
-                      onFeatureInteraction('eraser-size');
-                    }}
-                    min={1}
-                    max={50}
-                    step={1}
-                    buttonStep={1}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
-                  />
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground p-2 bg-accent-red/5 rounded border border-accent-red/20">
-                🖌️ Click and drag to erase pixels. Use smaller brush for precision, larger for broad strokes.
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Magic Wand Tool Settings - only shown when magic wand tool is selected */}
         {currentTool === 'magic-wand' && (
           <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30 shadow-colorful">
@@ -477,22 +418,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         )}
 
         {/* Color Removal Section */}
-        <Card className={`bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30 shadow-colorful ${isSpeckleModeActive ? 'opacity-50' : ''}`}>
+        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-pink/10 border-accent-purple/30 shadow-colorful">
           <CardHeader className="pt-2 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Switch
                 checked={settings.enabled}
                 onCheckedChange={(enabled) => updateSettings({ enabled })}
-                disabled={isSpeckleModeActive}
                 className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-pink"
               />
               <span className="bg-gradient-to-r from-accent-purple to-accent-pink bg-clip-text text-transparent font-semibold">
                 🎯 Color Removal
               </span>
-              {isSpeckleModeActive && (
-                <span className="text-xs text-muted-foreground ml-auto">(Disabled in Speckle Mode)</span>
-              )}
-              {settings.enabled && !isSpeckleModeActive && (
+              {settings.enabled && (
                 <div className="flex items-center gap-1 ml-auto">
                   <Checkbox
                     id="contiguous-checkbox"
@@ -509,7 +446,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </CardHeader>
         </Card>
 
-        {settings.enabled && !isSpeckleModeActive && (
+        {settings.enabled && (
           <>
             <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
               <CardHeader className="pt-2 pb-3">
@@ -683,26 +620,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         )}
 
         {/* Edge Trimming Section */}
-            <Card className={`bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful ${isSpeckleModeActive ? 'opacity-50' : ''}`}>
+            <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Switch
                     checked={edgeCleanupSettings.enabled}
                     onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
-                    disabled={isSpeckleModeActive}
                     className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
                   />
                   <Scissors className="w-4 h-4 text-accent-purple" />
                   <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
                     Edge Trimming
                   </span>
-                  {isSpeckleModeActive && (
-                    <span className="text-xs text-muted-foreground ml-auto">(Disabled in Speckle Mode)</span>
-                  )}
                 </CardTitle>
               </CardHeader>
               
-              {edgeCleanupSettings.enabled && !isSpeckleModeActive && (
+              {edgeCleanupSettings.enabled && (
                 <CardContent className="pt-0 space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
@@ -810,26 +743,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </Card>
 
         {/* Ink Stamp Effect */}
-        <Card className={`bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30 ${isSpeckleModeActive ? 'opacity-50' : ''}`}>
+        <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
           <CardHeader className="pt-2 pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Switch
                 checked={effectSettings.inkStamp.enabled}
                 onCheckedChange={(enabled) => updateInkStamp({ enabled })}
-                disabled={isSpeckleModeActive}
                 className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
               />
               <Stamp className="w-4 h-4 text-accent-red" />
               <span className="bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
                 Ink Stamp Effect
               </span>
-              {isSpeckleModeActive && (
-                <span className="text-xs text-muted-foreground ml-auto">(Disabled in Speckle Mode)</span>
-              )}
             </CardTitle>
           </CardHeader>
           
-          {effectSettings.inkStamp.enabled && !isSpeckleModeActive && (
+          {effectSettings.inkStamp.enabled && (
             <CardContent className="pt-0 space-y-4">
               <div>
                 <Label className="text-sm font-medium mb-2 block bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent">
@@ -875,26 +804,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         </Card>
 
         {/* Image Effects */}
-        <Card className={`bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30 ${isSpeckleModeActive ? 'opacity-50' : ''}`}>
+        <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-blue/10 border-accent-purple/30">
           <CardHeader className="pt-2 pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Switch
                 checked={effectSettings.imageEffects.enabled}
                 onCheckedChange={(enabled) => updateImageEffects({ enabled })}
-                disabled={isSpeckleModeActive}
                 className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-blue"
               />
               <Palette className="w-4 h-4 text-accent-purple" />
               <span className="bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent font-semibold">
                 Image Effects
               </span>
-              {isSpeckleModeActive && (
-                <span className="text-xs text-muted-foreground ml-auto">(Disabled in Speckle Mode)</span>
-              )}
             </CardTitle>
           </CardHeader>
           
-          {effectSettings.imageEffects.enabled && !isSpeckleModeActive && (
+          {effectSettings.imageEffects.enabled && (
             <CardContent className="pt-0 space-y-4">
               {/* Graphic EQ Style Controls */}
               <div className="p-4 bg-gradient-to-br from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/30 shadow-lg">
