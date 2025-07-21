@@ -20,10 +20,15 @@ export const useUndoManager = () => {
       timestamp: Date.now()
     };
 
-    console.log('Adding undo action:', undoAction.description, 'Stack size:', undoStack.length + 1);
-    setUndoStack(prev => [...prev, undoAction]);
+    setUndoStack(prev => {
+      const newStack = [...prev, undoAction];
+      // Limit stack size to 20 items for performance
+      const limitedStack = newStack.length > 20 ? newStack.slice(-20) : newStack;
+      console.log('Adding undo action:', undoAction.description, 'Stack size:', limitedStack.length);
+      return limitedStack;
+    });
     setRedoStack([]); // Clear redo stack when new action is added
-  }, [undoStack]);
+  }, []); // Remove undoStack dependency to prevent infinite loop
 
   const undo = useCallback(() => {
     if (undoStack.length === 0) return false;
@@ -79,7 +84,7 @@ export const useUndoManager = () => {
   const canUndo = undoStack.length > 0;
   const canRedo = redoStack.length > 0;
   
-  console.log('Undo manager state - canUndo:', canUndo, 'undoStack.length:', undoStack.length);
+  // Remove excessive logging to reduce console noise
 
   return {
     undoStack,
