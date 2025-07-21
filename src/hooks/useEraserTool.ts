@@ -263,19 +263,21 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     if (e) e.preventDefault();
   }, [options.onImageChange, options.manualImageDataRef, options.erasingInProgressRef]);
 
-  // Get brush cursor style
+  // Get brush cursor style - adjust size based on zoom to show true pixel area
   const getBrushCursor = useCallback(() => {
-    const size = Math.max(8, Math.min(options.brushSize, 32)); // Clamp cursor size
-    const radius = size / 2;
+    // Calculate the display size: eraser size in image pixels divided by zoom
+    const displaySize = options.brushSize / Math.max(options.zoom, 0.01);
+    const clampedSize = Math.max(8, Math.min(displaySize, 64)); // Clamp for usability
+    const radius = clampedSize / 2;
     const svg = `
-      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${clampedSize}" height="${clampedSize}" viewBox="0 0 ${clampedSize} ${clampedSize}" xmlns="http://www.w3.org/2000/svg">
         <circle cx="${radius}" cy="${radius}" r="${radius - 1}" fill="none" stroke="red" stroke-width="1"/>
         <circle cx="${radius}" cy="${radius}" r="1" fill="red"/>
       </svg>
     `;
     const encodedSvg = encodeURIComponent(svg);
     return `url("data:image/svg+xml,${encodedSvg}") ${radius} ${radius}, crosshair`;
-  }, [options.brushSize]);
+  }, [options.brushSize, options.zoom]);
 
   return {
     startErasing,
