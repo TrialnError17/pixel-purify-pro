@@ -1,9 +1,11 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ImageItem } from '@/pages/Index';
+import { Trash2 } from 'lucide-react';
 import { 
   ChevronUp, 
   ChevronDown, 
@@ -13,9 +15,183 @@ import {
   CheckCircle, 
   AlertCircle,
   Clock,
-  Loader2
+  Loader2,
+  Maximize,
+  Minimize
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
+// Random tip sets for Image Queue empty state
+const ImageQueueTips: React.FC = () => {
+  const tipSets = [
+    // Set 1: Quick Start & Pro Tips
+    {
+      tips: [
+        {
+          icon: "🚀",
+          title: "Quick Start Tips",
+          gradient: "from-accent-blue/10 to-accent-cyan/10",
+          border: "border-accent-blue/30",
+          textColor: "text-accent-blue",
+          items: [
+            "Drag & drop images directly onto the canvas",
+            "Use \"Add Images\" button in the header",
+            "Process multiple images at once for efficiency"
+          ]
+        },
+        {
+          icon: "💡",
+          title: "Pro Tips",
+          gradient: "from-accent-green/10 to-accent-lime/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          items: [
+            "Higher resolution images = better precision",
+            "PNG format preserves transparency",
+            "Good lighting reduces color variation"
+          ]
+        }
+      ]
+    },
+    // Set 2: Workflow & Quality
+    {
+      tips: [
+        {
+          icon: "🔄",
+          title: "Workflow Optimization",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          items: [
+            "Sort similar images together for batch processing",
+            "Save intermediate results before major changes",
+            "Use queue fullscreen mode for better overview"
+          ]
+        },
+        {
+          icon: "⭐",
+          title: "Quality Guidelines",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          items: [
+            "Avoid blurry or low-contrast images",
+            "JPEG for smaller files, PNG for transparency",
+            "Even lighting prevents color variation issues"
+          ]
+        }
+      ]
+    },
+    // Set 3: Tools & Techniques
+    {
+      tips: [
+        {
+          icon: "🛠️",
+          title: "Tool Mastery",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          items: [
+            "Start with Magic Wand for precise selection",
+            "Use Color Stack for multiple color removal",
+            "Edge cleanup smooths jagged boundaries"
+          ]
+        },
+        {
+          icon: "🎯",
+          title: "Advanced Techniques",
+          gradient: "from-accent-lime/10 to-accent-green/10",
+          border: "border-accent-lime/30",
+          textColor: "text-accent-lime",
+          items: [
+            "Lower thresholds for precise removal",
+            "Higher thresholds for broader selection",
+            "Combine tools for complex backgrounds"
+          ]
+        }
+      ]
+    },
+    // Set 4: Troubleshooting & Performance
+    {
+      tips: [
+        {
+          icon: "🔧",
+          title: "Troubleshooting",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          items: [
+            "Color won't remove? Try different thresholds",
+            "Too much removed? Switch to manual mode",
+            "Jagged edges? Enable edge cleanup"
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Performance Tips",
+          gradient: "from-accent-yellow/10 to-accent-orange/10",
+          border: "border-accent-yellow/30",
+          textColor: "text-accent-yellow",
+          items: [
+            "Resize large images for faster processing",
+            "Process smaller areas for complex removal",
+            "Use auto mode for simple backgrounds"
+          ]
+        }
+      ]
+    },
+    // Set 5: Best Practices & Shortcuts
+    {
+      tips: [
+        {
+          icon: "🏆",
+          title: "Best Practices",
+          gradient: "from-accent-rose/10 to-accent-pink/10",
+          border: "border-accent-rose/30",
+          textColor: "text-accent-rose",
+          items: [
+            "Always keep backups of original images",
+            "Preview changes before applying permanently",
+            "Start conservative, increase settings gradually"
+          ]
+        },
+        {
+          icon: "⌨️",
+          title: "Keyboard Shortcuts",
+          gradient: "from-accent-teal/10 to-accent-cyan/10",
+          border: "border-accent-teal/30",
+          textColor: "text-accent-teal",
+          items: [
+            "Space + drag to pan around image",
+            "Mouse wheel to zoom in/out",
+            "Triple-click for auto-zoom to fit"
+          ]
+        }
+      ]
+    }
+  ];
+
+  // Select random tip set on component mount
+  const selectedTipSet = React.useMemo(() => {
+    return tipSets[Math.floor(Math.random() * tipSets.length)];
+  }, []);
+
+  return (
+    <div className="space-y-3 text-sm animate-fade-in">
+      {selectedTipSet.tips.map((tip, index) => (
+        <div key={index} className={`bg-gradient-to-r ${tip.gradient} border ${tip.border} rounded-lg p-3`}>
+          <div className={`font-medium ${tip.textColor} mb-2`}>
+            {tip.icon} <span>{tip.title}</span>
+          </div>
+          <div className="text-xs space-y-1">
+            {tip.items.map((item, itemIndex) => (
+              <div key={itemIndex}>• {item}</div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface ImageQueueProps {
   images: ImageItem[];
@@ -26,6 +202,18 @@ interface ImageQueueProps {
   onRemoveImage: (id: string) => void;
   onProcessAll: () => void;
   onProcessImage: (image: ImageItem) => void;
+  onClearAll: () => void;
+  onCancelProcessing?: () => void;
+  isProcessing?: boolean;
+  forceFullscreen?: boolean;
+  singleImageProgress?: { imageId: string; progress: number } | null;
+  processingProgress?: {
+    current: number;
+    total: number;
+    currentImage?: string;
+  };
+  isFullscreen?: boolean;
+  onSetFullscreen?: (value: boolean) => void;
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -36,31 +224,74 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onSelectImage,
   onRemoveImage,
   onProcessAll,
-  onProcessImage
+  onProcessImage,
+  onClearAll,
+  onCancelProcessing,
+  isProcessing = false,
+  forceFullscreen = false,
+  singleImageProgress,
+  processingProgress,
+  isFullscreen: externalIsFullscreen,
+  onSetFullscreen
 }) => {
+  const [internalIsFullscreen, setInternalIsFullscreen] = React.useState(false);
+  
+  // Use external fullscreen state if provided, otherwise use internal state
+  const isFullscreen = externalIsFullscreen !== undefined ? externalIsFullscreen : internalIsFullscreen;
+  const setIsFullscreen = onSetFullscreen || setInternalIsFullscreen;
+  
+
+  // Auto-switch to fullscreen when processing starts
+  React.useEffect(() => {
+    if (forceFullscreen && isProcessing) {
+      setIsFullscreen(true);
+    } else if (!isProcessing && forceFullscreen) {
+      // Keep fullscreen until processing is completely done
+      setIsFullscreen(false);
+    }
+  }, [forceFullscreen, isProcessing]);
+  
+  // Handle escape key to exit fullscreen
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isFullscreen]);
+
   const getStatusIcon = (status: ImageItem['status']) => {
     switch (status) {
       case 'pending':
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
+        return <Clock className="w-4 h-4 text-accent-yellow" />;
       case 'processing':
-        return <Loader2 className="w-4 h-4 text-processing animate-spin" />;
+        return <Loader2 className="w-4 h-4 text-accent-cyan animate-spin" />;
       case 'completed':
-        return <CheckCircle className="w-4 h-4 text-success" />;
+        return <CheckCircle className="w-4 h-4 text-accent-green" />;
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-error" />;
+        return <AlertCircle className="w-4 h-4 text-accent-red" />;
     }
   };
 
   const getStatusBadge = (status: ImageItem['status']) => {
-    const variants = {
-      pending: 'secondary',
-      processing: 'outline',
-      completed: 'default',
-      error: 'destructive'
-    } as const;
+    const badgeConfig = {
+      pending: { variant: 'secondary' as const, className: 'bg-gradient-to-r from-accent-yellow/20 to-accent-orange/20 text-accent-yellow border-accent-yellow/30' },
+      processing: { variant: 'outline' as const, className: 'bg-gradient-processing text-white border-accent-cyan' },
+      completed: { variant: 'default' as const, className: 'bg-gradient-success text-white' },
+      error: { variant: 'destructive' as const, className: 'bg-gradient-error text-white' }
+    };
 
+    const config = badgeConfig[status];
     return (
-      <Badge variant={variants[status]} className="text-xs">
+      <Badge variant={config.variant} className={cn("text-xs", config.className)}>
         {status}
       </Badge>
     );
@@ -74,11 +305,46 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   return (
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
-      visible ? "h-48" : "h-12"
+      isFullscreen
+        ? "fixed top-14 bottom-0 left-80 right-80 lg:left-96 lg:right-96 z-40"
+        : visible 
+          ? "h-48" 
+          : "h-12"
     )}>
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Process & Clear All buttons on the left */}
+          {images.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onProcessAll}
+                disabled={pendingCount === 0 || isProcessing}
+                className="flex items-center gap-2"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PlayCircle className="w-4 h-4" />
+                )}
+                Process All ({pendingCount})
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearAll}
+                disabled={isProcessing}
+                className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All
+              </Button>
+            </>
+          )}
+          
           <Button
             variant="ghost"
             size="sm"
@@ -89,64 +355,130 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
             Image Queue ({images.length})
           </Button>
           
-          {images.length > 0 && (
+          {isProcessing && processingProgress && (
+            <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm font-medium">
+                Processing {processingProgress.current}/{processingProgress.total}
+              </span>
+            </div>
+          )}
+          
+          {images.length > 0 && (!isFullscreen || !isProcessing) && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               {pendingCount > 0 && <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {pendingCount}
+                <Clock className="w-3 h-3" />
+                {pendingCount} pending
               </span>}
               {processingCount > 0 && <span className="flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" /> {processingCount}
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {processingCount} processing
               </span>}
               {completedCount > 0 && <span className="flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> {completedCount}
+                <CheckCircle className="w-3 h-3" />
+                {completedCount} completed
               </span>}
               {errorCount > 0 && <span className="flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> {errorCount}
+                <AlertCircle className="w-3 h-3" />
+                {errorCount} failed
               </span>}
             </div>
           )}
         </div>
         
-        {images.length > 0 && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {isFullscreen && isProcessing && onCancelProcessing && (
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={onProcessAll}
-              disabled={pendingCount === 0}
+              onClick={onCancelProcessing}
               className="flex items-center gap-2"
             >
-              <PlayCircle className="w-4 h-4" />
-              Process All ({pendingCount})
+              <X className="w-4 h-4" />
+              Cancel Processing
             </Button>
-          </div>
-        )}
+          )}
+          
+          {/* Fullscreen Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            disabled={forceFullscreen && isProcessing}
+            className="flex items-center gap-2"
+            title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            {isFullscreen ? "Exit" : "Fullscreen"}
+          </Button>
+        </div>
       </div>
 
+      {/* Single Image Progress Bar - appears beneath header when downloading from preview */}
+      {singleImageProgress && (
+        <div className="px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-primary">
+                  Downloading image...
+                </span>
+              </div>
+              <Progress 
+                value={singleImageProgress.progress} 
+                className="h-2 bg-background"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Queue Content */}
-      {visible && (
-        <div className="h-36 overflow-y-auto">
+      {(visible || isFullscreen) && (
+        <div className={cn(
+          "overflow-y-auto",
+          isFullscreen 
+            ? "h-[calc(100vh-8rem)]" // Full height minus header and queue header
+            : "h-36"
+        )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <div className="text-2xl mb-2">📁</div>
-                <p className="text-sm">No images in queue</p>
+              <div className="text-center max-w-md mx-auto px-4">
+                <div className="text-4xl mb-4">📁</div>
+                <p className="text-lg font-medium mb-4">No images in queue</p>
+                <ImageQueueTips />
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-auto-fit gap-3 p-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            <div className={cn(
+              "grid gap-3 p-4",
+              isFullscreen 
+                ? "grid-cols-auto-fit-large" 
+                : "grid-cols-auto-fit",
+              "auto-rows-max"
+            )} 
+            style={{ 
+              gridTemplateColumns: isFullscreen 
+                ? 'repeat(auto-fill, minmax(280px, 1fr))' 
+                : 'repeat(auto-fill, minmax(200px, 1fr))' 
+            }}>
               {images.map((image) => (
                 <Card
                   key={image.id}
                   className={cn(
-                    "relative p-3 cursor-pointer transition-all hover:bg-accent/5 border",
+                    "relative cursor-pointer transition-all hover:bg-accent/5 border",
+                    isFullscreen ? "p-4" : "p-3",
                     selectedImageId === image.id ? "ring-2 ring-primary border-primary" : "border-border/50"
                   )}
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
                     {/* Thumbnail */}
-                    <div className="w-12 h-12 bg-muted rounded flex-shrink-0 flex items-center justify-center">
+                    <div className={cn(
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
+                      isFullscreen ? "w-16 h-16" : "w-12 h-12"
+                    )}>
                       <img
                         src={URL.createObjectURL(image.file)}
                         alt={image.name}
@@ -159,7 +491,10 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         {getStatusIcon(image.status)}
-                        <span className="text-sm font-medium truncate">{image.name}</span>
+                        <span className={cn(
+                          "font-medium truncate",
+                          isFullscreen ? "text-base" : "text-sm"
+                        )}>{image.name}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 mb-2">
@@ -167,14 +502,26 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         <span className="text-xs text-muted-foreground">
                           {(image.file.size / 1024 / 1024).toFixed(1)} MB
                         </span>
+                        {isFullscreen && (
+                          <span className="text-xs text-muted-foreground">
+                            {image.file.type}
+                          </span>
+                        )}
                       </div>
                       
                       {image.status === 'processing' && (
-                        <Progress value={image.progress} className="h-1" />
+                        <div className="space-y-1">
+                          <Progress value={image.progress} className="h-2" />
+                        </div>
                       )}
                       
                       {image.error && (
-                        <p className="text-xs text-error mt-1">{image.error}</p>
+                        <div className={cn(
+                          "text-error mt-1",
+                          isFullscreen ? "text-sm" : "text-xs"
+                        )}>
+                          <p>{image.error}</p>
+                        </div>
                       )}
                     </div>
                     
@@ -188,9 +535,14 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                             e.stopPropagation();
                             onProcessImage(image);
                           }}
-                          className="w-8 h-8 p-0"
+                          disabled={isProcessing}
+                          className={cn(
+                            "p-0",
+                            isFullscreen ? "w-10 h-10" : "w-8 h-8"
+                          )}
+                          title="Process this image"
                         >
-                          <Play className="w-3 h-3" />
+                          <Play className={cn(isFullscreen ? "w-4 h-4" : "w-3 h-3")} />
                         </Button>
                       )}
                       
@@ -201,9 +553,14 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                           e.stopPropagation();
                           onRemoveImage(image.id);
                         }}
-                        className="w-8 h-8 p-0 text-muted-foreground hover:text-destructive"
+                        disabled={isProcessing}
+                        className={cn(
+                          "p-0 text-muted-foreground hover:text-destructive",
+                          isFullscreen ? "w-10 h-10" : "w-8 h-8"
+                        )}
+                        title="Remove this image"
                       >
-                        <X className="w-3 h-3" />
+                        <X className={cn(isFullscreen ? "w-4 h-4" : "w-3 h-3")} />
                       </Button>
                     </div>
                   </div>
