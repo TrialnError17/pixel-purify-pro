@@ -164,13 +164,7 @@
     border: 1px solid hsl(var(--accent-cyan) / 0.4) !important;
     box-shadow: 0 1px 3px hsl(var(--accent-blue) / 0.2) !important;
     transition: all 0.2s ease;
-}
-
-/* Semi-Transparency Detector Animations */
-@keyframes semi-transparency-blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0.3; }
-}
+  }
   
   /* Additional accent for checked state */
   button[data-state="checked"] {

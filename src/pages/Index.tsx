@@ -95,10 +95,6 @@ export interface EraserSettings {
   brushSize: number;
 }
 
-export interface SemiTransparencyDetectorSettings {
-  enabled: boolean;
-}
-
 const Index = () => {
   console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
@@ -194,13 +190,6 @@ const Index = () => {
   const [eraserSettings, setEraserSettings] = useState<EraserSettings>({
     brushSize: 10
   });
-
-  const [semiTransparencySettings, setSemiTransparencySettings] = useState<SemiTransparencyDetectorSettings>({
-    enabled: false
-  });
-
-  // Canvas ref to be shared between MainCanvas and LeftSidebar
-  const [mainCanvas, setMainCanvas] = useState<HTMLCanvasElement | null>(null);
 
   // Track if edge trim was auto-disabled by ink stamp
   const [edgeTrimAutoDisabled, setEdgeTrimAutoDisabled] = useState(false);
@@ -370,17 +359,6 @@ const Index = () => {
             speckleSettings={speckleSettings}
             onSpeckleSettingsChange={(newSpeckleSettings) => {
               const prevSpeckleSettings = { ...speckleSettings };
-              
-              // Reset settings to defaults when disabling speckle tools
-              if (newSpeckleSettings.enabled === false && prevSpeckleSettings.enabled === true) {
-                newSpeckleSettings = {
-                  enabled: false,
-                  minSpeckSize: 50, // Default threshold
-                  highlightSpecks: false, // Turn off highlight
-                  removeSpecks: false     // Turn off remove
-                };
-              }
-              
               setSpeckleSettings(newSpeckleSettings);
               
               console.log('Speckle settings changed:', { 
@@ -492,13 +470,10 @@ const Index = () => {
             }}
             eraserSettings={eraserSettings}
             onEraserSettingsChange={setEraserSettings}
-            semiTransparencySettings={semiTransparencySettings}
-            onSemiTransparencySettingsChange={setSemiTransparencySettings}
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
             onFeatureInteraction={handleFeatureInteraction}
-            canvas={mainCanvas}
           />
           </div>
           
@@ -515,8 +490,6 @@ const Index = () => {
               edgeCleanupSettings={edgeCleanupSettings}
               eraserSettings={eraserSettings}
               erasingInProgressRef={erasingInProgressRef}
-              semiTransparencySettings={semiTransparencySettings}
-              onCanvasReady={setMainCanvas}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
@@ -548,7 +521,6 @@ const Index = () => {
               }}
               setSingleImageProgress={setSingleImageProgress}
               addUndoAction={addUndoAction}
-              onFeatureInteraction={handleFeatureInteraction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
             

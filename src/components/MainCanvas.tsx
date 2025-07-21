@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, SemiTransparencyDetectorSettings } from '@/pages/Index';
+import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { useEraserTool } from '@/hooks/useEraserTool';
 import { 
@@ -239,8 +239,6 @@ interface MainCanvasProps {
   edgeCleanupSettings: EdgeCleanupSettings;
   eraserSettings: { brushSize: number };
   erasingInProgressRef: React.MutableRefObject<boolean>;
-  semiTransparencySettings: SemiTransparencyDetectorSettings;
-  onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -252,7 +250,6 @@ interface MainCanvasProps {
   onDownloadImage: (image: ImageItem) => void;
   setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void;
   addUndoAction?: (action: { type: string; description: string; undo: () => void; redo?: () => void }) => void;
-  onFeatureInteraction?: (feature: string) => void;
   
   onSpeckCountUpdate?: (count: number) => void;
 }
@@ -268,8 +265,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   edgeCleanupSettings,
   eraserSettings,
   erasingInProgressRef,
-  semiTransparencySettings,
-  onCanvasReady,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -281,7 +276,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   onDownloadImage,
   setSingleImageProgress,
   addUndoAction,
-  onFeatureInteraction,
   onSpeckCountUpdate
 }) => {
   const { processSpecks } = useSpeckleTools();
@@ -305,13 +299,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   useEffect(() => {
     manualImageDataRef.current = manualImageData;
   }, [manualImageData]);
-  
-  // Notify parent when canvas is ready
-  useEffect(() => {
-    if (onCanvasReady) {
-      onCanvasReady(canvasRef.current);
-    }
-  }, [onCanvasReady]);
   
   // Eraser tool integration
   const eraserTool = useEraserTool(canvasRef.current, {
@@ -2044,7 +2031,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-canvas-bg">
-            {/* Toolbar */}
+      {/* Toolbar */}
       <div className="h-12 bg-gradient-header border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-1">
           {/* Navigation */}
