@@ -114,8 +114,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       console.error('Failed to load image:', error);
     };
 
-    // Use the image URL or processed data
-    img.src = image.processedUrl || image.url;
+    // Use the image file URL
+    img.src = URL.createObjectURL(image.file);
   }, [image]);
 
   // Update cursor position for both cursors
