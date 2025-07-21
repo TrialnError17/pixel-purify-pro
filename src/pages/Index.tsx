@@ -95,6 +95,10 @@ export interface EraserSettings {
   brushSize: number;
 }
 
+export interface SemiTransparencyDetectorSettings {
+  enabled: boolean;
+}
+
 const Index = () => {
   console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
@@ -189,6 +193,10 @@ const Index = () => {
 
   const [eraserSettings, setEraserSettings] = useState<EraserSettings>({
     brushSize: 10
+  });
+
+  const [semiTransparencySettings, setSemiTransparencySettings] = useState<SemiTransparencyDetectorSettings>({
+    enabled: false
   });
 
   // Track if edge trim was auto-disabled by ink stamp
@@ -470,6 +478,8 @@ const Index = () => {
             }}
             eraserSettings={eraserSettings}
             onEraserSettingsChange={setEraserSettings}
+            semiTransparencySettings={semiTransparencySettings}
+            onSemiTransparencySettingsChange={setSemiTransparencySettings}
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
@@ -490,6 +500,7 @@ const Index = () => {
               edgeCleanupSettings={edgeCleanupSettings}
               eraserSettings={eraserSettings}
               erasingInProgressRef={erasingInProgressRef}
+              semiTransparencySettings={semiTransparencySettings}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
@@ -521,6 +532,7 @@ const Index = () => {
               }}
               setSingleImageProgress={setSingleImageProgress}
               addUndoAction={addUndoAction}
+              onFeatureInteraction={handleFeatureInteraction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
             

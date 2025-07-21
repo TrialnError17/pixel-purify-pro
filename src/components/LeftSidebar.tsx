@@ -8,10 +8,11 @@ import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
+import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, EraserSettings, SemiTransparencyDetectorSettings } from '@/pages/Index';
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 import { useToast } from '@/hooks/use-toast';
+import { SemiTransparencyDetector } from '@/components/SemiTransparencyDetector';
 
 interface LeftSidebarProps {
   settings: ColorRemovalSettings;
@@ -27,6 +28,8 @@ interface LeftSidebarProps {
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
   eraserSettings: EraserSettings;
   onEraserSettingsChange: (settings: EraserSettings) => void;
+  semiTransparencySettings: SemiTransparencyDetectorSettings;
+  onSemiTransparencySettingsChange: (settings: SemiTransparencyDetectorSettings) => void;
   currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
   onAddImages: () => void;
   onAddFolder: () => void;
@@ -47,6 +50,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onEdgeCleanupSettingsChange,
   eraserSettings,
   onEraserSettingsChange,
+  semiTransparencySettings,
+  onSemiTransparencySettingsChange,
   currentTool,
   onAddImages,
   onAddFolder,
@@ -1085,6 +1090,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </CardContent>
           )}
         </Card>
+
+        {/* Semi-Transparency Detector */}
+        <SemiTransparencyDetector
+          canvas={null} // Will be connected to the main canvas
+          enabled={semiTransparencySettings.enabled}
+          onEnabledChange={(enabled) => onSemiTransparencySettingsChange({ enabled })}
+          onFeatureInteraction={onFeatureInteraction}
+        />
+
+        {/* Semi-Transparency Detector */}
+        <SemiTransparencyDetector
+          canvas={null} // Will be connected to the main canvas
+          enabled={semiTransparencySettings.enabled}
+          onEnabledChange={(enabled) => onSemiTransparencySettingsChange({ enabled })}
+          onFeatureInteraction={onFeatureInteraction}
+        />
 
         {/* Contextual Tips - Show when not using advanced features */}
         {!settings.enabled && 
