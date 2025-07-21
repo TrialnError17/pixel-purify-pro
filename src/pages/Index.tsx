@@ -103,6 +103,8 @@ export interface EraserSettings {
 }
 
 const Index = () => {
+  console.log('Index component is rendering');
+  
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
