@@ -281,15 +281,15 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     }
     
     console.log(`📤 Worker sending success response for ${type} with id ${id}`);
-    // Use transferable objects to avoid copying
+    // Use transferable objects to avoid cloning
     (self as any).postMessage({
       type: 'success',
       data: result,
       id
-    } as WorkerResponse, { transfer: [result.data] });
+    } as WorkerResponse, [result.data]);
   } catch (error) {
     console.log(`💥 Worker error for ${type} with id ${id}:`, error);
-    self.postMessage({
+    (self as any).postMessage({
       type: 'error',
       data: null,
       error: error instanceof Error ? error.message : 'Unknown error',
