@@ -907,7 +907,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return () => {
       URL.revokeObjectURL(img.src);
     };
-  }, [image]);
+  }, [image?.id, image?.file]); // Only re-load when image ID or file changes
 
   // Debounced processing to prevent flashing
   const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
@@ -1289,7 +1289,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, isDragging]);
+  }, [
+    originalImageData, 
+    colorSettings.enabled, colorSettings.mode, colorSettings.threshold, colorSettings.targetColor, colorSettings.pickedColors,
+    effectSettings.background.enabled, effectSettings.inkStamp.enabled, effectSettings.imageEffects.enabled,
+    speckleSettings.enabled, speckleSettings.removeSpecks, speckleSettings.highlightSpecks,
+    edgeCleanupSettings.enabled, edgeCleanupSettings.legacyEnabled, edgeCleanupSettings.softening.enabled,
+    manualImageData,
+    isDragging
+  ]); // Optimized dependencies - only include specific settings that affect processing
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
