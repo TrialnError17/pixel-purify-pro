@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
-import MainCanvas from '@/components/MainCanvas';
+import { MainCanvas } from '@/components/MainCanvas';
 import { ImageQueue } from '@/components/ImageQueue';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
@@ -475,6 +475,7 @@ const Index = () => {
               effectSettings={effectSettings}
               speckleSettings={speckleSettings}
               edgeCleanupSettings={edgeCleanupSettings}
+              
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
                   img.id === updatedImage.id ? updatedImage : img
@@ -498,6 +499,14 @@ const Index = () => {
               canGoNext={selectedImageIndex < images.length - 1}
               currentImageIndex={selectedImageIndex + 1}
               totalImages={images.length}
+              onDownloadImage={() => {
+                if (selectedImage) {
+                  downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
+                }
+              }}
+              setSingleImageProgress={setSingleImageProgress}
+              addUndoAction={addUndoAction}
+              onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
             
             {/* Image Queue - At bottom between sidebars */}
