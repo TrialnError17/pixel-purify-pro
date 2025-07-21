@@ -430,7 +430,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
               </div>
               <Progress 
                 value={singleImageProgress.progress} 
-                className="h-2 bg-background"
+                className="h-1 bg-background"
               />
             </div>
           </div>
@@ -494,7 +494,7 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                       
                       {image.status === 'processing' && (
                         <div className="space-y-1">
-                          <Progress value={image.progress} className="h-2" />
+                          <Progress value={image.progress} className="h-1" />
                         </div>
                       )}
                       
