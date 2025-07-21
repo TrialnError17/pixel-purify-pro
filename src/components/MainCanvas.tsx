@@ -833,53 +833,69 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         naturalHeight: img.naturalHeight 
       });
       
-      // Set canvas size to image size
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      // Optimize for large images - limit initial canvas size for performance
+      const MAX_DIMENSION = 2048;
+      let displayWidth = img.naturalWidth;
+      let displayHeight = img.naturalHeight;
+      
+      if (displayWidth > MAX_DIMENSION || displayHeight > MAX_DIMENSION) {
+        const scale = Math.min(MAX_DIMENSION / displayWidth, MAX_DIMENSION / displayHeight);
+        displayWidth = Math.floor(displayWidth * scale);
+        displayHeight = Math.floor(displayHeight * scale);
+        console.log('Large image detected, optimizing to:', { displayWidth, displayHeight });
+      }
+      
+      // Set canvas size to optimized dimensions
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
       
       console.log('Canvas size set to:', { width: canvas.width, height: canvas.height });
       
-      // Clear and draw image
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-      
-      console.log('Image drawn to canvas');
-      
-      // Store original image data
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setOriginalImageData(imageData);
-      
-      console.log('Original image data stored');
-      setOriginalImageData(imageData);
-      
-      // Reset manual edits when new image is loaded
-      hasManualEditsRef.current = false;
-      setManualImageData(null);
-      setUndoStack([]);
-      setRedoStack([]);
-      
-      // Update image with original data if not already set
-      if (!image.originalData) {
-        const updatedImage = { ...image, originalData: imageData };
-        onImageUpdate(updatedImage);
-      }
-      
-      // Calculate center offset for the image
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const containerRect = container.getBoundingClientRect();
-        const scaleX = (containerRect.width - 40) / canvas.width;
-        const scaleY = (containerRect.height - 40) / canvas.height;
-        const scale = Math.min(scaleX, scaleY, 1);
+      // Use requestAnimationFrame for smoother rendering
+      requestAnimationFrame(() => {
+        // Clear and draw image with optimized size
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
         
-        // Calculate center position
-        const centerX = (containerRect.width - canvas.width * scale) / 2;
-        const centerY = (containerRect.height - canvas.height * scale) / 2;
+        console.log('Image drawn to canvas');
         
-        setZoom(scale);
-        setPan({ x: 0, y: 0 });
-        setCenterOffset({ x: centerX, y: centerY });
-      }
+        // Defer image data extraction to next frame for better performance
+        requestAnimationFrame(() => {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          setOriginalImageData(imageData);
+          
+          console.log('Original image data stored');
+          
+          // Reset manual edits when new image is loaded
+          hasManualEditsRef.current = false;
+          setManualImageData(null);
+          setUndoStack([]);
+          setRedoStack([]);
+          
+          // Update image with original data if not already set
+          if (!image.originalData) {
+            const updatedImage = { ...image, originalData: imageData };
+            onImageUpdate(updatedImage);
+          }
+        });
+        
+        // Calculate center offset for the image
+        if (containerRef.current) {
+          const container = containerRef.current;
+          const containerRect = container.getBoundingClientRect();
+          const scaleX = (containerRect.width - 40) / canvas.width;
+          const scaleY = (containerRect.height - 40) / canvas.height;
+          const scale = Math.min(scaleX, scaleY, 1);
+          
+          // Calculate center position
+          const centerX = (containerRect.width - canvas.width * scale) / 2;
+          const centerY = (containerRect.height - canvas.height * scale) / 2;
+          
+          setZoom(scale);
+          setPan({ x: 0, y: 0 });
+          setCenterOffset({ x: centerX, y: centerY });
+        }
+      });
     };
     
     img.onerror = (error) => {
