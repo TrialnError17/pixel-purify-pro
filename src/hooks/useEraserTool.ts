@@ -16,7 +16,6 @@ export interface EraserToolOptions {
 export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserToolOptions) => {
   const isErasingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
-  const shiftStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Save brush size to localStorage
   const saveBrushSize = useCallback((size: number) => {
@@ -197,39 +196,11 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
       return;
     }
     
-    // Check if shift is pressed for constrained movement
-    const isShiftPressed = (e instanceof MouseEvent) ? e.shiftKey : false;
-    let constrainedCoords = coords;
-    
-    if (isShiftPressed) {
-      // If this is the first shift-constrained movement, store the starting position
-      if (!shiftStartPosRef.current) {
-        shiftStartPosRef.current = lastPosRef.current;
-      }
-      
-      // Constrain movement to straight lines (horizontal or vertical)
-      const startPos = shiftStartPosRef.current;
-      const dx = Math.abs(coords.x - startPos.x);
-      const dy = Math.abs(coords.y - startPos.y);
-      
-      // Choose the direction with more movement
-      if (dx > dy) {
-        // Horizontal movement - keep Y the same as start
-        constrainedCoords = { x: coords.x, y: startPos.y };
-      } else {
-        // Vertical movement - keep X the same as start
-        constrainedCoords = { x: startPos.x, y: coords.y };
-      }
-    } else {
-      // Reset shift constraint when not pressed
-      shiftStartPosRef.current = null;
-    }
-    
     // Draw line between last position and current position using Bresenham's algorithm
     const x0 = lastPosRef.current.x;
     const y0 = lastPosRef.current.y;
-    const x1 = constrainedCoords.x;
-    const y1 = constrainedCoords.y;
+    const x1 = coords.x;
+    const y1 = coords.y;
     
     const dx = Math.abs(x1 - x0);
     const dy = Math.abs(y1 - y0);
@@ -265,7 +236,7 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
       console.error('Failed to update canvas during continue erasing:', error);
     }
     
-    lastPosRef.current = constrainedCoords;
+    lastPosRef.current = coords;
     e.preventDefault();
   }, [canvas, options.brushSize, options.manualImageDataRef, getCanvasCoords, erasePixels]);
 
@@ -281,7 +252,6 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     
     isErasingRef.current = false;
     lastPosRef.current = null;
-    shiftStartPosRef.current = null; // Reset shift constraint
     options.erasingInProgressRef.current = false;
     
     // Trigger image change callback for undo/redo system and persistence
