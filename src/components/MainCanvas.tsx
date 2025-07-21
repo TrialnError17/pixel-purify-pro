@@ -1631,21 +1631,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear manual edits and reprocess with automatic settings
+    // Clear manual edits and restore original image without any processing
     hasManualEditsRef.current = false;
     setManualImageData(null);
     setUndoStack([]);
     setRedoStack([]);
     
-    // Reprocess the original image with current settings
-    const processedData = processImageData(origData, colorSettings, effectSettings);
-    ctx.putImageData(processedData, 0, 0);
+    // Just restore the original image data without automatic processing
+    ctx.putImageData(origData, 0, 0);
     
     if (image) {
-      const updatedImage = { ...image, processedData };
+      const updatedImage = { ...image, processedData: origData };
       onImageUpdate(updatedImage);
     }
-  }, [getOriginalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+  }, [getOriginalImageData, image, onImageUpdate]);
 
   const handleDownload = useCallback(() => {
     if (!image || !canvasRef.current || isDownloading) return;

@@ -391,34 +391,9 @@ const Index = () => {
           onAddFolder={handleFolderInput}
           onDownloadPNG={() => {
             if (selectedImage) {
-              const prevImages = [...images];
-              const wasQueueVisible = queueVisible;
-              
-              // Show queue for progress feedback
-              setQueueVisible(true);
-              
-              // Add undo action before processing
-              addUndoAction({
-                type: 'batch_operation',
-                description: `Download ${selectedImage.name}`,
-                undo: () => {
-                  setImages(prevImages);
-                  setIsProcessing(false);
-                  setQueueVisible(wasQueueVisible);
-                }
-              });
-              
-              setIsProcessing(true);
+              // Direct download without automatic processing
               (async () => {
-                try {
-                  await processImage(selectedImage, colorSettings, effectSettings, setImages);
-                } finally {
-                  setIsProcessing(false);
-                  // Auto-hide queue after processing if it wasn't visible before
-                  if (!wasQueueVisible) {
-                    setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
-                  }
-                }
+                await downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
               })();
             }
           }}
