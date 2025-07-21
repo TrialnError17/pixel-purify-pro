@@ -912,50 +912,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Cleanup handled in the main effect
 
-  // Process and display image when settings change (debounced with Web Worker)
-  useEffect(() => {
-    if (!image || !canvasRef.current || hasManualEditsRef.current || 
-        isProcessing || colorSettings.mode === 'manual') {
-      return;
-    }
+  // Auto-processing completely disabled to prevent performance issues on image load
 
-    const canvasEl = canvasRef.current;
-    const context = canvasEl.getContext('2d');
-    if (!context) return;
-
-    const sourceImageData = manualImageData || getOriginalImageData();
-    
-    // Auto-processing disabled to prevent performance issues
-    console.log('Auto-processing disabled to prevent performance issues');
-    return;
-    
-    // Prevent processing if requirements not met or already processing
-    if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
-      return;
-    }
-     
-    // Allow speckle and edge cleanup to run even with manual edits, but skip other auto-processing
-    if (hasManualEditsRef.current) {
-      // If we have manual edits, handle speckle and edge cleanup specially
-      // Add additional guard: don't process during panning/dragging
-      if (isDragging) {
-        return;
-      }
-      
-      // Check if we need to do any processing
-      const needsSpeckleProcessing = speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks);
-      const needsSpeckleRestore = (!speckleSettings.enabled || (!speckleSettings.highlightSpecks && !speckleSettings.removeSpecks)) && preSpeckleImageData;
-      const needsEdgeCleanup = edgeCleanupSettings.enabled && edgeCleanupSettings.trimRadius > 0;
-      const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
-      const needsInkStamp = effectSettings.inkStamp.enabled;
-      const needsImageEffects = effectSettings.imageEffects.enabled;
-      const needsImageEffectsRestore = !effectSettings.imageEffects.enabled && preImageEffectsImageData;
-      
-      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects && !needsImageEffectsRestore) {
-        return;
-      }
-      
-      // Set flag to prevent re-triggering
+  // Keyboard shortcut for spacebar (pan tool)
       isProcessingEdgeCleanupRef.current = true;
       
       const canvas = canvasRef.current;
