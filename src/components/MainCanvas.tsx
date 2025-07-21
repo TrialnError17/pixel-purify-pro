@@ -3,6 +3,7 @@ import { useImageProcessor } from '../hooks/useImageProcessor';
 import { useEraserTool } from '../hooks/useEraserTool';
 import { useSpeckleTools } from '../hooks/useSpeckleTools';
 import { useUndoManager } from '../hooks/useUndoManager';
+import { ImageItem, ColorRemovalSettings, EffectSettings, PickedColor } from '../pages/Index';
 
 interface Point {
   x: number;
@@ -15,17 +16,64 @@ interface ImageParams {
   rotation: number;
 }
 
-export const MainCanvas = () => {
+interface MainCanvasProps {
+  image: ImageItem | null;
+  tool: "pan" | "eraser" | "color-stack" | "magic-wand";
+  onToolChange: React.Dispatch<React.SetStateAction<"pan" | "eraser" | "color-stack" | "magic-wand">>;
+  colorSettings: ColorRemovalSettings;
+  contiguousSettings: any;
+  effectSettings: EffectSettings;
+  speckleSettings: any;
+  edgeCleanupSettings: any;
+  eraserSettings: any;
+  erasingInProgressRef: React.MutableRefObject<boolean>;
+  onImageUpdate: (updatedImage: ImageItem) => void;
+  onColorPicked: (color: string) => void;
+  onPreviousImage: () => void;
+  onNextImage: () => void;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  currentImageIndex: number;
+  totalImages: number;
+  onDownloadImage: () => void;
+  setSingleImageProgress: React.Dispatch<React.SetStateAction<any>>;
+  addUndoAction: (action: any) => void;
+  onSpeckCountUpdate: (count: number) => void;
+}
+
+export const MainCanvas: React.FC<MainCanvasProps> = ({
+  image: selectedImage,
+  tool: currentToolProp,
+  onToolChange,
+  colorSettings,
+  contiguousSettings,
+  effectSettings,
+  speckleSettings,
+  edgeCleanupSettings,
+  eraserSettings,
+  erasingInProgressRef: erasingInProgressRefProp,
+  onImageUpdate,
+  onColorPicked,
+  onPreviousImage,
+  onNextImage,
+  canGoPrevious,
+  canGoNext,
+  currentImageIndex,
+  totalImages,
+  onDownloadImage,
+  setSingleImageProgress,
+  addUndoAction: addUndoActionProp,
+  onSpeckCountUpdate
+}) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const manualImageDataRef = useRef<ImageData | null>(null);
   const hasManualEditsRef = useRef(false);
-  const erasingInProgressRef = useRef(false);
   const [imageQueue, setImageQueue] = useState<any[]>([]);
   const [currentImageId, setCurrentImageId] = useState<string | null>(null);
   const [imageParams, setImageParams] = useState<ImageParams>({ zoom: 1, pan: { x: 0, y: 0 }, rotation: 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
-  const [currentTool, setCurrentTool] = useState<string>('pan');
+  const [currentTool, setCurrentTool] = useState<string>(currentToolProp);
   const [speckleStreamId, setSpeckleStreamId] = useState<string | null>(null);
   const [speckleBranchName, setSpeckleBranchName] = useState<string | null>('main');
   const [speckleCommitId, setSpeckleCommitId] = useState<string | null>(null);
@@ -67,7 +115,7 @@ export const MainCanvas = () => {
     containerRef,
     manualImageDataRef,
     hasManualEditsRef,
-    erasingInProgressRef,
+    erasingInProgressRef: erasingInProgressRefProp,
     onImageChange: useCallback((imageData: ImageData) => {
       console.log('Eraser onImageChange called - copying to processedData');
       
@@ -113,10 +161,11 @@ export const MainCanvas = () => {
 
   // Reset manual edit tracking when switching tools
   useEffect(() => {
-    if (currentTool !== 'eraser') {
+    setCurrentTool(currentToolProp);
+    if (currentToolProp !== 'eraser') {
       setLastManualEditTool(null);
     }
-  }, [currentTool]);
+  }, [currentToolProp]);
 
   // Main processing useEffect with guard for eraser edits
   useEffect(() => {
