@@ -104,7 +104,7 @@ const Index = () => {
   const { toast } = useToast();
   
   const [colorSettings, setColorSettings] = useState<ColorRemovalSettings>({
-    enabled: true,
+    enabled: false,
     mode: 'auto',
     targetColor: '#ffffff',
     threshold: 30,
