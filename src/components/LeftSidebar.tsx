@@ -52,6 +52,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onAddFolder,
   onFeatureInteraction
 }) => {
+  const { toast } = useToast();
+  
   // Check if speckle mode is active (disables other tools)
   const isSpeckleModeActive = speckleSettings.enabled;
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
