@@ -11,6 +11,7 @@ import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
+import { validateFileSize, validateFileType, validateImageDimensions, formatFileSize, MAX_FILE_SIZE } from '@/lib/utils';
 
 console.log('Index.tsx is loading');
 
@@ -187,27 +188,106 @@ const Index = () => {
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
-  const handleFilesSelected = useCallback((files: FileList) => {
-    const newImages: ImageItem[] = Array.from(files).map(file => ({
-      id: crypto.randomUUID(),
-      file,
-      name: file.name,
-      status: 'pending' as const,
-      progress: 0,
-    }));
+  const handleFilesSelected = useCallback(async (files: FileList) => {
+    const fileArray = Array.from(files);
+    const validFiles: File[] = [];
+    const rejectedFiles: { file: File; reason: string }[] = [];
 
-    setImages(prev => {
-      const updated = [...prev, ...newImages];
-      // Select first image if none selected
-      if (!selectedImageId && updated.length > 0) {
-        setSelectedImageId(updated[0].id);
+    // Validate each file
+    for (const file of fileArray) {
+      console.log(`Validating file: ${file.name}`);
+      
+      // Check file type
+      if (!validateFileType(file)) {
+        rejectedFiles.push({ 
+          file, 
+          reason: `Unsupported format. Please use JPEG, PNG, WebP, or GIF` 
+        });
+        continue;
       }
-      return updated;
+
+      // Check file size
+      if (!validateFileSize(file)) {
+        rejectedFiles.push({ 
+          file, 
+          reason: `File too large (${formatFileSize(file.size)}). Maximum: ${formatFileSize(MAX_FILE_SIZE)}` 
+        });
+        continue;
+      }
+
+      // Check image dimensions
+      try {
+        const dimensionCheck = await validateImageDimensions(file);
+        if (!dimensionCheck.valid) {
+          rejectedFiles.push({ 
+            file, 
+            reason: dimensionCheck.error || 'Invalid image dimensions' 
+          });
+          continue;
+        }
+        
+        console.log(`File validated successfully: ${file.name} (${dimensionCheck.width}x${dimensionCheck.height})`);
+        validFiles.push(file);
+      } catch (error) {
+        rejectedFiles.push({ 
+          file, 
+          reason: 'Failed to validate image. File may be corrupted.' 
+        });
+      }
+    }
+
+    // Show rejection notifications
+    rejectedFiles.forEach(({ file, reason }) => {
+      toast({
+        title: "File Rejected",
+        description: `${file.name}: ${reason}`,
+        variant: "destructive",
+      });
     });
 
-    // Show queue when images are added
-    setQueueVisible(true);
-  }, [selectedImageId]);
+    // Show summary if there were rejections
+    if (rejectedFiles.length > 0 && validFiles.length > 0) {
+      toast({
+        title: "Partial Upload",
+        description: `${validFiles.length} of ${fileArray.length} files added successfully`,
+      });
+    } else if (validFiles.length === fileArray.length && validFiles.length > 1) {
+      toast({
+        title: "Upload Successful",
+        description: `${validFiles.length} files added successfully`,
+      });
+    }
+
+    // Create ImageItem objects only for valid files
+    if (validFiles.length > 0) {
+      const newImages: ImageItem[] = validFiles.map(file => ({
+        id: crypto.randomUUID(),
+        file,
+        name: file.name,
+        status: 'pending' as const,
+        progress: 0,
+      }));
+
+      setImages(prev => {
+        const updated = [...prev, ...newImages];
+        // Select first image if none selected
+        if (!selectedImageId && updated.length > 0) {
+          setSelectedImageId(updated[0].id);
+        }
+        return updated;
+      });
+
+      // Show queue when images are added
+      setQueueVisible(true);
+    } else if (rejectedFiles.length > 0) {
+      // All files were rejected
+      toast({
+        title: "Upload Failed",
+        description: "No valid files to add. Please check file requirements.",
+        variant: "destructive",
+      });
+    }
+  }, [selectedImageId, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
