@@ -113,7 +113,7 @@ const Index = () => {
   const erasingInProgressRef = useRef<boolean>(false);
   
   const [colorSettings, setColorSettings] = useState<ColorRemovalSettings>({
-    enabled: true,
+    enabled: false, // Changed from true to false - color removal off by default
     mode: 'auto',
     targetColor: '#ffffff',
     threshold: 30,
