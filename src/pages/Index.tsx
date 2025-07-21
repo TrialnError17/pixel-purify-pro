@@ -367,6 +367,17 @@ const Index = () => {
             speckleSettings={speckleSettings}
             onSpeckleSettingsChange={(newSpeckleSettings) => {
               const prevSpeckleSettings = { ...speckleSettings };
+              
+              // Reset settings to defaults when disabling speckle tools
+              if (newSpeckleSettings.enabled === false && prevSpeckleSettings.enabled === true) {
+                newSpeckleSettings = {
+                  enabled: false,
+                  minSpeckSize: 50, // Default threshold
+                  highlightSpecks: false, // Turn off highlight
+                  removeSpecks: false     // Turn off remove
+                };
+              }
+              
               setSpeckleSettings(newSpeckleSettings);
               
               console.log('Speckle settings changed:', { 
