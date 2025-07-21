@@ -34,15 +34,33 @@ export const SemiTransparencyDetector: React.FC<SemiTransparencyDetectorProps> =
   const [hasScanned, setHasScanned] = useState(false);
 
   const handleScan = useCallback(async () => {
-    if (!canvas) return;
+    if (!canvas) {
+      console.log('Semi-transparency scan: No canvas available');
+      return;
+    }
+    
+    console.log('Semi-transparency scan: Starting scan', { 
+      canvasWidth: canvas.width, 
+      canvasHeight: canvas.height 
+    });
     
     onFeatureInteraction?.('semi-transparency-scan');
     
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.log('Semi-transparency scan: No canvas context');
+      return;
+    }
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    console.log('Semi-transparency scan: Got image data', { 
+      width: imageData.width, 
+      height: imageData.height,
+      dataLength: imageData.data.length 
+    });
+    
     const scanResult = await scanImageData(imageData);
+    console.log('Semi-transparency scan: Scan complete', scanResult);
     setHasScanned(true);
   }, [canvas, scanImageData, onFeatureInteraction]);
 
