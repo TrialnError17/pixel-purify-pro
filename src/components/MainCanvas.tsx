@@ -5,7 +5,6 @@ import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { useEraserTool } from '@/hooks/useEraserTool';
 import { debounce, throttle, areImageDataEqual } from '@/utils/performance';
-import { usePixelProcessor } from '@/hooks/usePixelProcessor';
 import { 
   Move, 
   Pipette, 
@@ -352,8 +351,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Initialize pixel processor hook
-  const { processImageData: processWithWorker, cleanup } = usePixelProcessor();
+  // Simple state management without complex processing
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -909,10 +907,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image]);
 
-  // Cleanup worker on unmount
-  useEffect(() => {
-    return () => cleanup();
-  }, [cleanup]);
+  // Cleanup handled in the main effect
 
   // Process and display image when settings change (debounced with Web Worker)
   useEffect(() => {
@@ -927,31 +922,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     const sourceImageData = manualImageData || getOriginalImageData();
     
-    processWithWorker(
-      sourceImageData,
-      {
-        colorRemoval: colorSettings,
-        effects: effectSettings,
-        minRegionSize: colorSettings.minRegionSize,
-        speckleSettings,
-        edgeCleanupSettings
-      },
-      (processedData) => {
-        // Only apply if we're still on the same canvas and no manual edits occurred
-        if (canvasRef.current === canvasEl && !hasManualEditsRef.current) {
-          requestAnimationFrame(() => {
-            context.putImageData(processedData, 0, 0);
-          });
-        }
-        setIsProcessing(false);
-      },
-      (error) => {
-        console.error('Processing error:', error);
-        setIsProcessing(false);
-      }
-    );
-
-    setIsProcessing(true);
+    // Auto-processing disabled to prevent performance issues
+    console.log('Auto-processing disabled to prevent performance issues');
+    return;
     
     // Prevent processing if requirements not met or already processing
     if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
