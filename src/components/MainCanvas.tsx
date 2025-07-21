@@ -915,10 +915,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    // SKIP ALL AUTOMATIC PROCESSING - images load instantly, user can enable features when needed
-    if (!hasManualEditsRef.current) {
-      return;
-    }
+    // COMPLETELY DISABLE AUTO-PROCESSING TO PREVENT INFINITE LOOPS
+    console.log('Auto-processing disabled to prevent performance issues');
+    return;
     
     // Prevent processing if requirements not met or already processing
     if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
