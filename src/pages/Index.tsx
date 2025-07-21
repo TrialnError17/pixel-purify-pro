@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
@@ -532,9 +533,11 @@ const Index = () => {
               eraserSettings={eraserSettings}
               erasingInProgressRef={erasingInProgressRef}
               
+              // DISABLED: No automatic image state updates from canvas interactions
               onImageUpdate={(updatedImage) => {
-                // DISABLED: No automatic image state updates
-                // Only Process All button should update image state
+                // DISABLED: Tools should not automatically update image state
+                // Only "Process All" button should update image state
+                console.log('🚫 onImageUpdate disabled - no automatic processing');
                 // setImages(prev => prev.map(img => 
                 //   img.id === updatedImage.id ? updatedImage : img
                 // ));
