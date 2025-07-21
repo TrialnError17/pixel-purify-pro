@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
@@ -11,12 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
 import { createOptimizedImage, createThumbnail } from '@/utils/imageOptimization';
 import { loadImagesBatch } from '@/utils/batchImageLoader';
-import { memoryCache, getImageData, setImageData, clearImageData } from '@/utils/memoryCache';
-import { generateThumbnail } from '@/utils/thumbnailGenerator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 console.log('Index.tsx is loading');
 
@@ -26,12 +22,10 @@ export interface ImageItem {
   name: string;
   status: 'pending' | 'processing' | 'completed' | 'error';
   progress: number;
-  // Remove heavy data from React state - use memory cache instead
-  // originalData?: ImageData;
-  // processedData?: ImageData;
-  // canvas?: HTMLCanvasElement;
+  originalData?: ImageData;
+  processedData?: ImageData;
+  canvas?: HTMLCanvasElement;
   error?: string;
-  thumbnailUrl?: string; // For queue display
 }
 
 export interface PickedColor {
@@ -104,8 +98,6 @@ export interface EraserSettings {
 }
 
 const Index = () => {
-  console.log('Index component is rendering');
-  
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
@@ -208,67 +200,31 @@ const Index = () => {
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
-  // OPTIMIZED: Batch image loading with thumbnail generation and memory management
+  // OPTIMIZED: Batch image loading with single state update
   const handleFilesSelected = useCallback(async (files: FileList) => {
     if (files.length === 0) return;
     
     setIsBatchLoading(true);
     
     try {
-      // Load images in optimized batches with progress feedback
-      const batchResults = await loadImagesBatch(Array.from(files), (results) => {
-        // Update progress during loading
-        const newImages: ImageItem[] = results.map(result => ({
-          id: result.id,
-          file: result.file,
-          name: result.name,
-          status: result.status as 'pending' | 'processing' | 'completed' | 'error',
-          progress: result.progress,
-          error: result.error,
-        }));
-        
-        // Live update state with current progress
-        setImages(prev => {
-          const existing = prev.filter(img => !newImages.some(newImg => newImg.id === img.id));
-          return [...existing, ...newImages];
-        });
-      });
+      // Load images in parallel
+      const batchResults = await loadImagesBatch(Array.from(files));
       
-      // Generate thumbnails for successful images (in parallel)
-      const thumbnailPromises = batchResults
-        .filter(result => result.status === 'completed')
-        .map(async result => {
-          try {
-            const thumbnailUrl = await generateThumbnail(result.file);
-            return { id: result.id, thumbnailUrl };
-          } catch (error) {
-            console.warn(`Failed to generate thumbnail for ${result.name}:`, error);
-            return { id: result.id, thumbnailUrl: undefined };
-          }
-        });
-      
-      const thumbnails = await Promise.all(thumbnailPromises);
-      
-      // Final update with thumbnails
-      const newImages: ImageItem[] = batchResults.map(result => {
-        const thumbnail = thumbnails.find(t => t.id === result.id);
-        return {
-          id: result.id,
-          file: result.file,
-          name: result.name,
-          status: result.status as 'pending' | 'processing' | 'completed' | 'error',
-          progress: result.progress,
-          error: result.error,
-          thumbnailUrl: thumbnail?.thumbnailUrl,
-        };
-      });
+      // Convert batch results to ImageItem format
+      const newImages: ImageItem[] = batchResults.map(result => ({
+        id: result.id,
+        file: result.file,
+        name: result.name,
+        status: result.status as 'pending' | 'processing' | 'completed' | 'error',
+        progress: result.progress,
+        error: result.error,
+      }));
 
-      // FINAL state update with complete data
+      // SINGLE state update for the entire batch
       setImages(prev => {
-        const existing = prev.filter(img => !newImages.some(newImg => newImg.id === img.id));
-        const updated = [...existing, ...newImages];
+        const updated = [...prev, ...newImages];
         
-        // Select first image if none selected
+        // Select first image if none selected - only check once
         if (!selectedImageId && updated.length > 0) {
           setSelectedImageId(updated[0].id);
         }
@@ -279,23 +235,11 @@ const Index = () => {
       // Show queue when images are added
       setQueueVisible(true);
       
-      // Cleanup memory cache for removed images
-      const currentImageIds = images.map(img => img.id);
-      memoryCache.cleanup([...currentImageIds, ...newImages.map(img => img.id)]);
-      
       // SINGLE undo action for the entire batch
       addUndoAction({
         type: 'batch_operation',
         description: `Add ${newImages.length} image${newImages.length !== 1 ? 's' : ''}`,
         undo: () => {
-          // Clean up memory cache and thumbnails
-          newImages.forEach(img => {
-            clearImageData(img.id);
-            if (img.thumbnailUrl && img.thumbnailUrl.startsWith('data:')) {
-              // Thumbnail cleanup is automatic for data URLs
-            }
-          });
-          
           setImages(prev => prev.filter(img => !newImages.some(newImg => newImg.id === img.id)));
           if (newImages.some(img => img.id === selectedImageId)) {
             setSelectedImageId(null);
@@ -313,7 +257,7 @@ const Index = () => {
     } finally {
       setIsBatchLoading(false);
     }
-  }, [selectedImageId, addUndoAction, toast, images]);
+  }, [selectedImageId, addUndoAction, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -392,10 +336,31 @@ const Index = () => {
           onAddFolder={handleFolderInput}
           onDownloadPNG={() => {
             if (selectedImage) {
-              // Direct download without automatic processing
-              (async () => {
-                await downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
-              })();
+              const prevImages = [...images];
+              const wasQueueVisible = queueVisible;
+              
+              // Show queue for progress feedback
+              setQueueVisible(true);
+              
+              // Add undo action before processing
+              addUndoAction({
+                type: 'batch_operation',
+                description: `Download ${selectedImage.name}`,
+                undo: () => {
+                  setImages(prevImages);
+                  setIsProcessing(false);
+                  setQueueVisible(wasQueueVisible);
+                }
+              });
+              
+              setIsProcessing(true);
+              processImage(selectedImage, colorSettings, effectSettings, setImages).finally(() => {
+                setIsProcessing(false);
+                // Auto-hide queue after processing if it wasn't visible before
+                if (!wasQueueVisible) {
+                  setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
+                }
+              });
             }
           }}
           canDownload={selectedImage?.status === 'completed'}
@@ -406,11 +371,7 @@ const Index = () => {
           isProcessing={isProcessing || isBatchLoading}
           processingProgress={
             isBatchLoading 
-              ? { 
-                  current: images.filter(img => img.status === 'completed').length, 
-                  total: Math.max(1, images.length),
-                  currentImage: 'Loading images...'
-                }
+              ? { current: 0, total: 1 } // Show loading state
               : isProcessing 
                 ? {
                   current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
@@ -440,6 +401,44 @@ const Index = () => {
             onSpeckleSettingsChange={(newSpeckleSettings) => {
               const prevSpeckleSettings = { ...speckleSettings };
               setSpeckleSettings(newSpeckleSettings);
+              
+              console.log('Speckle settings changed:', { 
+                enabled: newSpeckleSettings.enabled, 
+                highlight: newSpeckleSettings.highlightSpecks,
+                remove: newSpeckleSettings.removeSpecks,
+                hasProcessedData: !!selectedImage?.processedData,
+                hasOriginalData: !!selectedImage?.originalData,
+                isProcessingSpeckles
+              });
+              
+              // Only process speckles if not already processing to prevent feedback loop
+              if (!isProcessingSpeckles && (selectedImage?.processedData || selectedImage?.originalData)) {
+                setIsProcessingSpeckles(true);
+                
+                // Use processedData if available (includes color effects), otherwise fall back to originalData
+                const baseData = selectedImage.processedData || selectedImage.originalData!;
+                
+                // Create a fresh copy to avoid modifying the original
+                const cleanBaseData = new ImageData(
+                  new Uint8ClampedArray(baseData.data),
+                  baseData.width,
+                  baseData.height
+                );
+                
+                console.log('Processing speckles from', selectedImage.processedData ? 'processed' : 'original', 'data');
+                const result = processSpecks(cleanBaseData, newSpeckleSettings);
+                setSpeckCount(result.speckCount);
+                
+                // Update image with speckle processing result immediately
+                setImages(prev => prev.map(img => 
+                  img.id === selectedImage.id 
+                    ? { ...img, processedData: result.processedData }
+                    : img
+                ));
+                
+                // Reset processing flag after a short delay
+                setTimeout(() => setIsProcessingSpeckles(false), 100);
+              }
               
               // Add undo action for speckle settings changes
               addUndoAction({
@@ -533,14 +532,10 @@ const Index = () => {
               eraserSettings={eraserSettings}
               erasingInProgressRef={erasingInProgressRef}
               
-              // DISABLED: No automatic image state updates from canvas interactions
               onImageUpdate={(updatedImage) => {
-                // DISABLED: Tools should not automatically update image state
-                // Only "Process All" button should update image state
-                console.log('🚫 onImageUpdate disabled - no automatic processing');
-                // setImages(prev => prev.map(img => 
-                //   img.id === updatedImage.id ? updatedImage : img
-                // ));
+                setImages(prev => prev.map(img => 
+                  img.id === updatedImage.id ? updatedImage : img
+                ));
               }}
               onColorPicked={(color) => {
                 // Add color to picked colors list with default threshold of 30
@@ -562,9 +557,7 @@ const Index = () => {
               totalImages={images.length}
               onDownloadImage={() => {
                 if (selectedImage) {
-                  (async () => {
-                    await downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
-                  })();
+                  downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
                 }
               }}
               setSingleImageProgress={setSingleImageProgress}
@@ -637,23 +630,26 @@ const Index = () => {
                 });
                 
                 setIsProcessing(true);
-                (async () => {
-                  try {
-                    await processAllImages(images, colorSettings, effectSettings, setImages);
-                  } finally {
-                    setIsProcessing(false);
-                  }
-                })();
+                processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
+                  setIsProcessing(false);
+                });
               }}
               onProcessImage={(image) => {
                 setIsProcessing(true);
-                (async () => {
-                  try {
-                    await processImage(image, colorSettings, effectSettings, setImages);
-                  } finally {
-                    setIsProcessing(false);
-                  }
-                })();
+                processImage(image, colorSettings, effectSettings, setImages).then(() => {
+                  // After processing is complete, automatically download the image
+                  // Find the processed image in the updated state
+                  setImages(currentImages => {
+                    const processedImage = currentImages.find(img => img.id === image.id);
+                     if (processedImage && processedImage.status === 'completed') {
+                       // Trigger download
+                       downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
+                     }
+                    return currentImages;
+                  });
+                }).finally(() => {
+                  setIsProcessing(false);
+                });
               }}
               onCancelProcessing={() => {
                 cancelProcessing();
