@@ -75,14 +75,33 @@ export const MainCanvas = ({
   const manualImageDataRef = useRef<ImageData | null>(null);
   const [rotation, setRotation] = useState(0);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const { removeContiguousColor } = useMagicWand();
+  
+  // Create eraser tool options
+  const eraserOptions = {
+    brushSize: eraserSettings.brushSize,
+    zoom: scale,
+    pan: translation,
+    centerOffset: { x: 0, y: 0 },
+    containerRef,
+    manualImageDataRef,
+    hasManualEditsRef: useRef(false),
+    erasingInProgressRef,
+    onImageChange: (imageData: ImageData) => {
+      setManualImageData(imageData);
+      manualImageDataRef.current = imageData;
+      onImageUpdate({ ...image!, processedData: imageData });
+    }
+  };
+  
   const { 
     startErasing, 
     continueErasing, 
     stopErasing, 
     isErasing, 
-    getEraserCursor 
-  } = useEraserTool();
+    getBrushCursor 
+  } = useEraserTool(canvasRef.current, eraserOptions);
 
   const rgbToHex = (r: number, g: number, b: number): string => {
     return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
@@ -190,20 +209,7 @@ export const MainCanvas = ({
     const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
 
     if (tool === 'eraser') {
-      erasingInProgressRef.current = true;
-      startErasing(
-        canvasRef.current,
-        x,
-        y,
-        eraserSettings.brushSize,
-        manualImageDataRef.current || image.processedData || image.originalData,
-        (updatedImageData: ImageData) => {
-          setManualImageData(updatedImageData);
-          manualImageDataRef.current = updatedImageData;
-          onImageUpdate({ ...image, processedData: updatedImageData });
-        },
-        addUndoAction
-      );
+      startErasing(e.nativeEvent);
     }
   }, [image, tool, eraserSettings.brushSize, startErasing, onImageUpdate, addUndoAction, erasingInProgressRef]);
 
@@ -216,7 +222,7 @@ export const MainCanvas = ({
     const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
 
     if (tool === 'eraser' && isErasing) {
-      continueErasing(x, y);
+      continueErasing(e.nativeEvent);
     }
   }, [image, tool, isErasing, continueErasing]);
 
@@ -402,13 +408,13 @@ export const MainCanvas = ({
       </Card>
 
       {/* Main Canvas */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden">
+      <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden">
         <canvas
           ref={canvasRef}
           className={cn(
             "touch-none cursor-crosshair",
             tool === 'eraser' && isErasing && 'cursor-none',
-            tool === 'eraser' && !isErasing && `cursor-[${getEraserCursor(eraserSettings.brushSize)}]`
+            tool === 'eraser' && !isErasing && `cursor-[${getBrushCursor()}]`
           )}
           style={{
             transform: `translate(${translation.x}px, ${translation.y}px) scale(${scale}) rotate(${rotation}deg)`,
