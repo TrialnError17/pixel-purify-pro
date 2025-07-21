@@ -1625,7 +1625,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               const canvas = canvasRef.current;
               const ctx = canvas.getContext('2d');
               if (ctx) {
-                removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
+                removeContiguousColor(ctx, x, y, { threshold: contiguousSettings.threshold || 30 });
                 const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const updatedImage = { ...image, processedData: newImageData };
                 hasManualEditsRef.current = true;
@@ -1637,24 +1637,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         });
       }
       
-      // Remove contiguous color at clicked position using independent contiguous threshold
-      console.log('Before removeContiguousColorIndependent, manual edits marked');
-      const removedPixelsMap = removeContiguousColorIndependentWithTracking(ctx, x, y, contiguousSettings.threshold || 30);
-      console.log('After removeContiguousColorIndependent');
+      // Remove contiguous color at clicked position - clean, fast implementation
+      console.log('Before removeContiguousColor, manual edits marked');
+      removeContiguousColor(ctx, x, y, { threshold: contiguousSettings.threshold || 30 });
+      console.log('After removeContiguousColor');
       
-      // Get the image data after magic wand removal
-      let newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // Get the final image data
+      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // Apply edge cleanup only to newly removed areas if enabled
-      if ((edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) && removedPixelsMap.size > 0) {
-        console.log('Applying edge cleanup to newly removed pixels only');
-        newImageData = processEdgeCleanupSelective(newImageData, edgeCleanupSettings, removedPixelsMap);
-        console.log('Edge cleanup applied to magic wand selection');
-        // Apply the edge-cleaned data back to canvas
-        ctx.putImageData(newImageData, 0, 0);
-      }
-      
-      // Store the image data after magic wand removal and reset all effect states
+      // Store the image data after magic wand removal
       setManualImageData(newImageData);
       
       // Clear ALL effect states to ensure clean processing with fresh manual edits
@@ -1666,214 +1657,58 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         console.log('Cleared all effect states for fresh magic wand processing');
       }
       
-      // DON'T run speckle processing here - let the main effect handle it to avoid threshold corruption
       console.log('Magic wand removal completed, manual edits stored, all states reset');
       
-      // Store the manually edited result as base for future operations
-      setManualImageData(newImageData);
-      console.log('Stored manual image data');
-      
+      // Update the image with the manually edited data
       if (image) {
         const updatedImage = { ...image, processedData: newImageData };
         console.log('Updating image with manually edited data');
         onImageUpdate(updatedImage);
-        
-        // Force a small delay to ensure the update sticks
-        setTimeout(() => {
-          console.log('Verifying canvas state after update');
-          const verifyData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const transparentPixels = Array.from(verifyData.data).filter((_, i) => i % 4 === 3 && verifyData.data[i] === 0).length;
-          console.log(`Canvas verification: ${transparentPixels} transparent pixels`);
-        }, 100);
       }
     }
   }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
 
-  const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
+  // Clean, fast contiguous color removal function for magic wand tool
+  const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: { threshold: number }) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
+    const getIndex = (x: number, y: number) => (y * width + x) * 4;
+    const visited = new Uint8Array(width * height);
+    const stack: [number, number][] = [[startX, startY]];
+    const idx0 = getIndex(startX, startY);
+    const targetR = data[idx0], targetG = data[idx0 + 1], targetB = data[idx0 + 2], targetA = data[idx0 + 3];
+    const threshold = settings.threshold * 2.5;
+    let removed = 0;
     
-    // Get target color
-    const index = (startY * width + startX) * 4;
-    const targetR = data[index];
-    const targetG = data[index + 1];
-    const targetB = data[index + 2];
-    
-    // Flood fill algorithm to remove contiguous pixels
-    const visited = new Set<string>();
-    const stack = [[startX, startY]];
+    // Skip if target pixel is already transparent
+    if (targetA === 0) {
+      console.log("Magic wand removed pixels:", 0);
+      return;
+    }
     
     const isColorSimilar = (r: number, g: number, b: number) => {
-      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      return distance <= settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+      const dr = r - targetR, dg = g - targetG, db = b - targetB;
+      return (dr * dr + dg * dg + db * db) <= (threshold * threshold);
     };
     
     while (stack.length > 0) {
       const [x, y] = stack.pop()!;
-      const key = `${x},${y}`;
-      
-      if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-      visited.add(key);
-      
-      const pixelIndex = (y * width + x) * 4;
-      const r = data[pixelIndex];
-      const g = data[pixelIndex + 1];
-      const b = data[pixelIndex + 2];
-      
-      if (!isColorSimilar(r, g, b)) continue;
-      
-      // Make pixel transparent
-      data[pixelIndex + 3] = 0;
-      
-      // Add neighbors to stack (always contiguous for interactive tool)
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      const idx = y * width + x;
+      if (visited[idx]) continue;
+      visited[idx] = 1;
+      const p = getIndex(x, y);
+      const r = data[p], g = data[p + 1], b = data[p + 2], a = data[p + 3];
+      if (a === 0 || !isColorSimilar(r, g, b)) continue;
+      data[p + 3] = 0;
+      removed++;
       stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
     
     ctx.putImageData(imageData, 0, 0);
-  };
-
-  // Independent contiguous removal function for the contiguous tool
-  const removeContiguousColorIndependent = (ctx: CanvasRenderingContext2D, startX: number, startY: number, threshold: number) => {
-    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
-    console.log(`Canvas dimensions: ${width}x${height}`);
-    
-    // Get target color
-    const index = (startY * width + startX) * 4;
-    const targetR = data[index];
-    const targetG = data[index + 1];
-    const targetB = data[index + 2];
-    const targetA = data[index + 3];
-    
-    console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
-    
-    // Skip if pixel is already transparent
-    if (targetA === 0) {
-      console.log('Target pixel is already transparent, skipping');
-      return;
-    }
-    
-    // Flood fill algorithm to remove contiguous pixels
-    const visited = new Set<string>();
-    const stack = [[startX, startY]];
-    let removedPixels = 0;
-    
-    const thresholdScaled = threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-    console.log(`Threshold scaled: ${thresholdScaled}`);
-    
-    const isColorSimilar = (r: number, g: number, b: number) => {
-      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      const similar = distance <= thresholdScaled;
-      return similar;
-    };
-    
-    while (stack.length > 0) {
-      const [x, y] = stack.pop()!;
-      const key = `${x},${y}`;
-      
-      if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-      visited.add(key);
-      
-      const pixelIndex = (y * width + x) * 4;
-      const r = data[pixelIndex];
-      const g = data[pixelIndex + 1];
-      const b = data[pixelIndex + 2];
-      const a = data[pixelIndex + 3];
-      
-      // Skip if pixel is already transparent
-      if (a === 0) continue;
-      
-      if (!isColorSimilar(r, g, b)) continue;
-      
-      // Make pixel transparent
-      data[pixelIndex + 3] = 0;
-      removedPixels++;
-      
-      // Add neighbors to stack
-      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-    }
-    
-    console.log(`Removed ${removedPixels} pixels`);
-    
-    if (removedPixels > 0) {
-      ctx.putImageData(imageData, 0, 0);
-      console.log('Applied image data to canvas');
-    } else {
-      console.log('No pixels were removed');
-    }
-  };
-
-  // Enhanced version that tracks which pixels were removed
-  const removeContiguousColorIndependentWithTracking = (ctx: CanvasRenderingContext2D, startX: number, startY: number, threshold: number): Set<number> => {
-    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
-    const removedPixels = new Set<number>();
-    
-    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
-    
-    // Get target color
-    const targetIndex = (startY * width + startX) * 4;
-    const targetR = data[targetIndex];
-    const targetG = data[targetIndex + 1];
-    const targetB = data[targetIndex + 2];
-    const targetA = data[targetIndex + 3];
-    
-    if (targetA === 0) return removedPixels; // Already transparent
-    
-    console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
-    
-    const thresholdScaled = threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-    console.log(`Threshold scaled: ${thresholdScaled}`);
-    
-    const visited = new Set<string>();
-    const stack: [number, number][] = [[startX, startY]];
-    let pixelCount = 0;
-    
-    while (stack.length > 0 && pixelCount < 500000) {
-      const [x, y] = stack.pop()!;
-      pixelCount++;
-      
-      if (x < 0 || x >= width || y < 0 || y >= height) continue;
-      
-      const key = `${x},${y}`;
-      if (visited.has(key)) continue;
-      visited.add(key);
-      
-      const pixelIndex = (y * width + x) * 4;
-      const r = data[pixelIndex];
-      const g = data[pixelIndex + 1];
-      const b = data[pixelIndex + 2];
-      const a = data[pixelIndex + 3];
-      
-      if (a === 0) continue; // Already transparent
-      
-      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      if (distance > thresholdScaled) continue;
-      
-      // Mark pixel as transparent and track it
-      data[pixelIndex + 3] = 0;
-      removedPixels.add(pixelIndex / 4); // Store pixel index (not byte index)
-      
-      // Add neighbors to stack
-      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-    }
-    
-    console.log(`Removed ${removedPixels.size} pixels`);
-    
-    if (removedPixels.size > 0) {
-      ctx.putImageData(imageData, 0, 0);
-      console.log('Applied image data to canvas');
-    }
-    
-    return removedPixels;
+    console.log("Magic wand removed pixels:", removed);
   };
 
   // Selective edge cleanup that only processes pixels around newly removed areas
