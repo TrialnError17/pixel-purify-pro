@@ -90,15 +90,15 @@ export const SliderWithInput = React.forwardRef<
         </div>
         
         {showInput && (
-          <div className="flex items-center gap-1 min-w-0">
+          <div className="flex items-center gap-0.5 min-w-0">
             <Button
               variant="outline"
               size="sm"
               onClick={decrement}
               disabled={disabled || currentValue <= min}
-              className="h-8 w-8 p-0 flex-shrink-0"
+              className="h-6 w-6 p-0 flex-shrink-0"
             >
-              <Minus className="h-3 w-3" />
+              <Minus className="h-2.5 w-2.5" />
             </Button>
             
             <Input
@@ -111,7 +111,7 @@ export const SliderWithInput = React.forwardRef<
               max={max}
               step={step}
               disabled={disabled}
-              className={cn("h-8 w-16 text-center text-xs px-1", inputClassName)}
+              className={cn("h-6 w-12 text-center text-xs px-1", inputClassName)}
             />
             
             <Button
@@ -119,9 +119,9 @@ export const SliderWithInput = React.forwardRef<
               size="sm"
               onClick={increment}
               disabled={disabled || currentValue >= max}
-              className="h-8 w-8 p-0 flex-shrink-0"
+              className="h-6 w-6 p-0 flex-shrink-0"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-2.5 w-2.5" />
             </Button>
           </div>
         )}

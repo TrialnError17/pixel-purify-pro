@@ -5,24 +5,36 @@ import { Switch } from '@/components/ui/switch';
 import { SliderWithInput } from '@/components/ui/slider-with-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ColorRemovalSettings, PickedColor } from '@/pages/Index';
-import { Palette, Settings, X, Trash2 } from 'lucide-react';
+import { ColorRemovalSettings, PickedColor, ContiguousToolSettings } from '@/pages/Index';
+import { Palette, Settings, X, Trash2, Target } from 'lucide-react';
 
 interface LeftSidebarProps {
   settings: ColorRemovalSettings;
+  contiguousSettings: ContiguousToolSettings;
   onSettingsChange: (settings: ColorRemovalSettings) => void;
+  onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
+  manualMode: boolean;
+  onManualModeChange: (enabled: boolean) => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   settings,
-  onSettingsChange
+  contiguousSettings,
+  onSettingsChange,
+  onContiguousSettingsChange,
+  manualMode,
+  onManualModeChange
 }) => {
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
   };
 
+  const updateContiguousSettings = (updates: Partial<ContiguousToolSettings>) => {
+    onContiguousSettingsChange({ ...contiguousSettings, ...updates });
+  };
+
   return (
-    <div className="w-80 bg-gradient-panel border-r border-border flex flex-col">
+    <div className="w-96 bg-gradient-panel border-r border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-gradient-to-r from-accent-green to-accent-cyan rounded-md flex items-center justify-center">
@@ -48,6 +60,27 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </span>
             </CardTitle>
           </CardHeader>
+        </Card>
+
+        {/* Manual Mode Toggle */}
+        <Card className="bg-gradient-to-br from-accent-orange/10 to-accent-red/10 border-accent-orange/30 shadow-colorful">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Switch
+                checked={manualMode}
+                onCheckedChange={onManualModeChange}
+                className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-orange data-[state=checked]:to-accent-red"
+              />
+              <span className="bg-gradient-to-r from-accent-orange to-accent-red bg-clip-text text-transparent font-semibold">
+                ✋ Manual Mode
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xs text-muted-foreground p-2 bg-accent-orange/5 rounded border border-accent-orange/20">
+              💡 Disables automatic processing. Your manual edits won't be overwritten by settings changes.
+            </div>
+          </CardContent>
         </Card>
 
         {settings.enabled && (
@@ -226,32 +259,41 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
-                  ✨ Feather Radius
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
-                  <SliderWithInput
-                    value={[settings.featherRadius]}
-                    onValueChange={([featherRadius]) => updateSettings({ featherRadius })}
-                    min={0}
-                    max={10}
-                    step={0.5}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
-                  />
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-accent-cyan font-medium">⚡ 0px</span>
-                  <span className="font-bold text-accent-cyan bg-accent-cyan/10 px-2 py-1 rounded">{settings.featherRadius}px</span>
-                  <span className="text-accent-blue font-medium">🌟 10px</span>
-                </div>
-              </CardContent>
-            </Card>
           </>
         )}
+
+        {/* Contiguous Tool Settings - Independent Section */}
+        <Card className="bg-gradient-to-br from-accent-cyan/10 to-accent-blue/10 border-accent-cyan/30 shadow-colorful">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Target className="w-4 h-4 text-accent-cyan" />
+              <span className="bg-gradient-to-r from-accent-cyan to-accent-blue bg-clip-text text-transparent font-semibold">
+                🎯 Magic Wand Tool
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <div className="p-3 bg-gradient-to-r from-accent-cyan/5 to-accent-blue/5 rounded-lg border border-accent-cyan/20">
+              <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
+              <SliderWithInput
+                value={[contiguousSettings.threshold]}
+                onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
+                min={1}
+                max={100}
+                step={1}
+                sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-cyan [&_[role=slider]]:to-accent-blue [&_[role=slider]]:border-accent-cyan"
+              />
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-accent-cyan font-medium">🎯 Precise (1)</span>
+              <span className="font-bold text-accent-cyan bg-accent-cyan/10 px-2 py-1 rounded">{contiguousSettings.threshold}</span>
+              <span className="text-accent-blue font-medium">🌊 Loose (100)</span>
+            </div>
+            <div className="text-xs text-muted-foreground p-2 bg-accent-cyan/5 rounded border border-accent-cyan/20">
+              💡 This threshold is independent from color removal. Click with the magic wand tool to remove connected pixels.
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ImageItem } from '@/pages/Index';
+import { Trash2 } from 'lucide-react';
 import { 
   ChevronUp, 
   ChevronDown, 
@@ -14,7 +15,9 @@ import {
   CheckCircle, 
   AlertCircle,
   Clock,
-  Loader2
+  Loader2,
+  Maximize,
+  Minimize
 } from 'lucide-react';
 
 interface ImageQueueProps {
@@ -26,6 +29,15 @@ interface ImageQueueProps {
   onRemoveImage: (id: string) => void;
   onProcessAll: () => void;
   onProcessImage: (image: ImageItem) => void;
+  onClearAll: () => void;
+  onCancelProcessing?: () => void;
+  isProcessing?: boolean;
+  forceFullscreen?: boolean;
+  processingProgress?: {
+    current: number;
+    total: number;
+    currentImage?: string;
+  };
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -36,8 +48,46 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onSelectImage,
   onRemoveImage,
   onProcessAll,
-  onProcessImage
+  onProcessImage,
+  onClearAll,
+  onCancelProcessing,
+  isProcessing = false,
+  forceFullscreen = false,
+  processingProgress
 }) => {
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  // Auto-switch to fullscreen when processing starts
+  React.useEffect(() => {
+    if (forceFullscreen && isProcessing) {
+      setIsFullscreen(true);
+    } else if (!isProcessing && forceFullscreen) {
+      // Keep fullscreen until processing is completely done
+      setIsFullscreen(false);
+    }
+  }, [forceFullscreen, isProcessing]);
+  
+  // Handle escape key to exit fullscreen
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen]);
+
   const getStatusIcon = (status: ImageItem['status']) => {
     switch (status) {
       case 'pending':
@@ -75,22 +125,55 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   return (
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
-      visible ? "h-48" : "h-12"
+      isFullscreen 
+        ? "fixed inset-0 z-50 h-screen" 
+        : visible 
+          ? "h-48" 
+          : "h-12"
     )}>
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleVisible}
-            className="flex items-center gap-2"
-          >
-            {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            Image Queue ({images.length})
-          </Button>
+          {!isFullscreen && (
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleVisible}
+                className="flex items-center gap-2"
+              >
+                {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                Image Queue ({images.length})
+              </Button>
+              
+              {isProcessing && processingProgress && (
+                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">
+                    Processing {processingProgress.current}/{processingProgress.total}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           
-          {images.length > 0 && (
+          {isFullscreen && (
+            <div className="flex items-center gap-3">
+              <div className="text-lg font-semibold">Image Queue ({images.length})</div>
+              {isProcessing && processingProgress && (
+                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">
+                      Processing {processingProgress.current}/{processingProgress.total}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {images.length > 0 && (!isFullscreen || !isProcessing) && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               {pendingCount > 0 && <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" /> {pendingCount}
@@ -108,46 +191,107 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
           )}
         </div>
         
-        {images.length > 0 && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {isFullscreen && isProcessing && onCancelProcessing && (
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={onProcessAll}
-              disabled={pendingCount === 0}
+              onClick={onCancelProcessing}
               className="flex items-center gap-2"
             >
-              <PlayCircle className="w-4 h-4" />
-              Process All ({pendingCount})
+              <X className="w-4 h-4" />
+              Cancel Processing
             </Button>
-          </div>
-        )}
+          )}
+          
+          {/* Fullscreen Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            disabled={forceFullscreen && isProcessing}
+            className="flex items-center gap-2"
+            title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            {isFullscreen ? "Exit" : "Fullscreen"}
+          </Button>
+          
+          {images.length > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onProcessAll}
+                disabled={pendingCount === 0 || isProcessing}
+                className="flex items-center gap-2"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PlayCircle className="w-4 h-4" />
+                )}
+                Process & Download All ({pendingCount})
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearAll}
+                disabled={isProcessing}
+                className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Queue Content */}
-      {visible && (
-        <div className="h-36 overflow-y-auto">
+      {(visible || isFullscreen) && (
+        <div className={cn(
+          "overflow-y-auto",
+          isFullscreen ? "h-[calc(100vh-3rem)]" : "h-36"
+        )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <div className="text-2xl mb-2">📁</div>
-                <p className="text-sm">No images in queue</p>
+                <div className="text-4xl mb-4">📁</div>
+                <p className="text-lg font-medium mb-2">No images in queue</p>
+                <p className="text-sm">Add images or drag & drop files to get started</p>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-auto-fit gap-3 p-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            <div className={cn(
+              "grid gap-3 p-4",
+              isFullscreen 
+                ? "grid-cols-auto-fit-large" 
+                : "grid-cols-auto-fit",
+              "auto-rows-max"
+            )} 
+            style={{ 
+              gridTemplateColumns: isFullscreen 
+                ? 'repeat(auto-fill, minmax(280px, 1fr))' 
+                : 'repeat(auto-fill, minmax(200px, 1fr))' 
+            }}>
               {images.map((image) => (
                 <Card
                   key={image.id}
                   className={cn(
-                    "relative p-3 cursor-pointer transition-all hover:bg-accent/5 border",
+                    "relative cursor-pointer transition-all hover:bg-accent/5 border",
+                    isFullscreen ? "p-4" : "p-3",
                     selectedImageId === image.id ? "ring-2 ring-primary border-primary" : "border-border/50"
                   )}
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
                     {/* Thumbnail */}
-                    <div className="w-12 h-12 bg-muted rounded flex-shrink-0 flex items-center justify-center">
+                    <div className={cn(
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
+                      isFullscreen ? "w-16 h-16" : "w-12 h-12"
+                    )}>
                       <img
                         src={URL.createObjectURL(image.file)}
                         alt={image.name}
@@ -160,7 +304,10 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         {getStatusIcon(image.status)}
-                        <span className="text-sm font-medium truncate">{image.name}</span>
+                        <span className={cn(
+                          "font-medium truncate",
+                          isFullscreen ? "text-base" : "text-sm"
+                        )}>{image.name}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 mb-2">
@@ -168,14 +315,31 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         <span className="text-xs text-muted-foreground">
                           {(image.file.size / 1024 / 1024).toFixed(1)} MB
                         </span>
+                        {isFullscreen && (
+                          <span className="text-xs text-muted-foreground">
+                            {image.file.type}
+                          </span>
+                        )}
                       </div>
                       
                       {image.status === 'processing' && (
-                        <Progress value={image.progress} className="h-1" />
+                        <div className="space-y-1">
+                          <Progress value={image.progress} className="h-2" />
+                          {isFullscreen && (
+                            <div className="text-xs text-muted-foreground text-center">
+                              {image.progress}% complete
+                            </div>
+                          )}
+                        </div>
                       )}
                       
                       {image.error && (
-                        <p className="text-xs text-error mt-1">{image.error}</p>
+                        <div className={cn(
+                          "text-error mt-1",
+                          isFullscreen ? "text-sm" : "text-xs"
+                        )}>
+                          <p>{image.error}</p>
+                        </div>
                       )}
                     </div>
                     
@@ -189,9 +353,14 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                             e.stopPropagation();
                             onProcessImage(image);
                           }}
-                          className="w-8 h-8 p-0"
+                          disabled={isProcessing}
+                          className={cn(
+                            "p-0",
+                            isFullscreen ? "w-10 h-10" : "w-8 h-8"
+                          )}
+                          title="Process this image"
                         >
-                          <Play className="w-3 h-3" />
+                          <Play className={cn(isFullscreen ? "w-4 h-4" : "w-3 h-3")} />
                         </Button>
                       )}
                       
@@ -202,9 +371,14 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                           e.stopPropagation();
                           onRemoveImage(image.id);
                         }}
-                        className="w-8 h-8 p-0 text-muted-foreground hover:text-destructive"
+                        disabled={isProcessing}
+                        className={cn(
+                          "p-0 text-muted-foreground hover:text-destructive",
+                          isFullscreen ? "w-10 h-10" : "w-8 h-8"
+                        )}
+                        title="Remove this image"
                       >
-                        <X className="w-3 h-3" />
+                        <X className={cn(isFullscreen ? "w-4 h-4" : "w-3 h-3")} />
                       </Button>
                     </div>
                   </div>

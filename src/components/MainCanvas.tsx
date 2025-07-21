@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
+import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
 import { 
   Move, 
   Pipette, 
@@ -14,16 +14,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Target,
+  Wand,
   Undo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous';
-  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'contiguous') => void;
+  tool: 'pan' | 'eyedropper' | 'remove' | 'magic-wand';
+  onToolChange: (tool: 'pan' | 'eyedropper' | 'remove' | 'magic-wand') => void;
   colorSettings: ColorRemovalSettings;
+  contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
@@ -34,6 +35,8 @@ interface MainCanvasProps {
   currentImageIndex: number;
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
+  addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
+  manualMode?: boolean;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
@@ -41,6 +44,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   tool,
   onToolChange,
   colorSettings,
+  contiguousSettings,
   effectSettings,
   onImageUpdate,
   onColorPicked,
@@ -50,7 +54,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   canGoNext,
   currentImageIndex,
   totalImages,
-  onDownloadImage
+  onDownloadImage,
+  addUndoAction,
+  manualMode = false
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,8 +67,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
-  const [hasManualEdits, setHasManualEdits] = useState(false);
+  const hasManualEditsRef = useRef(false);
+  const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previousTool, setPreviousTool] = useState<'pan' | 'eyedropper' | 'remove' | 'magic-wand'>('pan');
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
 
   // Color processing functions
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -225,55 +234,22 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
 
-      // Apply feather radius (edge softening)
-      if (settings.featherRadius > 0) {
-        const radius = Math.ceil(settings.featherRadius);
-        const originalAlpha = new Uint8ClampedArray(width * height);
-        
-        // Extract original alpha channel
-        for (let i = 0; i < data.length; i += 4) {
-          originalAlpha[i / 4] = data[i + 3];
-        }
-        
-        // Apply gaussian-like blur to alpha channel
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const centerIndex = y * width + x;
-            
-            if (originalAlpha[centerIndex] === 0) continue; // Skip transparent pixels
-            
-            let totalWeight = 0;
-            let weightedAlpha = 0;
-            
-            // Sample in radius around pixel
-            for (let dy = -radius; dy <= radius; dy++) {
-              for (let dx = -radius; dx <= radius; dx++) {
-                const nx = x + dx;
-                const ny = y + dy;
-                
-                if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  if (distance <= settings.featherRadius) {
-                    const weight = Math.exp(-(distance * distance) / (2 * settings.featherRadius * settings.featherRadius));
-                    const neighborIndex = ny * width + nx;
-                    
-                    totalWeight += weight;
-                    weightedAlpha += originalAlpha[neighborIndex] * weight;
-                  }
-                }
-              }
-            }
-            
-            if (totalWeight > 0) {
-              const newAlpha = Math.round(weightedAlpha / totalWeight);
-              data[centerIndex * 4 + 3] = newAlpha;
-            }
-          }
+    // Apply background color for preview only (regardless of saveWithBackground setting)
+    if (effects.background.enabled) {
+      const hex = effects.background.color.replace('#', '');
+      const bgR = parseInt(hex.substr(0, 2), 16);
+      const bgG = parseInt(hex.substr(2, 2), 16);
+      const bgB = parseInt(hex.substr(4, 2), 16);
+
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] === 0) {
+          data[i] = bgR;
+          data[i + 1] = bgG;
+          data[i + 2] = bgB;
+          data[i + 3] = 255;
         }
       }
     }
-
-    // Note: Background is now handled as a backdrop layer, not pixel filling
 
     // Apply ink stamp effect
     if (effects.inkStamp.enabled) {
@@ -305,6 +281,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
       }
     }
+    }
 
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
@@ -317,6 +294,26 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // If we have manual edits and processedData, use that instead of reloading
+    if (hasManualEditsRef.current && image.processedData && manualImageData) {
+      console.log('Preserving manual edits, using processedData');
+      ctx.putImageData(image.processedData, 0, 0);
+      return;
+    }
+
+    // If image has processedData and no manual edits, use that
+    if (image.processedData && !hasManualEditsRef.current) {
+      console.log('Using existing processedData');
+      ctx.putImageData(image.processedData, 0, 0);
+      
+      // Store as original data if not set
+      if (!originalImageData) {
+        setOriginalImageData(image.processedData);
+      }
+      return;
+    }
+
+    console.log('Loading image from file');
     const img = new Image();
     img.onload = () => {
       // Set canvas size to image size
@@ -332,7 +329,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setOriginalImageData(imageData);
       
       // Reset manual edits when new image is loaded
-      setHasManualEdits(false);
+      hasManualEditsRef.current = false;
+      setManualImageData(null);
       setUndoStack([]);
       
       // Update image with original data if not already set
@@ -364,7 +362,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return () => {
       URL.revokeObjectURL(img.src);
     };
-  }, [image]);
+  }, [image, hasManualEditsRef.current, manualImageData, originalImageData, onImageUpdate]);
 
   // Debounced processing to prevent flashing
   const debouncedProcessImageData = useMemo(() => {
@@ -381,29 +379,78 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [processImageData]);
 
-  // Process and display image when settings change (but not if there are manual edits)
+  // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    if (!originalImageData || !canvasRef.current || hasManualEdits) return;
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || manualMode) {
+      console.log('Skipping auto-processing:', {
+        hasOriginalData: !!originalImageData,
+        hasCanvas: !!canvasRef.current,
+        hasManualEdits: hasManualEditsRef.current,
+        manualMode
+      });
+      return;
+    }
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    console.log('Starting auto-processing with settings:', colorSettings);
     setIsProcessing(true);
 
+    // Use manual image data if available, otherwise original
+    const baseImageData = manualImageData || originalImageData;
+
     // Use debounced processing to prevent rapid updates
-    debouncedProcessImageData(originalImageData, colorSettings, effectSettings).then((processedData) => {
+    debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
       // Only apply if we're still on the same canvas and no manual edits occurred during processing
-      if (canvasRef.current === canvas && !hasManualEdits) {
+      if (canvasRef.current === canvas && !hasManualEditsRef.current && !manualMode) {
+        console.log('Applying auto-processed data');
         ctx.putImageData(processedData, 0, 0);
         setIsProcessing(false);
+      } else {
+        console.log('Skipping auto-processed data application:', {
+          sameCanvas: canvasRef.current === canvas,
+          hasManualEdits: hasManualEditsRef.current,
+          manualMode
+        });
       }
     });
 
     return () => {
       setIsProcessing(false);
     };
-  }, [originalImageData, colorSettings, effectSettings, debouncedProcessImageData, hasManualEdits]);
+  }, [originalImageData, manualImageData, colorSettings, effectSettings, debouncedProcessImageData, manualMode]);
+
+  // Keyboard shortcut for spacebar (pan tool)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+        if (tool !== 'pan') {
+          setPreviousTool(tool);
+          onToolChange('pan');
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(false);
+        onToolChange(previousTool);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [tool, isSpacePressed, previousTool, onToolChange]);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
@@ -440,15 +487,35 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Add to picked colors and immediately remove this color
       onColorPicked(hex);
       
-      // Save current state for undo
+      // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Add global undo action
+      if (addUndoAction && image) {
+        addUndoAction({
+          type: 'canvas_edit',
+          description: `Pick color ${hex}`,
+          undo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(currentImageData, 0, 0);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                onImageUpdate(updatedImage);
+              }
+            }
+          }
+        });
+      }
       
       // Immediately remove this color with default threshold of 30
       removePickedColor(ctx, r, g, b, 30);
       
       // Mark that we have manual edits
-      setHasManualEdits(true);
+      hasManualEditsRef.current = true;
       
       // Store the result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -458,9 +525,29 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     } else if (tool === 'remove') {
       // Interactive removal tool should always work, regardless of color removal settings
-      // Save current state for undo
+      // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Add global undo action
+      if (addUndoAction && image) {
+        addUndoAction({
+          type: 'canvas_edit',
+          description: 'Manual color removal',
+          undo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(currentImageData, 0, 0);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                onImageUpdate(updatedImage);
+              }
+            }
+          }
+        });
+      }
       
       // Remove contiguous color at clicked position (using manual threshold)
       removeContiguousColor(ctx, x, y, { 
@@ -469,7 +556,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       });
       
       // Mark that we have manual edits to prevent auto-processing from overwriting
-      setHasManualEdits(true);
+      hasManualEditsRef.current = true;
       
       // Store the manually edited result
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -477,8 +564,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const updatedImage = { ...image, processedData: newImageData };
         onImageUpdate(updatedImage);
       }
-    } else if (tool === 'contiguous') {
-      // Contiguous selection tool - adds color to picked colors for removal
+    } else if (tool === 'magic-wand') {
+      // Magic wand tool - removes only connected pixels of clicked color
+      console.log('Magic wand tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
+      
+      // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
+      hasManualEditsRef.current = true;
+      
       // Get color at clicked position from original image
       const index = (y * originalImageData.width + x) * 4;
       const r = originalImageData.data[index];
@@ -486,10 +578,58 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const b = originalImageData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
-      // Add contiguous region to picked colors
-      onColorPicked(hex);
+      // Save current state for undo (both local canvas undo and global undo)
+      const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setUndoStack(prev => [...prev, currentImageData]);
+      
+      // Add global undo action
+      if (addUndoAction && image) {
+        addUndoAction({
+          type: 'canvas_edit',
+          description: `Magic wand removal of ${hex}`,
+          undo: () => {
+            if (canvasRef.current && image) {
+              const canvas = canvasRef.current;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.putImageData(currentImageData, 0, 0);
+                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const updatedImage = { ...image, processedData: newImageData };
+                onImageUpdate(updatedImage);
+                // Reset manual edits state on undo
+                hasManualEditsRef.current = false;
+                setManualImageData(null);
+              }
+            }
+          }
+        });
+      }
+      
+      // Remove contiguous color at clicked position using independent contiguous threshold
+      console.log('Before removeContiguousColorIndependent, manual edits marked, manualMode:', manualMode);
+      removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
+      console.log('After removeContiguousColorIndependent');
+      
+      // Store the manually edited result as base for future operations
+      const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setManualImageData(newImageData);
+      console.log('Stored manual image data');
+      
+      if (image) {
+        const updatedImage = { ...image, processedData: newImageData };
+        console.log('Updating image with manually edited data');
+        onImageUpdate(updatedImage);
+        
+        // Force a small delay to ensure the update sticks
+        setTimeout(() => {
+          console.log('Verifying canvas state after update');
+          const verifyData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const transparentPixels = Array.from(verifyData.data).filter((_, i) => i % 4 === 3 && verifyData.data[i] === 0).length;
+          console.log(`Canvas verification: ${transparentPixels} transparent pixels`);
+        }, 100);
+      }
     }
-  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, onColorPicked, onImageUpdate]);
+  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -534,6 +674,81 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
     
     ctx.putImageData(imageData, 0, 0);
+  };
+
+  // Independent contiguous removal function for the contiguous tool
+  const removeContiguousColorIndependent = (ctx: CanvasRenderingContext2D, startX: number, startY: number, threshold: number) => {
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+    
+    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
+    console.log(`Canvas dimensions: ${width}x${height}`);
+    
+    // Get target color
+    const index = (startY * width + startX) * 4;
+    const targetR = data[index];
+    const targetG = data[index + 1];
+    const targetB = data[index + 2];
+    const targetA = data[index + 3];
+    
+    console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
+    
+    // Skip if pixel is already transparent
+    if (targetA === 0) {
+      console.log('Target pixel is already transparent, skipping');
+      return;
+    }
+    
+    // Flood fill algorithm to remove contiguous pixels
+    const visited = new Set<string>();
+    const stack = [[startX, startY]];
+    let removedPixels = 0;
+    
+    const thresholdScaled = threshold * 2.55;
+    console.log(`Threshold scaled: ${thresholdScaled}`);
+    
+    const isColorSimilar = (r: number, g: number, b: number) => {
+      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      const similar = distance <= thresholdScaled;
+      return similar;
+    };
+    
+    while (stack.length > 0) {
+      const [x, y] = stack.pop()!;
+      const key = `${x},${y}`;
+      
+      if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+      visited.add(key);
+      
+      const pixelIndex = (y * width + x) * 4;
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      const a = data[pixelIndex + 3];
+      
+      // Skip if pixel is already transparent
+      if (a === 0) continue;
+      
+      if (!isColorSimilar(r, g, b)) continue;
+      
+      // Make pixel transparent
+      data[pixelIndex + 3] = 0;
+      removedPixels++;
+      
+      // Add neighbors to stack
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    
+    console.log(`Removed ${removedPixels} pixels`);
+    
+    if (removedPixels > 0) {
+      ctx.putImageData(imageData, 0, 0);
+      console.log('Applied image data to canvas');
+    } else {
+      console.log('No pixels were removed');
+    }
   };
 
   const removePickedColor = (ctx: CanvasRenderingContext2D, targetR: number, targetG: number, targetB: number, threshold: number) => {
@@ -627,13 +842,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
+    console.log('Local undo - restoring previous state');
     const previousState = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
     
+    // Restore the previous canvas state
     ctx.putImageData(previousState, 0, 0);
     
-    const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const updatedImage = { ...image, processedData: newImageData };
+    // Update the image with the restored state
+    const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const updatedImage = { ...image, processedData: restoredImageData };
+    
+    // Update manual image data to preserve the undo state
+    setManualImageData(restoredImageData);
+    
+    console.log('Local undo completed, undoStack length:', undoStack.length - 1);
     onImageUpdate(updatedImage);
   }, [undoStack, image, onImageUpdate]);
 
@@ -664,7 +887,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     if (!ctx) return;
     
     // Clear manual edits and reprocess with automatic settings
-    setHasManualEdits(false);
+    hasManualEditsRef.current = false;
+    setManualImageData(null);
     setUndoStack([]);
     
     // Reprocess the original image with current settings
@@ -776,13 +1000,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
           
           <Button
-            variant={tool === 'contiguous' ? 'default' : 'ghost'}
+            variant={tool === 'magic-wand' ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => onToolChange('contiguous')}
+            onClick={() => onToolChange('magic-wand')}
             className="flex items-center gap-2"
+            title="Magic Wand - Remove connected pixels"
           >
-            <Target className="w-4 h-4" />
-            Contiguous
+            <Wand className="w-4 h-4" />
+            Magic Wand
           </Button>
         </div>
         
@@ -830,7 +1055,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleReset}
-            disabled={!hasManualEdits}
+            disabled={!hasManualEditsRef.current && !manualImageData}
             title="Reset to automatic processing"
           >
             <RefreshCw className="w-4 h-4" />
@@ -884,7 +1109,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'eyedropper' && 'cursor-crosshair',
                 tool === 'remove' && 'cursor-pointer',
-                tool === 'contiguous' && 'cursor-crosshair'
+                tool === 'magic-wand' && 'cursor-crosshair'
               )}
               style={{
                 transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
