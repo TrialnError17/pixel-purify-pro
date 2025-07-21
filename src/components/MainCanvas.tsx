@@ -837,7 +837,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return result;
   }, []);
 
-  // Load original image and store image data
+  // Load original image and store image data - optimized for performance
   useEffect(() => {
     console.log('Image loading effect triggered:', { 
       hasImage: !!image, 
@@ -863,7 +863,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
 
-    // If image has processedData and no manual edits, use that
+    // If image has processedData and no manual edits, use that for instant loading
     if (image.processedData && !hasManualEditsRef.current) {
       console.log('Using existing processedData');
       // Use requestAnimationFrame to ensure smooth update
@@ -874,6 +874,39 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Store as original data if not set
       if (!originalImageData) {
         setOriginalImageData(image.processedData);
+      }
+      return;
+    }
+
+    // If we have originalData cached, use it for instant loading
+    if (image.originalData && !originalImageData) {
+      console.log('Using cached originalData for instant loading');
+      canvas.width = image.originalData.width;
+      canvas.height = image.originalData.height;
+      ctx.putImageData(image.originalData, 0, 0);
+      setOriginalImageData(image.originalData);
+      
+      // Reset manual edits when switching images
+      hasManualEditsRef.current = false;
+      setManualImageData(null);
+      setUndoStack([]);
+      setRedoStack([]);
+      
+      // Calculate center offset for the image
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const scaleX = (containerRect.width - 40) / canvas.width;
+        const scaleY = (containerRect.height - 40) / canvas.height;
+        const scale = Math.min(scaleX, scaleY, 1);
+        
+        // Calculate center position
+        const centerX = (containerRect.width - canvas.width * scale) / 2;
+        const centerY = (containerRect.height - canvas.height * scale) / 2;
+        
+        setZoom(scale);
+        setPan({ x: 0, y: 0 });
+        setCenterOffset({ x: centerX, y: centerY });
       }
       return;
     }
@@ -903,7 +936,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setOriginalImageData(imageData);
       
       console.log('Original image data stored');
-      setOriginalImageData(imageData);
       
       // Reset manual edits when new image is loaded
       hasManualEditsRef.current = false;
@@ -944,7 +976,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return () => {
       URL.revokeObjectURL(img.src);
     };
-  }, [image]);
+  }, [image?.id]); // Only trigger when image ID changes, not on every render
 
   // Debounced processing to prevent flashing
   const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
@@ -975,6 +1007,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     if (!originalImageData || !canvasRef.current || isProcessing) {
       console.log('Early return - missing requirements or processing in progress');
+      return;
+    }
+    
+    // Skip ALL processing if color removal is disabled and no other effects are enabled
+    const hasAnyProcessingEnabled = colorSettings.enabled || 
+                                  effectSettings.background.enabled || 
+                                  effectSettings.inkStamp.enabled || 
+                                  effectSettings.imageEffects.enabled ||
+                                  edgeCleanupSettings.enabled ||
+                                  speckleSettings.enabled;
+    
+    if (!hasAnyProcessingEnabled) {
+      console.log('Early return - no processing needed');
       return;
     }
      
