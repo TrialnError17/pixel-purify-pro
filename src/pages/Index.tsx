@@ -8,8 +8,6 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
-import { createOptimizedImage, createThumbnail } from '@/utils/imageOptimization';
-import { loadImagesBatch } from '@/utils/batchImageLoader';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
@@ -98,6 +96,7 @@ export interface EraserSettings {
 }
 
 const Index = () => {
+  console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
@@ -105,7 +104,6 @@ const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
-  const [isBatchLoading, setIsBatchLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -113,7 +111,7 @@ const Index = () => {
   const erasingInProgressRef = useRef<boolean>(false);
   
   const [colorSettings, setColorSettings] = useState<ColorRemovalSettings>({
-    enabled: false, // Changed from true to false - color removal off by default
+    enabled: true,
     mode: 'auto',
     targetColor: '#ffffff',
     threshold: 30,
@@ -200,64 +198,27 @@ const Index = () => {
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
-  // OPTIMIZED: Batch image loading with single state update
-  const handleFilesSelected = useCallback(async (files: FileList) => {
-    if (files.length === 0) return;
-    
-    setIsBatchLoading(true);
-    
-    try {
-      // Load images in parallel
-      const batchResults = await loadImagesBatch(Array.from(files));
-      
-      // Convert batch results to ImageItem format
-      const newImages: ImageItem[] = batchResults.map(result => ({
-        id: result.id,
-        file: result.file,
-        name: result.name,
-        status: result.status as 'pending' | 'processing' | 'completed' | 'error',
-        progress: result.progress,
-        error: result.error,
-      }));
+  const handleFilesSelected = useCallback((files: FileList) => {
+    const newImages: ImageItem[] = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      file,
+      name: file.name,
+      status: 'pending' as const,
+      progress: 0,
+    }));
 
-      // SINGLE state update for the entire batch
-      setImages(prev => {
-        const updated = [...prev, ...newImages];
-        
-        // Select first image if none selected - only check once
-        if (!selectedImageId && updated.length > 0) {
-          setSelectedImageId(updated[0].id);
-        }
-        
-        return updated;
-      });
+    setImages(prev => {
+      const updated = [...prev, ...newImages];
+      // Select first image if none selected
+      if (!selectedImageId && updated.length > 0) {
+        setSelectedImageId(updated[0].id);
+      }
+      return updated;
+    });
 
-      // Show queue when images are added
-      setQueueVisible(true);
-      
-      // SINGLE undo action for the entire batch
-      addUndoAction({
-        type: 'batch_operation',
-        description: `Add ${newImages.length} image${newImages.length !== 1 ? 's' : ''}`,
-        undo: () => {
-          setImages(prev => prev.filter(img => !newImages.some(newImg => newImg.id === img.id)));
-          if (newImages.some(img => img.id === selectedImageId)) {
-            setSelectedImageId(null);
-          }
-        }
-      });
-
-    } catch (error) {
-      console.error('Batch loading failed:', error);
-      toast({
-        title: 'Error loading images',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsBatchLoading(false);
-    }
-  }, [selectedImageId, addUndoAction, toast]);
+    // Show queue when images are added
+    setQueueVisible(true);
+  }, [selectedImageId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -368,11 +329,9 @@ const Index = () => {
           onRedo={redo}
           canUndo={canUndo}
           canRedo={canRedo}
-          isProcessing={isProcessing || isBatchLoading}
+          isProcessing={isProcessing}
           processingProgress={
-            isBatchLoading 
-              ? { current: 0, total: 1 } // Show loading state
-              : isProcessing 
+            isProcessing 
                 ? {
                   current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
                   total: images.length
@@ -574,9 +533,7 @@ const Index = () => {
               onSelectImage={setSelectedImageId}
               singleImageProgress={singleImageProgress}
               processingProgress={
-                isBatchLoading 
-                  ? { current: 0, total: 1 } // Show loading state
-                  : isProcessing 
+                isProcessing 
                     ? {
                       current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
                       total: images.length
@@ -656,7 +613,7 @@ const Index = () => {
                 setIsProcessing(false);
                 // Removed cancel toast
               }}
-              isProcessing={isProcessing || isBatchLoading}
+              isProcessing={isProcessing}
               forceFullscreen={isProcessing}
               onClearAll={handleClearAll}
             />

@@ -4,19 +4,12 @@
 export const debounce = <T extends (...args: any[]) => any>(
   func: T,
   wait: number
-): ((...args: Parameters<T>) => void) & { cancel: () => void } => {
+): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
-  
-  const debouncedFn = (...args: Parameters<T>) => {
+  return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
-  
-  debouncedFn.cancel = () => {
-    clearTimeout(timeout);
-  };
-  
-  return debouncedFn;
 };
 
 // Throttle function for high-frequency operations
