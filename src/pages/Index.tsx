@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { LeftSidebar } from '@/components/LeftSidebar';
 import { RightSidebar } from '@/components/RightSidebar';
-import { CanvasIntegration } from '@/components/interactive/CanvasIntegration';
+import { MainCanvas } from '@/components/MainCanvas';
 import { ImageQueue } from '@/components/ImageQueue';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
@@ -466,42 +466,47 @@ const Index = () => {
           
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
-            <CanvasIntegration 
+            <MainCanvas 
               image={selectedImage}
-              originalImageData={selectedImage?.originalData || null}
               tool={currentTool}
               onToolChange={setCurrentTool}
-              onImageDataChange={(newImageData) => {
-                if (selectedImage) {
-                  const updatedImage = { ...selectedImage, processedData: newImageData };
-                  setImages(prev => prev.map(img => 
-                    img.id === updatedImage.id ? updatedImage : img
-                  ));
-                }
+              colorSettings={colorSettings}
+              contiguousSettings={contiguousSettings}
+              effectSettings={effectSettings}
+              speckleSettings={speckleSettings}
+              edgeCleanupSettings={edgeCleanupSettings}
+              
+              onImageUpdate={(updatedImage) => {
+                setImages(prev => prev.map(img => 
+                  img.id === updatedImage.id ? updatedImage : img
+                ));
               }}
-              onManualEdit={() => {
-                if (selectedImage) {
-                  addUndoAction({
-                    type: 'canvas_edit',
-                    description: `Interactive tool edit on ${selectedImage.name}`,
-                    undo: () => {
-                      // Undo logic would go here - for now just a placeholder
-                    }
-                  });
-                }
+              onColorPicked={(color) => {
+                // Add color to picked colors list with default threshold of 30
+                const newPickedColor: PickedColor = {
+                  id: crypto.randomUUID(),
+                  color,
+                  threshold: 30
+                };
+                setColorSettings(prev => ({ 
+                  ...prev, 
+                  pickedColors: [...prev.pickedColors, newPickedColor] 
+                }));
               }}
-              currentImageIndex={selectedImageIndex + 1}
-              totalImages={images.length}
               onPreviousImage={handlePreviousImage}
               onNextImage={handleNextImage}
               canGoPrevious={selectedImageIndex > 0}
               canGoNext={selectedImageIndex < images.length - 1}
+              currentImageIndex={selectedImageIndex + 1}
+              totalImages={images.length}
               onDownloadImage={() => {
                 if (selectedImage) {
                   downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
                 }
               }}
-              className="flex-1"
+              setSingleImageProgress={setSingleImageProgress}
+              addUndoAction={addUndoAction}
+              onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
             
             {/* Image Queue - At bottom between sidebars */}

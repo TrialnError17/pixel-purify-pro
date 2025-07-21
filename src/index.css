@@ -2,17 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Checker background for transparency */
-.bg-checker {
-  background-image: 
-    linear-gradient(45deg, hsl(var(--muted) / 0.3) 25%, transparent 25%),
-    linear-gradient(-45deg, hsl(var(--muted) / 0.3) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, hsl(var(--muted) / 0.3) 75%),
-    linear-gradient(-45deg, transparent 75%, hsl(var(--muted) / 0.3) 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-}
-
 /* Professional Background Removal App Design System */
 
 @layer base {

@@ -1371,7 +1371,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    console.log('Canvas clicked with tool:', tool);
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
@@ -2159,10 +2158,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           <Button
             variant={tool === 'magic-wand' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => {
-              console.log('Magic wand tool button clicked');
-              onToolChange('magic-wand');
-            }}
+            onClick={() => onToolChange('magic-wand')}
             className={tool === 'magic-wand' 
               ? "bg-accent-cyan text-white" 
               : "border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"}
