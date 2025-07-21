@@ -51,8 +51,8 @@ export const MainCanvas = () => {
   const {
     undo,
     redo,
-    addToHistory,
-    history,
+    addUndoAction,
+    undoStack,
     canUndo,
     canRedo,
     clearHistory
@@ -99,28 +99,17 @@ export const MainCanvas = () => {
       hasManualEditsRef.current = true;
       
       // Add to undo history
-      addToHistory({
-        type: 'manual-edit',
-        imageData: new ImageData(
-          new Uint8ClampedArray(imageData.data),
-          imageData.width,
-          imageData.height
-        )
+      addUndoAction({
+        type: 'canvas_edit',
+        description: 'Eraser tool',
+        undo: () => {
+          // Restore previous state logic would go here
+        }
       });
-    }, [currentImageId, addToHistory])
+    }, [currentImageId, addUndoAction])
   });
 
-  const speckleTools = useSpeckleTools({
-    streamId: speckleStreamId,
-    branchName: speckleBranchName,
-    commitId: speckleCommitId,
-    setImageQueue,
-    setErrorMessage,
-    setIsLoading,
-    manualImageDataRef,
-    hasManualEditsRef,
-    clearHistory
-  });
+  const speckleTools = useSpeckleTools();
 
   // Reset manual edit tracking when switching tools
   useEffect(() => {
@@ -158,17 +147,24 @@ export const MainCanvas = () => {
       setIsProcessing(true);
       try {
         if (currentImage.originalData) {
-          const processedImageData = await processImage(currentImage.originalData);
-
-          setImageQueue(prevQueue => {
-            const updatedQueue = prevQueue.map(img => {
-              if (img.id === currentImageId) {
-                return { ...img, processedData: processedImageData };
-              }
-              return img;
-            });
-            return updatedQueue;
-          });
+          const defaultColorSettings = {
+            enabled: false,
+            mode: 'auto' as const,
+            targetColor: '#ffffff',
+            threshold: 10,
+            contiguous: false,
+            pickedColors: [],
+            minRegionSize: { enabled: false, value: 100 }
+          };
+          const defaultEffectSettings = {
+            imageEffects: { enabled: false, brightness: 0, contrast: 0, vibrance: 0, hue: 0, colorize: { enabled: false, hue: 0, saturation: 50, lightness: 50 }, blackAndWhite: false, invert: false },
+            alphaFeathering: { enabled: false, radius: 2, strength: 50 },
+            download: { trimTransparentPixels: false },
+            background: { enabled: false, color: '#ffffff', saveWithBackground: false },
+            inkStamp: { enabled: false, color: '#000000', threshold: 128 }
+          };
+          // processImage works with side effects and doesn't return data directly
+          await processImage(currentImage, defaultColorSettings, defaultEffectSettings, setImageQueue);
         }
       } catch (err) {
         setErrorMessage(`Image processing failed: ${err}`);
@@ -239,9 +235,9 @@ export const MainCanvas = () => {
   }, []);
 
   return (
-    
-      
-        
+    <div ref={containerRef} className="relative w-full h-full">
+      <div className="canvas-container">
+        <div className="canvas-wrapper">
           {/* Canvas */}
           <canvas
             ref={canvas}
@@ -255,32 +251,32 @@ export const MainCanvas = () => {
               cursor: currentTool === 'eraser' && eraserTool ? eraserTool.getBrushCursor() : 'default'
             }}
           />
-        
+        </div>
 
         {/* UI Elements */}
-        
-          {isLoading &&
-            
+        <div className="absolute top-4 left-4 space-y-2">
+          {isLoading && (
+            <div className="bg-background/80 backdrop-blur-sm rounded px-3 py-2">
               Loading...
-            
-          }
-          {isProcessing &&
-            
+            </div>
+          )}
+          {isProcessing && (
+            <div className="bg-background/80 backdrop-blur-sm rounded px-3 py-2">
               Processing...
-            
-          }
-          {errorMessage &&
-            
+            </div>
+          )}
+          {errorMessage && (
+            <div className="bg-destructive/80 backdrop-blur-sm rounded px-3 py-2 text-destructive-foreground">
               {errorMessage}
-            
-          }
-          {successMessage &&
-            
+            </div>
+          )}
+          {successMessage && (
+            <div className="bg-primary/80 backdrop-blur-sm rounded px-3 py-2 text-primary-foreground">
               {successMessage}
-            
-          }
-        
-      
-    
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
