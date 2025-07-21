@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Dark professional theme with colorful accents */
+    /* Dark professional theme */
     --background: 220 13% 8%;
     --foreground: 220 13% 95%;
 
@@ -25,7 +25,7 @@
     --muted: 220 13% 12%;
     --muted-foreground: 220 9% 55%;
 
-    --accent: 290 84% 60%;
+    --accent: 217 91% 60%;
     --accent-foreground: 220 13% 8%;
 
     --destructive: 0 84% 60%;
@@ -37,74 +37,29 @@
 
     --radius: 0.5rem;
 
-    /* Colorful accent palette */
-    --accent-blue: 217 91% 60%;
-    --accent-purple: 290 84% 60%;
-    --accent-pink: 330 81% 60%;
-    --accent-red: 0 84% 60%;
-    --accent-orange: 25 95% 60%;
-    --accent-yellow: 48 96% 60%;
-    --accent-lime: 84 81% 60%;
-    --accent-green: 142 76% 50%;
-    --accent-cyan: 189 94% 60%;
-    --accent-indigo: 263 70% 60%;
-
-    /* Fun gradients with multiple colors */
-    --gradient-rainbow: linear-gradient(135deg, 
-      hsl(217 91% 60%), 
-      hsl(290 84% 60%), 
-      hsl(330 81% 60%), 
-      hsl(25 95% 60%));
+    /* Professional gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 70%));
+    --gradient-surface: linear-gradient(135deg, hsl(220 13% 10%), hsl(220 13% 12%));
+    --gradient-panel: linear-gradient(180deg, hsl(220 13% 11%), hsl(220 13% 9%));
+    --gradient-header: linear-gradient(180deg, hsl(220 13% 12%), hsl(220 13% 8%));
     
-    --gradient-primary: linear-gradient(135deg, 
-      hsl(217 91% 60%), 
-      hsl(263 70% 60%));
-    
-    --gradient-surface: linear-gradient(135deg, 
-      hsl(220 13% 10%), 
-      hsl(220 13% 12%));
-    
-    --gradient-panel: linear-gradient(180deg, 
-      hsl(220 13% 11%), 
-      hsl(220 13% 9%));
-    
-    --gradient-header: linear-gradient(135deg, 
-      hsl(220 13% 12%), 
-      hsl(217 91% 60% / 0.1), 
-      hsl(220 13% 8%));
-    
-    --gradient-success: linear-gradient(135deg, 
-      hsl(142 76% 50%), 
-      hsl(84 81% 60%));
-    
-    --gradient-warning: linear-gradient(135deg, 
-      hsl(48 96% 60%), 
-      hsl(25 95% 60%));
-    
-    --gradient-error: linear-gradient(135deg, 
-      hsl(0 84% 60%), 
-      hsl(330 81% 60%));
-    
-    --gradient-processing: linear-gradient(135deg, 
-      hsl(189 94% 60%), 
-      hsl(217 91% 60%));
-    
-    /* Professional shadows with color hints */
+    /* Professional shadows */
     --shadow-panel: 0 4px 20px -4px hsl(220 13% 4% / 0.6);
     --shadow-button: 0 2px 8px -2px hsl(217 91% 60% / 0.3);
     --shadow-deep: 0 8px 30px -8px hsl(220 13% 4% / 0.8);
-    --shadow-colorful: 0 4px 20px -4px hsl(290 84% 60% / 0.2);
     
     /* Processing colors */
-    --processing: 189 94% 60%;
-    --success: 142 76% 50%;
-    --warning: 48 96% 60%;
+    --processing: 38 92% 50%;
+    --success: 142 76% 36%;
+    --warning: 43 96% 56%;
     --error: 0 84% 60%;
     
     /* Canvas colors */
     --canvas-bg: 220 13% 6%;
     --canvas-border: 220 13% 20%;
     --grid-lines: 220 13% 15%;
+
+    --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -132,38 +87,5 @@
 
   body {
     @apply bg-background text-foreground;
-  }
-
-  /* Better visibility for switch components in off state */
-  button[data-state="unchecked"] {
-    background-color: hsl(var(--muted)) !important;
-    border: 2px solid hsl(var(--accent-blue) / 0.3) !important;
-    box-shadow: 0 0 0 1px hsl(var(--accent-purple) / 0.2), 
-                inset 0 1px 2px hsl(var(--muted) / 0.1) !important;
-    opacity: 0.9;
-    transition: all 0.2s ease;
-  }
-  
-  button[data-state="unchecked"]:hover {
-    background-color: hsl(var(--accent) / 0.1) !important;
-    border: 2px solid hsl(var(--accent-purple) / 0.6) !important;
-    box-shadow: 0 0 8px hsl(var(--accent-purple) / 0.3),
-                0 0 0 1px hsl(var(--accent-blue) / 0.4) !important;
-    opacity: 1;
-    transform: scale(1.02);
-  }
-  
-  /* Switch thumb visibility improvements */
-  span[data-state="unchecked"] {
-    background-color: hsl(var(--muted-foreground)) !important;
-    border: 1px solid hsl(var(--accent-cyan) / 0.4) !important;
-    box-shadow: 0 1px 3px hsl(var(--accent-blue) / 0.2) !important;
-    transition: all 0.2s ease;
-  }
-  
-  /* Additional accent for checked state */
-  button[data-state="checked"] {
-    box-shadow: 0 0 12px hsl(var(--accent-purple) / 0.4),
-                0 0 0 1px hsl(var(--accent-blue) / 0.3) !important;
   }
 }

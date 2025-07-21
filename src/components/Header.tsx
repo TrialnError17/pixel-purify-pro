@@ -1,65 +1,79 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FolderPlus, ImagePlus, Loader2 } from 'lucide-react';
+import { FolderPlus, ImagePlus, Download, Package } from 'lucide-react';
 
 interface HeaderProps {
   onAddImages: () => void;
   onAddFolder: () => void;
   onDownloadPNG: () => void;
+  onDownloadAll: () => void;
   canDownload: boolean;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  isProcessing?: boolean;
-  processingProgress?: { current: number; total: number; currentImage?: string };
+  canDownloadAll: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onAddImages,
   onAddFolder,
   onDownloadPNG,
+  onDownloadAll,
   canDownload,
-  onUndo,
-  onRedo,
-  canUndo = false,
-  canRedo = false,
-  isProcessing = false,
-  processingProgress
+  canDownloadAll
 }) => {
   return (
-    <header className="h-14 bg-black border-b border-border flex items-center justify-between px-4 shadow-panel">
+    <header className="h-14 bg-gradient-header border-b border-border flex items-center justify-between px-4 shadow-panel">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <img 
-            src="/lovable-uploads/692a11d9-d069-4748-a1fa-f3281996fa0a.png" 
-            alt="iScalePOD Logo" 
-            className="h-8 w-auto"
-          />
-          <h1 className="text-lg font-semibold text-foreground">
-            Image Color Remover
-          </h1>
-        </div>
-        
-        {/* Processing Indicator */}
-        {isProcessing && (
-          <div className="flex items-center gap-3 ml-4 px-3 py-1 bg-accent-cyan/10 rounded-lg border border-accent-cyan/30">
-            <Loader2 className="w-4 h-4 animate-spin text-accent-cyan" />
-            <div className="text-sm">
-              {processingProgress ? (
-                <div className="font-medium text-accent-cyan">
-                  Processing {processingProgress.current}/{processingProgress.total}
-                </div>
-              ) : (
-                <span className="font-medium text-accent-cyan">Processing...</span>
-              )}
-            </div>
+          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+            <Package className="w-5 h-5 text-primary-foreground" />
           </div>
-        )}
+          <h1 className="text-lg font-semibold text-foreground">BG Remover Pro</h1>
+        </div>
       </div>
       
       <div className="flex items-center gap-2">
-        {/* Empty space for right side */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onAddImages}
+          className="flex items-center gap-2"
+        >
+          <ImagePlus className="w-4 h-4" />
+          Add Images
+        </Button>
+        
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onAddFolder}
+          className="flex items-center gap-2"
+        >
+          <FolderPlus className="w-4 h-4" />
+          Add Folder
+        </Button>
+        
+        <div className="w-px h-6 bg-border mx-2" />
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDownloadPNG}
+          disabled={!canDownload}
+          className="flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          PNG
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDownloadAll}
+          disabled={!canDownloadAll}
+          className="flex items-center gap-2"
+        >
+          <Package className="w-4 h-4" />
+          ZIP All
+        </Button>
       </div>
     </header>
   );

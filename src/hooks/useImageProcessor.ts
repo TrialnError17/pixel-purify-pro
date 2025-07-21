@@ -1,19 +1,56 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
 
 export const useImageProcessor = () => {
   const { toast } = useToast();
-  const cancelTokenRef = useRef({ cancelled: false });
 
-  // Simple RGB color distance calculation (more reliable than LAB)
+  // CIEDE2000 color distance calculation (simplified version)
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
-    const dr = r1 - r2;
-    const dg = g1 - g2;
-    const db = b1 - b2;
-    return Math.sqrt(dr * dr + dg * dg + db * db);
+    // Convert RGB to LAB color space (simplified)
+    const lab1 = rgbToLab(r1, g1, b1);
+    const lab2 = rgbToLab(r2, g2, b2);
+    
+    // Simplified CIEDE2000 distance calculation
+    const deltaL = lab2.l - lab1.l;
+    const deltaA = lab2.a - lab1.a;
+    const deltaB = lab2.b - lab1.b;
+    
+    return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
   }, []);
 
+  // Convert RGB to LAB color space (simplified)
+  const rgbToLab = (r: number, g: number, b: number) => {
+    // Convert RGB to XYZ first (simplified)
+    let rNorm = r / 255;
+    let gNorm = g / 255;
+    let bNorm = b / 255;
+
+    // Apply gamma correction
+    rNorm = rNorm > 0.04045 ? Math.pow((rNorm + 0.055) / 1.055, 2.4) : rNorm / 12.92;
+    gNorm = gNorm > 0.04045 ? Math.pow((gNorm + 0.055) / 1.055, 2.4) : gNorm / 12.92;
+    bNorm = bNorm > 0.04045 ? Math.pow((bNorm + 0.055) / 1.055, 2.4) : bNorm / 12.92;
+
+    // Observer. = 2°, Illuminant = D65
+    const x = rNorm * 0.4124 + gNorm * 0.3576 + bNorm * 0.1805;
+    const y = rNorm * 0.2126 + gNorm * 0.7152 + bNorm * 0.0722;
+    const z = rNorm * 0.0193 + gNorm * 0.1192 + bNorm * 0.9505;
+
+    // Convert XYZ to LAB
+    const xn = 95.047;  // Reference white D65
+    const yn = 100.000;
+    const zn = 108.883;
+
+    const fx = x / xn > 0.008856 ? Math.pow(x / xn, 1/3) : (7.787 * x / xn) + (16/116);
+    const fy = y / yn > 0.008856 ? Math.pow(y / yn, 1/3) : (7.787 * y / yn) + (16/116);
+    const fz = z / zn > 0.008856 ? Math.pow(z / zn, 1/3) : (7.787 * z / zn) + (16/116);
+
+    const l = (116 * fy) - 16;
+    const a = 500 * (fx - fy);
+    const b_lab = 200 * (fy - fz);
+
+    return { l, a, b: b_lab };
+  };
 
   // Auto color removal - removes top-left corner color and similar colors
   const autoColorRemoval = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
@@ -26,12 +63,9 @@ export const useImageProcessor = () => {
     const targetG = data[1];
     const targetB = data[2];
 
-    // Convert threshold (0-100) to RGB distance threshold (much more conservative)
-    const threshold = settings.threshold * 2.55; // Scale to 0-255 range
-    
-    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, 'threshold:', threshold);
-    
-    let pixelsRemoved = 0;
+    // Convert threshold (0-100) to LAB distance threshold
+    const threshold = settings.threshold * 1.5; // Adjust scaling as needed
+
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
@@ -41,11 +75,8 @@ export const useImageProcessor = () => {
       
       if (distance <= threshold) {
         data[i + 3] = 0; // Make transparent
-        pixelsRemoved++;
       }
     }
-    
-    console.log('Auto color removal complete - pixels removed:', pixelsRemoved, 'out of', data.length / 4);
 
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
@@ -62,7 +93,7 @@ export const useImageProcessor = () => {
     const targetG = parseInt(hex.substr(2, 2), 16);
     const targetB = parseInt(hex.substr(4, 2), 16);
 
-    const threshold = settings.threshold * 2.55;
+    const threshold = settings.threshold * 1.5;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -88,7 +119,7 @@ export const useImageProcessor = () => {
 
     const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
       const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold * 2.55;
+      return distance <= settings.threshold * 1.5;
     };
 
     const floodFillFromBorder = (startX: number, startY: number) => {
@@ -134,122 +165,54 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
 
-  // Remove small regions and apply feathering
-  const cleanupRegions = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
+  // Apply morphological operations
+  const applyMorphology = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
+    const radius = Math.max(1, Math.floor(settings.featherRadius));
 
-    // Step 1: Remove small transparent regions (fill holes)
-    if (settings.minRegionSize > 0) {
-      const visited = new Set<string>();
-      
-      const floodFillRegion = (startX: number, startY: number, isTransparent: boolean): number => {
-        const stack = [[startX, startY]];
-        const region: [number, number][] = [];
-        
-        while (stack.length > 0) {
-          const [x, y] = stack.pop()!;
-          const key = `${x},${y}`;
-          
-          if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-          visited.add(key);
-          
-          const index = (y * width + x) * 4;
-          const pixelIsTransparent = data[index + 3] === 0;
-          
-          if (pixelIsTransparent !== isTransparent) continue;
-          
-          region.push([x, y]);
-          stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-        }
-        
-        return region.length;
-      };
+    // Simple erosion to clean up edges
+    for (let y = radius; y < height - radius; y++) {
+      for (let x = radius; x < width - radius; x++) {
+        const centerIndex = (y * width + x) * 4;
+        if (data[centerIndex + 3] === 0) continue; // Skip transparent pixels
 
-      // Find and remove small transparent regions
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const key = `${x},${y}`;
-          if (visited.has(key)) continue;
-          
-          const index = (y * width + x) * 4;
-          const isTransparent = data[index + 3] === 0;
-          
-          if (isTransparent) {
-            const regionSize = floodFillRegion(x, y, true);
-            
-            // If region is too small, fill it (make it opaque)
-            if (regionSize < settings.minRegionSize) {
-              // Get surrounding color to fill with
-              let fillR = 0, fillG = 0, fillB = 0, count = 0;
-              
-              for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                  const nx = x + dx;
-                  const ny = y + dy;
-                  if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
-                    const nIndex = (ny * width + nx) * 4;
-                    if (data[nIndex + 3] > 0) {
-                      fillR += data[nIndex];
-                      fillG += data[nIndex + 1];
-                      fillB += data[nIndex + 2];
-                      count++;
-                    }
-                  }
-                }
-              }
-              
-              if (count > 0) {
-                fillR = Math.round(fillR / count);
-                fillG = Math.round(fillG / count);
-                fillB = Math.round(fillB / count);
-                
-                // Fill the small region
-                const fillStack = [[x, y]];
-                const fillVisited = new Set<string>();
-                
-                while (fillStack.length > 0) {
-                  const [fx, fy] = fillStack.pop()!;
-                  const fKey = `${fx},${fy}`;
-                  
-                  if (fillVisited.has(fKey) || fx < 0 || fy < 0 || fx >= width || fy >= height) continue;
-                  fillVisited.add(fKey);
-                  
-                  const fIndex = (fy * width + fx) * 4;
-                  if (data[fIndex + 3] > 0) continue;
-                  
-                  data[fIndex] = fillR;
-                  data[fIndex + 1] = fillG;
-                  data[fIndex + 2] = fillB;
-                  data[fIndex + 3] = 255;
-                  
-                  fillStack.push([fx + 1, fy], [fx - 1, fy], [fx, fy + 1], [fx, fy - 1]);
-                }
-              }
+        let shouldErode = false;
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const neighborIndex = ((y + dy) * width + (x + dx)) * 4;
+            if (data[neighborIndex + 3] === 0) {
+              shouldErode = true;
+              break;
             }
           }
+          if (shouldErode) break;
+        }
+
+        if (shouldErode) {
+          data[centerIndex + 3] = 0;
         }
       }
     }
 
-
     return new ImageData(data, width, height);
   }, []);
 
-  // Apply effects for display only (non-destructive background)
-  const applyDisplayEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
+  // Apply effects
+  const applyEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
 
-    // Apply background color for preview only (regardless of saveWithBackground setting)
-    if (settings.background.enabled) {
-      const hex = settings.background.color.replace('#', '');
-      const bgR = parseInt(hex.substr(0, 2), 16);
-      const bgG = parseInt(hex.substr(2, 2), 16);
-      const bgB = parseInt(hex.substr(4, 2), 16);
+    // Parse background color
+    const hex = settings.backgroundColor.replace('#', '');
+    const bgR = parseInt(hex.substr(0, 2), 16);
+    const bgG = parseInt(hex.substr(2, 2), 16);
+    const bgB = parseInt(hex.substr(4, 2), 16);
 
+    // Apply background color to transparent areas
+    if (settings.saveBackground) {
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) {
           data[i] = bgR;
@@ -266,84 +229,14 @@ export const useImageProcessor = () => {
       const stampR = parseInt(hex.substr(0, 2), 16);
       const stampG = parseInt(hex.substr(2, 2), 16);
       const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
+      const intensity = settings.inkStamp.threshold / 100;
 
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) { // Only process non-transparent pixels
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          
-          // Convert to luminance (perceived brightness)
-          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-          
-          if (luminance < threshold) {
-            // Dark areas become stamp color
-            data[i] = stampR;
-            data[i + 1] = stampG;
-            data[i + 2] = stampB;
-            data[i + 3] = 255; // Fully opaque
-          } else {
-            // Light areas become transparent
-            data[i + 3] = 0;
-          }
-        }
-      }
-    }
-
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Apply effects for download (only applies background if saveWithBackground is true)
-  const applyDownloadEffects = useCallback((imageData: ImageData, settings: EffectSettings): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-
-    // Only apply background for download if explicitly requested
-    if (settings.background.enabled && settings.background.saveWithBackground) {
-      const hex = settings.background.color.replace('#', '');
-      const bgR = parseInt(hex.substr(0, 2), 16);
-      const bgG = parseInt(hex.substr(2, 2), 16);
-      const bgB = parseInt(hex.substr(4, 2), 16);
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) {
-          data[i] = bgR;
-          data[i + 1] = bgG;
-          data[i + 2] = bgB;
-          data[i + 3] = 255;
-        }
-      }
-    }
-
-    // Apply ink stamp effect
-    if (settings.inkStamp.enabled) {
-      const hex = settings.inkStamp.color.replace('#', '');
-      const stampR = parseInt(hex.substr(0, 2), 16);
-      const stampG = parseInt(hex.substr(2, 2), 16);
-      const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) { // Only process non-transparent pixels
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          
-          // Convert to luminance (perceived brightness)
-          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-          
-          if (luminance < threshold) {
-            // Dark areas become stamp color
-            data[i] = stampR;
-            data[i + 1] = stampG;
-            data[i + 2] = stampB;
-            data[i + 3] = 255; // Fully opaque
-          } else {
-            // Light areas become transparent
-            data[i + 3] = 0;
-          }
+        if (data[i + 3] > 0) {
+          // Blend with stamp color based on intensity
+          data[i] = Math.round(data[i] * (1 - intensity) + stampR * intensity);
+          data[i + 1] = Math.round(data[i + 1] * (1 - intensity) + stampG * intensity);
+          data[i + 2] = Math.round(data[i + 2] * (1 - intensity) + stampB * intensity);
         }
       }
     }
@@ -358,50 +251,13 @@ export const useImageProcessor = () => {
     effectSettings: EffectSettings,
     setImages: React.Dispatch<React.SetStateAction<ImageItem[]>>
   ) => {
-    let originalData = image.originalData;
-    
-    // If original data is not available, load it from the file
-    if (!originalData) {
-      try {
-        const img = new Image();
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        if (!ctx) {
-          throw new Error('Could not get canvas context');
-        }
-
-        // Load image from file
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error('Failed to load image'));
-          img.src = URL.createObjectURL(image.file);
-        });
-
-        // Set canvas size and draw image
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        ctx.drawImage(img, 0, 0);
-        
-        // Get image data
-        originalData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        // Clean up
-        URL.revokeObjectURL(img.src);
-        
-        // Update the image with original data for future use
-        setImages(prev => prev.map(img => 
-          img.id === image.id ? { ...img, originalData } : img
-        ));
-        
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load original image data",
-          variant: "destructive"
-        });
-        return;
-      }
+    if (!image.originalData) {
+      toast({
+        title: "Error",
+        description: "Original image data not found",
+        variant: "destructive"
+      });
+      return;
     }
 
     try {
@@ -411,18 +267,15 @@ export const useImageProcessor = () => {
       ));
 
       let processedData = new ImageData(
-        new Uint8ClampedArray(originalData.data),
-        originalData.width,
-        originalData.height
+        new Uint8ClampedArray(image.originalData.data),
+        image.originalData.width,
+        image.originalData.height
       );
 
       // Step 1: Color removal
       setImages(prev => prev.map(img => 
         img.id === image.id ? { ...img, progress: 25 } : img
       ));
-      
-      // Add delay to make progress visible
-      await new Promise(resolve => setTimeout(resolve, 300));
 
       if (colorSettings.enabled) {
         if (colorSettings.mode === 'auto') {
@@ -435,37 +288,27 @@ export const useImageProcessor = () => {
         setImages(prev => prev.map(img => 
           img.id === image.id ? { ...img, progress: 50 } : img
         ));
-        
-        // Add delay to make progress visible
-        await new Promise(resolve => setTimeout(resolve, 300));
 
         if (colorSettings.contiguous) {
           processedData = borderFloodFill(processedData, colorSettings);
         }
 
-        // Step 3: Cleanup regions and apply feathering
+        // Step 3: Morphological operations
         setImages(prev => prev.map(img => 
           img.id === image.id ? { ...img, progress: 75 } : img
         ));
-        
-        // Add delay to make progress visible
-        await new Promise(resolve => setTimeout(resolve, 300));
 
-        if (colorSettings.minRegionSize > 0) {
-          processedData = cleanupRegions(processedData, colorSettings);
+        if (colorSettings.featherRadius > 0) {
+          processedData = applyMorphology(processedData, colorSettings);
         }
       }
 
-      // Step 4: Store clean processed data (without background/effects applied)
+      // Step 4: Apply effects
       setImages(prev => prev.map(img => 
         img.id === image.id ? { ...img, progress: 90 } : img
       ));
-      
-      // Add delay to make progress visible
-      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Store the clean processed data (color removal only, no effects)
-      // Effects will be applied separately for display and download
+      processedData = applyEffects(processedData, effectSettings);
 
       // Complete
       setImages(prev => prev.map(img => 
@@ -477,7 +320,10 @@ export const useImageProcessor = () => {
         } : img
       ));
 
-      // Removed success toast notification
+      toast({
+        title: "Processing Complete",
+        description: `${image.name} has been processed successfully`
+      });
 
     } catch (error) {
       console.error('Processing error:', error);
@@ -496,18 +342,15 @@ export const useImageProcessor = () => {
         variant: "destructive"
       });
     }
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, applyDisplayEffects, toast]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, applyMorphology, applyEffects, toast]);
 
-  // Process and download all images one by one sequentially
+  // Process all images
   const processAllImages = useCallback(async (
     images: ImageItem[],
     colorSettings: ColorRemovalSettings,
     effectSettings: EffectSettings,
     setImages: React.Dispatch<React.SetStateAction<ImageItem[]>>
   ) => {
-    // Reset cancel token
-    cancelTokenRef.current.cancelled = false;
-    
     const pendingImages = images.filter(img => img.status === 'pending');
     
     if (pendingImages.length === 0) {
@@ -518,264 +361,118 @@ export const useImageProcessor = () => {
       return;
     }
 
-    // Removed batch processing start toast
+    toast({
+      title: "Batch Processing Started",
+      description: `Processing ${pendingImages.length} images...`
+    });
 
-    // Process and download images sequentially
-    for (let i = 0; i < pendingImages.length; i++) {
-      // Check if cancelled
-      if (cancelTokenRef.current.cancelled) {
-        toast({
-          title: "Processing Cancelled",
-          description: "Batch processing was cancelled by user"
-        });
-        return;
-      }
-      
-      const image = pendingImages[i];
-      
-      try {
-        // Processing notification now handled in queue header
-
-        // Process the image
-        await processImage(image, colorSettings, effectSettings, setImages);
-        
-        // Check if cancelled after processing
-        if (cancelTokenRef.current.cancelled) {
-          return;
-        }
-        
-        // Wait a moment to ensure processing is complete
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Get the updated image with processed data
-        const updatedImages = await new Promise<ImageItem[]>((resolve) => {
-          setImages(prev => {
-            resolve(prev);
-            return prev;
-          });
-        });
-        
-        const processedImage = updatedImages.find(img => img.id === image.id);
-        
-        if (processedImage && processedImage.status === 'completed' && processedImage.processedData) {
-          // Check if cancelled before downloading
-          if (cancelTokenRef.current.cancelled) {
-            return;
-          }
-          
-          // Download the processed image - notification handled in queue header
-          downloadImage(processedImage, colorSettings, effectSettings);
-        } else {
-          throw new Error('Processing failed');
-        }
-        
-        // Add delay between downloads to avoid browser issues
-        if (i < pendingImages.length - 1 && !cancelTokenRef.current.cancelled) {
-          await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
-        }
-        
-      } catch (error) {
-        console.error(`Error processing/downloading ${image.name}:`, error);
-        toast({
-          title: "Processing Error",
-          description: `Failed to process/download ${image.name}`,
-          variant: "destructive"
-        });
-      }
+    // Process images sequentially to avoid overwhelming the browser
+    for (const image of pendingImages) {
+      await processImage(image, colorSettings, effectSettings, setImages);
+      // Small delay to prevent UI blocking
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    if (!cancelTokenRef.current.cancelled) {
-      // Removed batch processing complete toast
-    }
+    toast({
+      title: "Batch Processing Complete",
+      description: `Processed ${pendingImages.length} images`
+    });
   }, [processImage, toast]);
 
-  const cancelProcessing = useCallback(() => {
-    cancelTokenRef.current.cancelled = true;
-  }, []);
-
-  // Helper function to trim transparent pixels
-  const trimTransparentPixels = useCallback((imageData: ImageData): ImageData => {
-    const { data, width, height } = imageData;
-    
-    console.log('Trimming function called with dimensions:', width, 'x', height);
-    
-    // Find bounds of non-transparent pixels
-    let minX = width, minY = height, maxX = -1, maxY = -1;
-    let totalNonTransparent = 0;
-    
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const alpha = data[(y * width + x) * 4 + 3];
-        if (alpha > 0) {
-          totalNonTransparent++;
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-        }
-      }
-    }
-    
-    console.log('Found', totalNonTransparent, 'non-transparent pixels');
-    console.log('Bounds: minX:', minX, 'minY:', minY, 'maxX:', maxX, 'maxY:', maxY);
-    
-    // If no non-transparent pixels found, return 1x1 transparent image
-    if (maxX === -1) {
-      console.log('No non-transparent pixels found, returning 1x1 image');
-      const trimmedData = new Uint8ClampedArray(4);
-      return new ImageData(trimmedData, 1, 1);
-    }
-    
-    // Calculate trimmed dimensions
-    const trimmedWidth = maxX - minX + 1;
-    const trimmedHeight = maxY - minY + 1;
-    const trimmedData = new Uint8ClampedArray(trimmedWidth * trimmedHeight * 4);
-    
-    // Copy trimmed region
-    for (let y = 0; y < trimmedHeight; y++) {
-      for (let x = 0; x < trimmedWidth; x++) {
-        const sourceIndex = ((minY + y) * width + (minX + x)) * 4;
-        const targetIndex = (y * trimmedWidth + x) * 4;
-        
-        trimmedData[targetIndex] = data[sourceIndex];
-        trimmedData[targetIndex + 1] = data[sourceIndex + 1];
-        trimmedData[targetIndex + 2] = data[sourceIndex + 2];
-        trimmedData[targetIndex + 3] = data[sourceIndex + 3];
-      }
-    }
-    
-    return new ImageData(trimmedData, trimmedWidth, trimmedHeight);
-  }, []);
-
   // Download single image
-  const downloadImage = useCallback((image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings) => {
-    // Prioritize processedData (includes manual edits) over originalData
-    if (!image.processedData && !image.originalData) {
-      console.error('No image data available for download');
+  const downloadImage = useCallback((image: ImageItem) => {
+    if (!image.processedData) {
+      toast({
+        title: "No Processed Data",
+        description: "Process the image first before downloading",
+        variant: "destructive"
+      });
       return;
     }
 
-    const sourceData = image.processedData || image.originalData!;
-    console.log('Downloading image:', image.name, 'Using:', image.processedData ? 'processedData (with manual edits)' : 'originalData');
-    console.log('Download effect settings:', JSON.stringify(effectSettings, null, 2));
-
-    // Use the current processed data (includes manual edits) as starting point
-    let processedData = new ImageData(
-      new Uint8ClampedArray(sourceData.data),
-      sourceData.width,
-      sourceData.height
-    );
-
-    // Only reprocess if we're using originalData (no manual edits)
-    // If using processedData, it already includes manual edits and should not be reprocessed
-    const hasManualEdits = image.processedData && sourceData === image.processedData;
-    
-    if (hasManualEdits) {
-      console.log('Skipping reprocessing - using manual edits as-is');
-    } else {
-      console.log('Reprocessing from original data with current settings');
-      // Re-process with current settings (same logic as MainCanvas preview)
-      const data = processedData.data;
-      const width = processedData.width;
-      const height = processedData.height;
-
-      // Count initial non-transparent pixels
-      let initialCount = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) initialCount++;
-      }
-      console.log('Initial non-transparent pixels:', initialCount);
-
-      // Apply the same color removal logic as preview using current settings
-      if (colorSettings.enabled) {
-        if (colorSettings.mode === 'auto') {
-          processedData = autoColorRemoval(processedData, colorSettings);
-        } else {
-          processedData = manualColorRemoval(processedData, colorSettings);
-        }
-
-        if (colorSettings.contiguous) {
-          processedData = borderFloodFill(processedData, colorSettings);
-        }
-
-        if (colorSettings.minRegionSize > 0) {
-          processedData = cleanupRegions(processedData, colorSettings);
-        }
-      }
-    }
-    
-    // Count pixels after reprocessing
-    let finalCount = 0;
-    for (let i = 0; i < processedData.data.length; i += 4) {
-      if (processedData.data[i + 3] > 0) finalCount++;
-    }
-    console.log('Pixels after reprocessing with current settings:', finalCount);
-    
-    let imageDataToDownload = processedData;
-    
-    // Apply download effects if provided
-    if (effectSettings) {
-      imageDataToDownload = applyDownloadEffects(imageDataToDownload, effectSettings);
-      console.log('Applied download effects');
-      
-      // Count non-transparent pixels after applying effects
-      let nonTransparentCountAfter = 0;
-      for (let i = 0; i < imageDataToDownload.data.length; i += 4) {
-        if (imageDataToDownload.data[i + 3] > 0) nonTransparentCountAfter++;
-      }
-      console.log('Non-transparent pixels after download effects:', nonTransparentCountAfter);
-    }
-    
-    // Apply trimming if enabled
-    if (effectSettings?.download?.trimTransparentPixels) {
-      imageDataToDownload = trimTransparentPixels(imageDataToDownload);
-      console.log('Applied trimming, new dimensions:', imageDataToDownload.width, 'x', imageDataToDownload.height);
-    }
-    
     const canvas = document.createElement('canvas');
-    canvas.width = imageDataToDownload.width;
-    canvas.height = imageDataToDownload.height;
+    canvas.width = image.processedData.width;
+    canvas.height = image.processedData.height;
     const ctx = canvas.getContext('2d');
     
-    if (!ctx) {
-      console.error('Could not get canvas context for download');
-      return;
-    }
+    if (!ctx) return;
 
-    // Clear canvas with transparent background
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.putImageData(imageDataToDownload, 0, 0);
-    
-    // Debug: check canvas content
-    console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-    console.log('ImageData dimensions:', imageDataToDownload.width, 'x', imageDataToDownload.height);
+    ctx.putImageData(image.processedData, 0, 0);
     
     canvas.toBlob((blob) => {
-      if (!blob) {
-        console.error('Failed to create blob from canvas');
-        return;
-      }
-      
-      console.log('Blob created successfully, size:', blob.size);
+      if (!blob) return;
       
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const suffix = effectSettings?.download?.trimTransparentPixels ? '_trimmed' : '_processed';
       a.href = url;
-      a.download = `${image.name.replace(/\.[^/.]+$/, '')}${suffix}.png`;
+      a.download = `${image.name.replace(/\.[^/.]+$/, '')}_processed.png`;
       a.click();
       URL.revokeObjectURL(url);
-    }, 'image/png', 1.0); // Add quality parameter
+    }, 'image/png');
 
-    // Removed download started toast
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects]);
+    toast({
+      title: "Download Started",
+      description: `Downloading ${image.name}`
+    });
+  }, [toast]);
 
+  // Download all processed images as ZIP
+  const downloadAllImages = useCallback(async (images: ImageItem[]) => {
+    const { default: JSZip } = await import('jszip');
+    
+    const processedImages = images.filter(img => img.status === 'completed' && img.processedData);
+    
+    if (processedImages.length === 0) {
+      toast({
+        title: "No Processed Images",
+        description: "Process some images first before downloading",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const zip = new JSZip();
+
+    for (const image of processedImages) {
+      if (!image.processedData) continue;
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = image.processedData.width;
+      canvas.height = image.processedData.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) continue;
+
+      ctx.putImageData(image.processedData, 0, 0);
+      
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      
+      if (blob) {
+        const filename = `${image.name.replace(/\.[^/.]+$/, '')}_processed.png`;
+        zip.file(filename, blob);
+      }
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'processed_images.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "ZIP Download Started",
+      description: `Downloading ${processedImages.length} processed images`
+    });
+  }, [toast]);
 
   return {
     processImage,
     processAllImages,
     downloadImage,
-    cancelProcessing
+    downloadAllImages
   };
 };
