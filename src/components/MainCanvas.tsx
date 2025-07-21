@@ -311,6 +311,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     hasManualEditsRef,
     erasingInProgressRef,
     onImageChange: (imageData) => {
+      // Immediately update the ref to keep it in sync
+      manualImageDataRef.current = imageData;
+      
       // Add to undo stack when erasing is complete
       addUndoAction?.({
         type: 'manual-edit',
