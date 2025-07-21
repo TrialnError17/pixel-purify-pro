@@ -1,343 +1,97 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-} from 'react';
-import { Stage, Layer, Image, Rect, Text } from 'react-konva';
-import { useDebounce } from 'use-debounce';
-import { useHotkeys } from 'react-hotkeys-hook';
-import { CirclePicker } from 'react-color';
-import { UndoManager } from 'undo-manager';
-
-import { processImage } from '../utils/imageProcessor';
-import {
-  ColorSettings,
-  EffectSettings,
-  SpeckleSettings,
-  EdgeCleanupSettings,
-} from '../types';
-import { useAppSettings } from '../contexts/AppSettingsContext';
-import { useImageSettings } from '../contexts/ImageSettingsContext';
-import { useToolSettings } from '../contexts/ToolSettingsContext';
-import { useFileContext } from '../contexts/FileContext';
-import { useZoomContext } from '../contexts/ZoomContext';
-import { usePanContext } from '../contexts/PanContext';
-import { useHistoryContext } from '../contexts/HistoryContext';
-import { useColorContext } from '../contexts/ColorContext';
-import { useEffectContext } from '../contexts/EffectContext';
-import { useSpeckleContext } from '../contexts/SpeckleContext';
-import { useEdgeCleanupContext } from '../contexts/EdgeCleanupContext';
-import { useDownloadContext } from '../contexts/DownloadContext';
-import { useProcessingContext } from '../contexts/ProcessingContext';
-import { useUndoContext } from '../contexts/UndoContext';
-import { useRedoContext } from '../contexts/RedoContext';
-import { useToolContext } from '../contexts/ToolContext';
-import { optimizedMagicWandSelect } from '../utils/optimizedMagicWand';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { ImageItem, ColorRemovalSettings, EffectSettings, EdgeCleanupSettings, ContiguousToolSettings } from '@/pages/Index';
+import { SpeckleSettings } from '@/hooks/useSpeckleTools';
+import { optimizedMagicWandSelect } from '@/utils/optimizedMagicWand';
 
 interface MainCanvasProps {
-  width: number;
-  height: number;
+  image?: ImageItem;
+  tool: 'pan' | 'color-stack' | 'magic-wand';
+  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
+  colorSettings: ColorRemovalSettings;
+  contiguousSettings: ContiguousToolSettings;
+  effectSettings: EffectSettings;
+  speckleSettings: SpeckleSettings;
+  edgeCleanupSettings: EdgeCleanupSettings;
+  onImageUpdate: (image: ImageItem) => void;
+  onColorPicked: (color: string) => void;
+  onPreviousImage: () => void;
+  onNextImage: () => void;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  currentImageIndex: number;
+  totalImages: number;
 }
 
-const MainCanvas: React.FC<MainCanvasProps> = ({ width, height }) => {
+const MainCanvas: React.FC<MainCanvasProps> = ({
+  image,
+  tool,
+  onToolChange,
+  colorSettings,
+  contiguousSettings,
+  effectSettings,
+  speckleSettings,
+  edgeCleanupSettings,
+  onImageUpdate,
+  onColorPicked,
+  onPreviousImage,
+  onNextImage,
+  canGoPrevious,
+  canGoNext,
+  currentImageIndex,
+  totalImages,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const konvaContainerRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<any>(null);
-  const [konvaWidth, setKonvaWidth] = useState(width);
-  const [konvaHeight, setKonvaHeight] = useState(height);
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [konvaImage, setKonvaImage] = useState<any>(null);
-  const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
-  const [processedImageData, setProcessedImageData] =
-    useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [drawingColor, setDrawingColor] = useState('#000000');
-  const [drawingLineWidth, setDrawingLineWidth] = useState(5);
-  const [lines, setLines] = useState<any[]>([]);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [showMouseCoords, setShowMouseCoords] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
 
-  const { appSettings } = useAppSettings();
-  const { imageSettings } = useImageSettings();
-  const { toolSettings } = useToolSettings();
-  const { file } = useFileContext();
-  const { zoomLevel } = useZoomContext();
-  const { pan } = usePanContext();
-  const { addHistory } = useHistoryContext();
-  const { colorSettings } = useColorContext();
-  const { effectSettings } = useEffectContext();
-  const { speckleSettings } = useSpeckleContext();
-  const { edgeCleanupSettings } = useEdgeCleanupContext();
-  const { setDownloadData } = useDownloadContext();
-  const { setProcessing } = useProcessingContext();
-  const { undoManager } = useUndoContext();
-  const { redoManager } = useRedoContext();
-  const { selectedTool, setSelectedTool } = useToolContext();
-
-  const originalImageData = useMemo(() => {
-    if (!image) return null;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    ctx.drawImage(image, 0, 0);
-    return ctx.getImageData(0, 0, image.width, image.height);
-  }, [image]);
-
-  // Load image when file changes
+  // Load image when it changes
   useEffect(() => {
-    if (!file) {
-      setImage(null);
-      setKonvaImage(null);
-      setManualImageData(null);
-      setProcessedImageData(null);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      if (!e.target || typeof e.target.result !== 'string') {
-        console.error('Failed to load image.');
-        return;
-      }
-
-      const img = new Image();
-      img.onload = () => {
-        setImage(img);
-        setKonvaImage(img);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }, [file]);
-
-  // Initialize canvas and Konva when image loads
-  useEffect(() => {
-    if (!image) return;
-
-    setKonvaWidth(image.width);
-    setKonvaHeight(image.height);
+    if (!image || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    canvas.width = image.width;
-    canvas.height = image.height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.drawImage(image, 0, 0);
-    const imageData = ctx.getImageData(0, 0, image.width, image.height);
-    setManualImageData(imageData);
-  }, [image]);
-
-  // Process image when settings or manual image data change
-  useEffect(() => {
-    if (!originalImageData) return;
-    if (!manualImageData) return;
-
-    const process = async () => {
-      setIsProcessing(true);
-      setProcessing(true);
-      try {
-        const processed = await processImage(
-          manualImageData,
-          colorSettings,
-          effectSettings,
-          speckleSettings,
-          edgeCleanupSettings
-        );
-        setProcessedImageData(processed);
-      } catch (error) {
-        console.error('Image processing error:', error);
-      } finally {
-        setIsProcessing(false);
-        setProcessing(false);
-      }
-    };
-
-    process();
-  }, [
-    manualImageData,
-    colorSettings,
-    effectSettings,
-    speckleSettings,
-    edgeCleanupSettings,
-    originalImageData,
-    setProcessing,
-  ]);
-
-  // Update Konva image data when processed image data changes
-  useEffect(() => {
-    if (!processedImageData) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.putImageData(processedImageData, 0, 0);
-    const newImage = new Image();
-    newImage.onload = () => {
-      setKonvaImage(newImage);
-    };
-    newImage.src = canvas.toDataURL();
-  }, [processedImageData]);
-
-  // Download data
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const dataURL = canvas.toDataURL(
-      imageSettings.outputFormat,
-      imageSettings.outputQuality
-    );
-    setDownloadData(dataURL);
-  }, [
-    imageSettings.outputFormat,
-    imageSettings.outputQuality,
-    setDownloadData,
-    processedImageData,
-  ]);
-
-  // Canvas Drag and Panning
-  const handleMouseDown = useCallback(
-    (e: any) => {
-      if (selectedTool === 'pan') {
-        setIsDragging(true);
-        setDragStart({
-          x: e.evt.clientX / zoomLevel - pan.x,
-          y: e.evt.clientY / zoomLevel - pan.y,
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      // Store original image data for magic wand
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      setOriginalImageData(imageData);
+      
+      // Update image with original data if not already set
+      if (!image.originalData) {
+        onImageUpdate({
+          ...image,
+          originalData: imageData
         });
-      } else if (selectedTool === 'draw') {
-        setIsDrawing(true);
-        const stage = stageRef.current;
-        if (stage) {
-          const point = stage.getPointerPosition();
-          if (point) {
-            setLines([...lines, { points: [point.x, point.y], color: drawingColor, lineWidth: drawingLineWidth }]);
-          }
-        }
       }
-    },
-    [zoomLevel, pan, selectedTool, lines, drawingColor, drawingLineWidth]
-  );
+    };
+    img.src = URL.createObjectURL(image.file);
 
-  const handleMouseMove = useCallback(
-    (e: any) => {
-      const stage = stageRef.current;
-      if (stage) {
-        const pointer = stage.getPointerPosition();
-        if (pointer) {
-          setMousePosition({
-            x: Math.round(pointer.x),
-            y: Math.round(pointer.y),
-          });
-        }
-      }
+    return () => {
+      URL.revokeObjectURL(img.src);
+    };
+  }, [image, onImageUpdate]);
 
-      if (isDragging) {
-        pan.setX(e.evt.clientX / zoomLevel - dragStart.x);
-        pan.setY(e.evt.clientY / zoomLevel - dragStart.y);
-      } else if (isDrawing) {
-        const stage = stageRef.current;
-        if (stage) {
-          const point = stage.getPointerPosition();
-          if (point) {
-            const lastLine = lines[lines.length - 1];
-            const newPoints = lastLine.points.concat([point.x, point.y]);
-            lines.splice(lines.length - 1, 1, { points: newPoints, color: drawingColor, lineWidth: drawingLineWidth });
-            setLines(lines.concat());
-          }
-        }
-      }
-    },
-    [isDragging, dragStart, zoomLevel, pan, isDrawing, lines, drawingColor, drawingLineWidth]
-  );
+  // Handle magic wand click
+  const handleCanvasClick = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool !== 'magic-wand' || !originalImageData || !canvasRef.current) return;
 
-  const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(false);
-    } else if (isDrawing) {
-      setIsDrawing(false);
-      undoManager.addState({
-        imageData: manualImageData,
-        colorSettings,
-        effectSettings,
-        speckleSettings,
-        edgeCleanupSettings
-      });
-    }
-  }, [isDragging, isDrawing, manualImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, undoManager]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(false);
-    } else if (isDrawing) {
-      setIsDrawing(false);
-    }
-  }, [isDragging, isDrawing]);
-
-  // Zooming
-  const handleWheel = useCallback(
-    (e: any) => {
-      if (selectedTool === 'zoom') {
-        e.evt.preventDefault();
-        const scaleBy = 1.1;
-        const stage = stageRef.current;
-        if (stage) {
-          const oldScale = stage.scaleX();
-          const pointer = stage.getPointerPosition();
-
-          if (pointer) {
-            const mousePointTo = {
-              x: pointer.x / oldScale - stage.x() / oldScale,
-              y: pointer.y / oldScale - stage.y() / oldScale,
-            };
-
-            const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
-
-            zoomLevel.setZoom(newScale);
-
-            const newPos = {
-              x: pointer.x / newScale - mousePointTo.x * newScale,
-              y: pointer.y / newScale - mousePointTo.y * newScale,
-            };
-
-            pan.setX(newPos.x);
-            pan.setY(newPos.y);
-          }
-        }
-      }
-    },
-    [zoomLevel, pan, selectedTool]
-  );
-
-  // Drawing
-  const handleColorChange = (color: any) => {
-    setDrawingColor(color.hex);
-  };
-
-  // Magic wand tool click handler with optimized algorithm
-  const handleMagicWandClick = useCallback(async (event: React.MouseEvent) => {
-    if (!canvasRef.current || !originalImageData || !effectSettings.background.enabled) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
     const x = Math.floor((event.clientX - rect.left) / zoomLevel);
     const y = Math.floor((event.clientY - rect.top) / zoomLevel);
 
-    // Show progress for large operations
     setIsProcessing(true);
     
     try {
@@ -348,12 +102,11 @@ const MainCanvas: React.FC<MainCanvasProps> = ({ width, height }) => {
         x,
         y,
         {
-          threshold: colorSettings.threshold,
+          threshold: contiguousSettings.threshold,
           onProgress: (progress) => {
-            // Could add progress indicator here if needed
             console.log(`Magic wand progress: ${Math.round(progress * 100)}%`);
           },
-          onCancel: () => false // Could implement cancellation if needed
+          onCancel: () => false
         }
       );
 
@@ -380,106 +133,147 @@ const MainCanvas: React.FC<MainCanvasProps> = ({ width, height }) => {
         }
       }
 
-      // Update manual image data to trigger processing
-      setManualImageData(newImageData);
-      
-      // Add to undo stack
-      undoManager.addState({
-        imageData: newImageData,
-        colorSettings,
-        effectSettings,
-        speckleSettings,
-        edgeCleanupSettings
-      });
+      // Update canvas with new image data
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.putImageData(newImageData, 0, 0);
+      }
+
+      // Update image with processed data
+      if (image) {
+        onImageUpdate({
+          ...image,
+          processedData: newImageData,
+          status: 'completed'
+        });
+      }
 
     } catch (error) {
       console.error('Error in magic wand operation:', error);
     } finally {
       setIsProcessing(false);
     }
-  }, [originalImageData, colorSettings.threshold, effectSettings.background.enabled, zoomLevel, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, undoManager]);
+  }, [tool, originalImageData, contiguousSettings.threshold, zoomLevel, image, onImageUpdate]);
+
+  // Handle mouse events for panning
+  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === 'pan') {
+      setIsDragging(true);
+      setDragStart({
+        x: event.clientX - pan.x,
+        y: event.clientY - pan.y
+      });
+    }
+  }, [tool, pan]);
+
+  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDragging && tool === 'pan') {
+      setPan({
+        x: event.clientX - dragStart.x,
+        y: event.clientY - dragStart.y
+      });
+    }
+  }, [isDragging, tool, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Handle zoom with mouse wheel
+  const handleWheel = useCallback((event: React.WheelEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? 0.9 : 1.1;
+    setZoomLevel(prev => Math.max(0.1, Math.min(5, prev * delta)));
+  }, []);
+
+  if (!image) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-muted/20">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-muted-foreground">No image selected</h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            Upload an image to get started
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-      ref={konvaContainerRef}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{ display: 'none' }}
-        width={konvaWidth}
-        height={konvaHeight}
-      />
-      <Stage
-        width={konvaWidth}
-        height={konvaHeight}
-        scaleX={zoomLevel.zoom}
-        scaleY={zoomLevel.zoom}
-        x={pan.x}
-        y={pan.y}
-        style={{
-          cursor:
-            selectedTool === 'pan'
-              ? 'grab'
-              : selectedTool === 'zoom'
-              ? 'zoom-in'
-              : selectedTool === 'magic-wand'
-              ? 'pointer'
-              : selectedTool === 'draw'
-              ? 'crosshair'
-              : 'default',
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
-        onClick={selectedTool === 'magic-wand' ? handleMagicWandClick : undefined}
-        ref={stageRef}
-      >
-        <Layer>
-          {konvaImage && (
-            <Image image={konvaImage} width={konvaWidth} height={konvaHeight} />
-          )}
-          {lines.map((line, index) => (
-            <Line
-              key={index}
-              points={line.points}
-              stroke={line.color}
-              strokeWidth={line.lineWidth}
-              globalCompositeOperation="source-over"
-              tension={0.5}
-              lineCap="round"
-              lineJoin="round"
-            />
-          ))}
-        </Layer>
-        {appSettings.showMouseCoordinates && (
-          <Layer>
-            <Text
-              x={10}
-              y={10}
-              text={`Mouse: ${mousePosition.x}, ${mousePosition.y}`}
-              fontSize={12}
-              fill="white"
-              shadowColor="black"
-              shadowBlur={2}
-              shadowOffsetX={1}
-              shadowOffsetY={1}
-              shadowOpacity={0.5}
-            />
-          </Layer>
+    <div className="flex-1 flex flex-col bg-background">
+      {/* Toolbar */}
+      <div className="border-b p-2 flex items-center gap-2">
+        <Button
+          variant={tool === 'pan' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onToolChange('pan')}
+        >
+          Pan
+        </Button>
+        <Button
+          variant={tool === 'magic-wand' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onToolChange('magic-wand')}
+        >
+          Magic Wand
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setZoomLevel(1)}
+          >
+            Fit
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {Math.round(zoomLevel * 100)}%
+          </span>
+        </div>
+      </div>
+
+      {/* Canvas Container */}
+      <div className="flex-1 overflow-hidden relative bg-muted/20">
+        <canvas
+          ref={canvasRef}
+          className="absolute"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
+            transformOrigin: 'top left',
+            cursor: tool === 'pan' ? (isDragging ? 'grabbing' : 'grab') : 
+                   tool === 'magic-wand' ? 'crosshair' : 'default'
+          }}
+          onClick={handleCanvasClick}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
+        />
+        
+        {/* Processing overlay */}
+        {isProcessing && (
+          <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+            <div className="bg-background border rounded-lg p-4 shadow-lg">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                <span className="text-sm">Processing magic wand selection...</span>
+              </div>
+            </div>
+          </div>
         )}
-      </Stage>
+      </div>
+
+      {/* Status bar */}
+      <div className="border-t p-2 text-xs text-muted-foreground flex justify-between">
+        <span>
+          Tool: {tool === 'pan' ? 'Pan' : tool === 'magic-wand' ? 'Magic Wand' : tool}
+        </span>
+        <span>
+          Image {currentImageIndex} of {totalImages}
+        </span>
+      </div>
     </div>
   );
 };
 
 export default MainCanvas;
-
-import { Line } from 'react-konva';
