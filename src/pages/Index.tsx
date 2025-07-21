@@ -8,9 +8,6 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { BookOpen } from 'lucide-react';
 
 console.log('Index.tsx is loading');
 
@@ -117,7 +114,7 @@ const Index = () => {
   });
 
   const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
-    threshold: 30 // Changed from 10 to 30
+    threshold: 10
   });
 
   const [speckleSettings, setSpeckleSettings] = useState<SpeckleSettings>({
@@ -128,15 +125,6 @@ const Index = () => {
   });
 
   const [speckCount, setSpeckCount] = useState<number | undefined>(undefined);
-  const [isProcessingSpeckles, setIsProcessingSpeckles] = useState(false);
-  
-  // Track last interacted feature for Learning Center
-  const [lastInteractedFeature, setLastInteractedFeature] = useState<string | null>(null);
-  
-  // Handle feature interaction for Learning Center
-  const handleFeatureInteraction = useCallback((feature: string) => {
-    setLastInteractedFeature(feature);
-  }, []);
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
@@ -171,7 +159,7 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 1, // Changed from 3 to 1
+    trimRadius: 3,
     legacyEnabled: false,
     legacyRadius: 2,
     softening: {
@@ -330,9 +318,8 @@ const Index = () => {
         />
         
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Left Tools Sidebar - Hidden on mobile */}
-          <div className="hidden sm:block">
-            <LeftSidebar
+          {/* Left Tools Sidebar - Full Height */}
+          <LeftSidebar 
             settings={colorSettings}
             onSettingsChange={(newSettings) => {
               const prevSettings = { ...colorSettings };
@@ -355,14 +342,11 @@ const Index = () => {
                 highlight: newSpeckleSettings.highlightSpecks,
                 remove: newSpeckleSettings.removeSpecks,
                 hasProcessedData: !!selectedImage?.processedData,
-                hasOriginalData: !!selectedImage?.originalData,
-                isProcessingSpeckles
+                hasOriginalData: !!selectedImage?.originalData 
               });
               
-              // Only process speckles if not already processing to prevent feedback loop
-              if (!isProcessingSpeckles && (selectedImage?.processedData || selectedImage?.originalData)) {
-                setIsProcessingSpeckles(true);
-                
+              // Process speckles when settings change and image is selected
+              if (selectedImage?.processedData || selectedImage?.originalData) {
                 // Use processedData if available (includes color effects), otherwise fall back to originalData
                 const baseData = selectedImage.processedData || selectedImage.originalData!;
                 
@@ -383,9 +367,6 @@ const Index = () => {
                     ? { ...img, processedData: result.processedData }
                     : img
                 ));
-                
-                // Reset processing flag after a short delay
-                setTimeout(() => setIsProcessingSpeckles(false), 100);
               }
               
               // Add undo action for speckle settings changes
@@ -460,9 +441,7 @@ const Index = () => {
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
-            onFeatureInteraction={handleFeatureInteraction}
           />
-          </div>
           
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
@@ -504,7 +483,6 @@ const Index = () => {
                   downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
                 }
               }}
-              setSingleImageProgress={setSingleImageProgress}
               addUndoAction={addUndoAction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
@@ -521,10 +499,12 @@ const Index = () => {
                 isProcessing 
                     ? {
                       current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                      total: images.length
+                      total: images.filter(img => img.status !== 'error').length
                     }
                   : undefined
               }
+              isFullscreen={isQueueFullscreen}
+              onSetFullscreen={setIsQueueFullscreen}
               onRemoveImage={(imageId) => {
                 const targetImage = images.find(img => img.id === imageId);
                 if (!targetImage) return;
@@ -603,47 +583,6 @@ const Index = () => {
               onClearAll={handleClearAll}
             />
           </div>
-          
-          {/* Right Learning Sidebar - Responsive */}
-          {/* Desktop: Always visible */}
-          <div className="hidden lg:block">
-            <RightSidebar 
-              currentTool={currentTool}
-              colorSettings={colorSettings}
-              speckleSettings={speckleSettings}
-              effectSettings={effectSettings}
-              edgeCleanupSettings={edgeCleanupSettings}
-              lastInteractedFeature={lastInteractedFeature}
-              onFeatureInteraction={setLastInteractedFeature}
-            />
-          </div>
-          
-          {/* Mobile/Tablet: Sheet overlay */}
-          <div className="lg:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="fixed top-20 right-4 z-40 bg-gradient-to-r from-accent-purple to-accent-blue text-white border-accent-purple/30 hover:from-accent-purple/80 hover:to-accent-blue/80"
-                >
-                  <BookOpen className="w-4 h-4 mr-1" />
-                  Tips
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-80 sm:w-96 bg-gradient-panel border-accent-purple/30 overflow-y-auto">
-                <RightSidebar 
-                  currentTool={currentTool}
-                  colorSettings={colorSettings}
-                  speckleSettings={speckleSettings}
-                  effectSettings={effectSettings}
-                  edgeCleanupSettings={edgeCleanupSettings}
-                  lastInteractedFeature={lastInteractedFeature}
-                  onFeatureInteraction={setLastInteractedFeature}
-                />
-              </SheetContent>
-            </Sheet>
-          </div>
         </div>
         
         <input
@@ -655,6 +594,9 @@ const Index = () => {
           className="hidden"
         />
       </div>
+      
+      {/* Independent Advertisement Space */}
+      <RightSidebar />
     </div>
   );
 };

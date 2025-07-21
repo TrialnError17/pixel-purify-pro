@@ -6,78 +6,13 @@ export const useImageProcessor = () => {
   const { toast } = useToast();
   const cancelTokenRef = useRef({ cancelled: false });
 
-  // Color space conversion utilities
-  const rgbToLab = useCallback((r: number, g: number, b: number): [number, number, number] => {
-    // Convert RGB to XYZ
-    let x = r / 255;
-    let y = g / 255;
-    let z = b / 255;
-
-    x = x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
-    y = y > 0.04045 ? Math.pow((y + 0.055) / 1.055, 2.4) : y / 12.92;
-    z = z > 0.04045 ? Math.pow((z + 0.055) / 1.055, 2.4) : z / 12.92;
-
-    x *= 100;
-    y *= 100;
-    z *= 100;
-
-    // Observer = 2°, Illuminant = D65
-    x = x / 95.047;
-    y = y / 100.000;
-    z = z / 108.883;
-
-    x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16/116);
-    y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16/116);
-    z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16/116);
-
-    const L = (116 * y) - 16;
-    const A = 500 * (x - y);
-    const B = 200 * (y - z);
-
-    return [L, A, B];
+  // Simple RGB color distance calculation (more reliable than LAB)
+  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
   }, []);
-
-  // Color distance calculation with multiple color space support
-  const calculateColorDistance = useCallback((
-    r1: number, g1: number, b1: number, 
-    r2: number, g2: number, b2: number, 
-    colorSpace: 'rgb' | 'hsl' | 'lab' = 'lab'
-  ): number => {
-    switch (colorSpace) {
-      case 'rgb': {
-        const dr = r1 - r2;
-        const dg = g1 - g2;
-        const db = b1 - b2;
-        return Math.sqrt(dr * dr + dg * dg + db * db);
-      }
-      case 'hsl': {
-        const [h1, s1, l1] = rgbToHsl(r1, g1, b1);
-        const [h2, s2, l2] = rgbToHsl(r2, g2, b2);
-        
-        // Handle hue wrapping (circular distance)
-        let dh = Math.abs(h1 - h2);
-        dh = Math.min(dh, 360 - dh);
-        
-        const ds = (s1 - s2) * 100; // Scale saturation difference
-        const dl = (l1 - l2) * 100; // Scale lightness difference
-        
-        return Math.sqrt(dh * dh + ds * ds + dl * dl);
-      }
-      case 'lab': {
-        const [l1, a1, b1Lab] = rgbToLab(r1, g1, b1);
-        const [l2, a2, b2Lab] = rgbToLab(r2, g2, b2);
-        
-        const dl = l1 - l2;
-        const da = a1 - a2;
-        const db = b1Lab - b2Lab;
-        
-        // Delta E CIE76 formula for perceptual color difference
-        return Math.sqrt(dl * dl + da * da + db * db);
-      }
-      default:
-        return 0;
-    }
-  }, [rgbToLab]);
 
 
   // Auto color removal - removes top-left corner color and similar colors
@@ -91,11 +26,10 @@ export const useImageProcessor = () => {
     const targetG = data[1];
     const targetB = data[2];
 
-    // Scale threshold based on color space (LAB uses Delta E values, typically 0-100)
-    const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+    // Convert threshold (0-100) to RGB distance threshold (much more conservative)
+    const threshold = settings.threshold * 2.55; // Scale to 0-255 range
     
-    const [targetL, targetA, targetBLab] = rgbToLab(targetR, targetG, targetB);
-    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, `lab(${targetL.toFixed(1)}, ${targetA.toFixed(1)}, ${targetBLab.toFixed(1)})`, 'threshold:', threshold);
+    console.log('Auto color removal - target color:', `rgb(${targetR}, ${targetG}, ${targetB})`, 'threshold:', threshold);
     
     let pixelsRemoved = 0;
     for (let i = 0; i < data.length; i += 4) {
@@ -128,7 +62,7 @@ export const useImageProcessor = () => {
     const targetG = parseInt(hex.substr(2, 2), 16);
     const targetB = parseInt(hex.substr(4, 2), 16);
 
-    const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+    const threshold = settings.threshold * 2.55;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -158,7 +92,7 @@ export const useImageProcessor = () => {
         const targetR = data[0];
         const targetG = data[1];
         const targetB = data[2];
-        const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+        const threshold = settings.threshold * 2.55;
 
         if (settings.contiguous) {
           // Contiguous removal starting from top-left corner
@@ -237,7 +171,7 @@ export const useImageProcessor = () => {
           // Check against each target color
           for (const targetColor of colorsToRemove) {
             const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+            const threshold = targetColor.threshold * 2.55; // Scale to 0-255 range
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
@@ -260,7 +194,7 @@ export const useImageProcessor = () => {
 
     const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
       const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+      return distance <= settings.threshold * 2.55;
     };
 
     const floodFillFromBorder = (startX: number, startY: number) => {
@@ -686,118 +620,6 @@ export const useImageProcessor = () => {
     return new ImageData(data, width, height);
   }, [applyImageEffects]);
 
-  // Alpha feathering function
-  const applyAlphaFeathering = useCallback((imageData: ImageData, radius: number): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    // Create a copy for reading from
-    const originalData = new Uint8ClampedArray(imageData.data);
-    
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const index = (y * width + x) * 4;
-        
-        if (originalData[index + 3] > 0) { // Only process non-transparent pixels
-          let minDistance = radius + 1;
-          
-          // Find distance to nearest transparent pixel
-          for (let dy = -radius; dy <= radius; dy++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-              const nx = x + dx;
-              const ny = y + dy;
-              
-              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                const nIndex = (ny * width + nx) * 4;
-                if (originalData[nIndex + 3] === 0) {
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  minDistance = Math.min(minDistance, distance);
-                }
-              }
-            }
-          }
-          
-          // Apply feathering based on distance
-          if (minDistance <= radius) {
-            const alpha = Math.max(0, Math.min(255, (minDistance / radius) * originalData[index + 3]));
-            data[index + 3] = alpha;
-          }
-        }
-      }
-    }
-    
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Edge softening function
-  const applyEdgeSoftening = useCallback((imageData: ImageData, iterations: number): ImageData => {
-    let data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    for (let iter = 0; iter < iterations; iter++) {
-      const tempData = new Uint8ClampedArray(data);
-      
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const index = (y * width + x) * 4;
-          
-          if (tempData[index + 3] > 0) { // Only process non-transparent pixels
-            let avgAlpha = 0;
-            let count = 0;
-            
-            // Sample neighboring pixels
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                const nx = x + dx;
-                const ny = y + dy;
-                const nIndex = (ny * width + nx) * 4;
-                avgAlpha += tempData[nIndex + 3];
-                count++;
-              }
-            }
-            
-            // Apply smoothing to alpha channel
-            const smoothedAlpha = avgAlpha / count;
-            data[index + 3] = Math.round(smoothedAlpha * 0.7 + tempData[index + 3] * 0.3);
-          }
-        }
-      }
-    }
-    
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Trim semi-transparent edge pixels created by feathering
-  const trimSemiTransparentEdges = useCallback((imageData: ImageData, layers: number): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    for (let layer = 0; layer < layers; layer++) {
-      // Check all edge pixels and remove semi-transparent ones
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          // Only process pixels on the current layer's edge
-          const isEdge = (x <= layer || x >= width - 1 - layer || y <= layer || y >= height - 1 - layer);
-          
-          if (isEdge) {
-            const index = (y * width + x) * 4;
-            const alpha = data[index + 3];
-            
-            // Remove pixels that are semi-transparent (not fully opaque)
-            if (alpha > 0 && alpha < 255) {
-              data[index + 3] = 0; // Make fully transparent
-            }
-          }
-        }
-      }
-    }
-    
-    return new ImageData(data, width, height);
-  }, []);
-
   // Process a single image
   const processImage = useCallback(async (
     image: ImageItem, 
@@ -1155,15 +977,6 @@ export const useImageProcessor = () => {
     
     let imageDataToDownload = processedData;
     
-    // Apply automatic alpha feathering (radius 2) and edge softening (1 iteration) before download
-    console.log('Applying automatic alpha feathering and edge softening for download...');
-    imageDataToDownload = applyAlphaFeathering(imageDataToDownload, 2); // Reduced from 3 to 2
-    imageDataToDownload = applyEdgeSoftening(imageDataToDownload, 1);    // Reduced from 2 to 1
-    
-    // Trim 1 pixel of semi-transparent edges created by feathering
-    imageDataToDownload = trimSemiTransparentEdges(imageDataToDownload, 1);
-    console.log('Trimmed semi-transparent edge pixels');
-    
     // Apply download effects if provided
     if (effectSettings) {
       imageDataToDownload = applyDownloadEffects(imageDataToDownload, effectSettings);
@@ -1231,7 +1044,7 @@ export const useImageProcessor = () => {
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified, applyAlphaFeathering, applyEdgeSoftening, trimSemiTransparentEdges]);
+  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified]);
 
 
   return {
