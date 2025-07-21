@@ -20,7 +20,7 @@ export const useImageProcessor = () => {
     return workerRef.current;
   }, []);
 
-  // Wrapper for worker operations with timeout and error handling
+  // Wrapper for worker operations with transferable objects
   const processWithWorker = useCallback(async (
     type: 'processImage' | 'applyEffects' | 'downloadEffects',
     imageData: ImageData,
@@ -47,7 +47,10 @@ export const useImageProcessor = () => {
         if (event.data.type === 'success' && event.data.data) {
           console.log(`✅ Worker ${type} completed successfully`);
           console.timeEnd(`worker-${type}`);
-          resolve(event.data.data);
+          // Convert back to ImageData
+          const resultData = new Uint8ClampedArray(event.data.data.data);
+          const resultImageData = new ImageData(resultData, event.data.data.width, event.data.data.height);
+          resolve(resultImageData);
         } else {
           console.log(`❌ Worker ${type} failed:`, event.data.error);
           console.timeEnd(`worker-${type}`);
@@ -67,12 +70,20 @@ export const useImageProcessor = () => {
       worker.addEventListener('error', handleError);
       
       try {
+        // Prepare data for transfer
+        const transferableData = {
+          data: imageData.data.buffer.slice(0), // Clone the buffer
+          width: imageData.width,
+          height: imageData.height
+        };
+        
         worker.postMessage({
           type,
-          data: { imageData, settings, effectSettings },
+          data: { imageData: transferableData, settings, effectSettings },
           id
-        } as WorkerMessage);
-        console.log(`📤 Posted ${type} message to worker with id ${id}`);
+        } as WorkerMessage, [transferableData.data]);
+        
+        console.log(`📤 Posted ${type} message to worker with id ${id} using transferable objects`);
       } catch (error) {
         console.log(`🚫 Failed to post message to worker:`, error);
         clearTimeout(timeout);
@@ -123,59 +134,6 @@ export const useImageProcessor = () => {
   }, []);
 
   // Color distance calculation with multiple color space support
-  // RGB to HSL conversion
-  const rgbToHsl = useCallback((r: number, g: number, b: number): [number, number, number] => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
-
-    if (max === min) {
-      h = s = 0; // achromatic
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      
-      switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-      }
-      h /= 6;
-    }
-
-    return [h * 360, s, l];
-  }, []);
-
-  // HSL to RGB conversion
-  const hslToRgb = useCallback((h: number, s: number, l: number): [number, number, number] => {
-    h /= 360;
-    
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-
-    if (s === 0) {
-      const gray = l * 255;
-      return [gray, gray, gray]; // achromatic
-    } else {
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      const r = hue2rgb(p, q, h + 1/3);
-      const g = hue2rgb(p, q, h);
-      const b = hue2rgb(p, q, h - 1/3);
-      return [r * 255, g * 255, b * 255];
-    }
-  }, []);
-
   const calculateColorDistance = useCallback((
     r1: number, g1: number, b1: number, 
     r2: number, g2: number, b2: number, 
@@ -217,72 +175,7 @@ export const useImageProcessor = () => {
     }
   }, [rgbToLab, rgbToHsl]);
 
-
-  // Auto color removal - removes top-left corner color and similar colors
-  const autoColorRemoval = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-
-    // Get top-left corner color
-    const targetR = data[0];
-    const targetG = data[1];
-    const targetB = data[2];
-
-    // Scale threshold based on color space (LAB uses Delta E values, typically 0-100)
-    const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-    
-    const [targetL, targetA, targetBLab] = rgbToLab(targetR, targetG, targetB);
-    
-    let pixelsRemoved = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-
-      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      
-      if (distance <= threshold) {
-        data[i + 3] = 0; // Make transparent
-        pixelsRemoved++;
-      }
-    }
-    
-    
-
-    return new ImageData(data, width, height);
-  }, [calculateColorDistance]);
-
-  // Manual color removal - removes specified color
-  const manualColorRemoval = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-
-    // Parse target color
-    const hex = settings.targetColor.replace('#', '');
-    const targetR = parseInt(hex.substr(0, 2), 16);
-    const targetG = parseInt(hex.substr(2, 2), 16);
-    const targetB = parseInt(hex.substr(4, 2), 16);
-
-    const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-
-      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      
-      if (distance <= threshold) {
-        data[i + 3] = 0; // Make transparent
-      }
-    }
-
-    return new ImageData(data, width, height);
-  }, [calculateColorDistance]);
-
-  // Unified processing function that matches MainCanvas logic - Now uses Web Worker
+  // Unified processing function with proper logging
   const processImageDataUnified = useCallback(async (imageData: ImageData, settings: ColorRemovalSettings): Promise<ImageData> => {
     console.log('🎨 processImageDataUnified called with settings:', { enabled: settings.enabled, mode: settings.mode, contiguous: settings.contiguous });
     
@@ -292,305 +185,150 @@ export const useImageProcessor = () => {
     }
 
     try {
-      console.log('🏭 Attempting worker processing for color removal...');
+      console.log('🏭 Using worker for color removal processing...');
       const result = await processWithWorker('processImage', imageData, settings);
       console.log('✅ Worker processing completed successfully');
       return result;
     } catch (error) {
-      console.warn('⚠️ Worker failed, falling back to main thread:', error);
-      // Fallback to main thread processing with performance optimizations
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
+      console.log('⚠️ Worker failed, falling back to main thread:', error);
+      console.log('🔄 Falling back to main thread processing...');
+      
+      // Fallback to main thread with performance optimizations
+      const data = new Uint8ClampedArray(imageData.data);
+      const width = imageData.width;
+      const height = imageData.height;
 
-    console.log('🔧 Fallback: Processing on main thread with performance optimizations');
+      console.log('🔧 Fallback: Processing on main thread with performance optimizations');
 
-    // Only process if color removal is enabled
-    if (settings.enabled) {
-      if (settings.mode === 'auto') {
-        // Use top-left corner color
-        const targetR = data[0];
-        const targetG = data[1];
-        const targetB = data[2];
-        const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+      // Only process if color removal is enabled
+      if (settings.enabled) {
+        if (settings.mode === 'auto') {
+          // Use top-left corner color
+          const targetR = data[0];
+          const targetG = data[1];
+          const targetB = data[2];
+          const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
 
-        if (settings.contiguous) {
-          // Contiguous removal starting from top-left corner with performance optimization
-          const visited = new Set<string>();
-          const stack = [[0, 0]];
-          let processedPixels = 0;
-          
-          const isColorSimilar = (r: number, g: number, b: number) => {
-            const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-            return distance <= threshold;
-          };
-          
-          while (stack.length > 0) {
-            const [x, y] = stack.pop()!;
-            const key = `${x},${y}`;
+          if (settings.contiguous) {
+            // Contiguous removal starting from top-left corner with performance optimization
+            const visited = new Set<string>();
+            const stack = [[0, 0]];
+            let processedPixels = 0;
             
-            if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-            visited.add(key);
+            const isColorSimilar = (r: number, g: number, b: number) => {
+              const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+              return distance <= threshold;
+            };
             
-            const pixelIndex = (y * width + x) * 4;
-            const r = data[pixelIndex];
-            const g = data[pixelIndex + 1];
-            const b = data[pixelIndex + 2];
-            
-            if (!isColorSimilar(r, g, b)) continue;
-            
-            // Make pixel transparent
-            data[pixelIndex + 3] = 0;
-            
-            // Add neighbors to stack
-            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-            
-            // Performance optimization: yield control every 1000 pixels
-            processedPixels++;
-            if (processedPixels % 1000 === 0) {
-              await new Promise(resolve => setTimeout(resolve, 0));
+            while (stack.length > 0) {
+              const [x, y] = stack.pop()!;
+              const key = `${x},${y}`;
+              
+              if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
+              visited.add(key);
+              
+              const pixelIndex = (y * width + x) * 4;
+              const r = data[pixelIndex];
+              const g = data[pixelIndex + 1];
+              const b = data[pixelIndex + 2];
+              
+              if (!isColorSimilar(r, g, b)) continue;
+              
+              // Make pixel transparent
+              data[pixelIndex + 3] = 0;
+              
+              // Add neighbors to stack
+              stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+              
+              // Performance optimization: yield control every 1000 pixels
+              processedPixels++;
+              if (processedPixels % 1000 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+              }
+            }
+          } else {
+            // Simple non-contiguous removal for auto mode with performance optimization
+            const totalPixels = data.length / 4;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+
+              const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+              
+              if (distance <= threshold) {
+                data[i + 3] = 0; // Make transparent
+              }
+              
+              // Performance optimization: yield control every 10000 pixels
+              if ((i / 4) % 10000 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+              }
             }
           }
         } else {
-          // Simple non-contiguous removal for auto mode with performance optimization
+          // Manual mode - handle both single target color and picked colors
+          let colorsToRemove = [];
+          
+          // Add the main target color
+          const hex = settings.targetColor.replace('#', '');
+          colorsToRemove.push({
+            r: parseInt(hex.substr(0, 2), 16),
+            g: parseInt(hex.substr(2, 2), 16),
+            b: parseInt(hex.substr(4, 2), 16),
+            threshold: settings.threshold
+          });
+          
+          // Add all picked colors with their individual thresholds
+          settings.pickedColors.forEach(pickedColor => {
+            const pickedHex = pickedColor.color.replace('#', '');
+            colorsToRemove.push({
+              r: parseInt(pickedHex.substr(0, 2), 16),
+              g: parseInt(pickedHex.substr(2, 2), 16),
+              b: parseInt(pickedHex.substr(4, 2), 16),
+              threshold: pickedColor.threshold
+            });
+          });
+
+          // Process each pixel against all target colors (always non-contiguous in manual mode) with performance optimization
           const totalPixels = data.length / 4;
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i + 1];
             const b = data[i + 2];
 
-            const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-            
-            if (distance <= threshold) {
-              data[i + 3] = 0; // Make transparent
+            // Check against each target color
+            for (const targetColor of colorsToRemove) {
+              const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
+              const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+              
+              if (distance <= threshold) {
+                data[i + 3] = 0; // Make transparent
+                break; // No need to check other colors once removed
+              }
             }
             
-            // Performance optimization: yield control every 10000 pixels
-            if ((i / 4) % 10000 === 0) {
+            // Performance optimization: yield control every 5000 pixels  
+            if ((i / 4) % 5000 === 0) {
               await new Promise(resolve => setTimeout(resolve, 0));
             }
           }
         }
-      } else {
-        // Manual mode - handle both single target color and picked colors
-        let colorsToRemove = [];
-        
-        // Add the main target color
-        const hex = settings.targetColor.replace('#', '');
-        colorsToRemove.push({
-          r: parseInt(hex.substr(0, 2), 16),
-          g: parseInt(hex.substr(2, 2), 16),
-          b: parseInt(hex.substr(4, 2), 16),
-          threshold: settings.threshold
-        });
-        
-        // Add all picked colors with their individual thresholds
-        settings.pickedColors.forEach(pickedColor => {
-          const pickedHex = pickedColor.color.replace('#', '');
-          colorsToRemove.push({
-            r: parseInt(pickedHex.substr(0, 2), 16),
-            g: parseInt(pickedHex.substr(2, 2), 16),
-            b: parseInt(pickedHex.substr(4, 2), 16),
-            threshold: pickedColor.threshold
-          });
-        });
-
-        // Process each pixel against all target colors (always non-contiguous in manual mode) with performance optimization
-        const totalPixels = data.length / 4;
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          // Check against each target color
-          for (const targetColor of colorsToRemove) {
-            const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-            
-            if (distance <= threshold) {
-              data[i + 3] = 0; // Make transparent
-              break; // No need to check other colors once removed
-            }
-          }
-          
-          // Performance optimization: yield control every 5000 pixels  
-          if ((i / 4) % 5000 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-        }
       }
-    }
 
       return new ImageData(data, width, height);
     }
   }, [processWithWorker, calculateColorDistance]);
 
-  // Contiguous color removal from borders
-  const borderFloodFill = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    const visited = new Set<string>();
-
-    const isColorSimilar = (r1: number, g1: number, b1: number, r2: number, g2: number, b2: number) => {
-      const distance = calculateColorDistance(r1, g1, b1, r2, g2, b2);
-      return distance <= settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-    };
-
-    const floodFillFromBorder = (startX: number, startY: number) => {
-      const stack = [[startX, startY]];
-      const index = (startY * width + startX) * 4;
-      const targetR = data[index];
-      const targetG = data[index + 1];
-      const targetB = data[index + 2];
-
-      while (stack.length > 0) {
-        const [x, y] = stack.pop()!;
-        const key = `${x},${y}`;
-
-        if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-        visited.add(key);
-
-        const pixelIndex = (y * width + x) * 4;
-        const r = data[pixelIndex];
-        const g = data[pixelIndex + 1];
-        const b = data[pixelIndex + 2];
-        const a = data[pixelIndex + 3];
-
-        if (a === 0 || !isColorSimilar(r, g, b, targetR, targetG, targetB)) continue;
-
-        // Make pixel transparent
-        data[pixelIndex + 3] = 0;
-
-        // Add neighbors
-        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-      }
-    };
-
-    // Process borders
-    for (let x = 0; x < width; x++) {
-      floodFillFromBorder(x, 0); // Top border
-      floodFillFromBorder(x, height - 1); // Bottom border
-    }
-    for (let y = 0; y < height; y++) {
-      floodFillFromBorder(0, y); // Left border
-      floodFillFromBorder(width - 1, y); // Right border
-    }
-
-    return new ImageData(data, width, height);
-  }, [calculateColorDistance]);
-
-  // Remove small regions and apply feathering
-  const cleanupRegions = useCallback((imageData: ImageData, settings: ColorRemovalSettings): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-
-    // Step 1: Remove small transparent regions (fill holes) - MOVED TO EDGE CLEANUP
-    if (false) { // Temporarily disabled - will be handled by edge cleanup
-      const visited = new Set<string>();
-      
-      const floodFillRegion = (startX: number, startY: number, isTransparent: boolean): number => {
-        const stack = [[startX, startY]];
-        const region: [number, number][] = [];
-        
-        while (stack.length > 0) {
-          const [x, y] = stack.pop()!;
-          const key = `${x},${y}`;
-          
-          if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-          visited.add(key);
-          
-          const index = (y * width + x) * 4;
-          const pixelIsTransparent = data[index + 3] === 0;
-          
-          if (pixelIsTransparent !== isTransparent) continue;
-          
-          region.push([x, y]);
-          stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-        }
-        
-        return region.length;
-      };
-
-      // Find and remove small transparent regions
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const key = `${x},${y}`;
-          if (visited.has(key)) continue;
-          
-          const index = (y * width + x) * 4;
-          const isTransparent = data[index + 3] === 0;
-          
-          if (isTransparent) {
-            const regionSize = floodFillRegion(x, y, true);
-            
-            // If region is too small, fill it (make it opaque) - MOVED TO EDGE CLEANUP
-            if (false) { // Temporarily disabled
-              // Get surrounding color to fill with
-              let fillR = 0, fillG = 0, fillB = 0, count = 0;
-              
-              for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                  const nx = x + dx;
-                  const ny = y + dy;
-                  if (nx >= 0 && ny >= 0 && nx < width && ny < height) {
-                    const nIndex = (ny * width + nx) * 4;
-                    if (data[nIndex + 3] > 0) {
-                      fillR += data[nIndex];
-                      fillG += data[nIndex + 1];
-                      fillB += data[nIndex + 2];
-                      count++;
-                    }
-                  }
-                }
-              }
-              
-              if (count > 0) {
-                fillR = Math.round(fillR / count);
-                fillG = Math.round(fillG / count);
-                fillB = Math.round(fillB / count);
-                
-                // Fill the small region
-                const fillStack = [[x, y]];
-                const fillVisited = new Set<string>();
-                
-                while (fillStack.length > 0) {
-                  const [fx, fy] = fillStack.pop()!;
-                  const fKey = `${fx},${fy}`;
-                  
-                  if (fillVisited.has(fKey) || fx < 0 || fy < 0 || fx >= width || fy >= height) continue;
-                  fillVisited.add(fKey);
-                  
-                  const fIndex = (fy * width + fx) * 4;
-                  if (data[fIndex + 3] > 0) continue;
-                  
-                  data[fIndex] = fillR;
-                  data[fIndex + 1] = fillG;
-                  data[fIndex + 2] = fillB;
-                  data[fIndex + 3] = 255;
-                  
-                  fillStack.push([fx + 1, fy], [fx - 1, fy], [fx, fy + 1], [fx, fy - 1]);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Apply image effects (brightness, contrast, etc.) - Now uses Web Worker for heavy processing
+  // Apply image effects with worker
   const applyImageEffects = useCallback(async (imageData: ImageData, settings: EffectSettings): Promise<ImageData> => {
     if (!settings.imageEffects.enabled) return imageData;
     
     try {
+      console.log('🎨 Using worker for image effects...');
       return await processWithWorker('applyEffects', imageData, undefined, settings);
     } catch (error) {
-      console.warn('Worker failed, falling back to main thread:', error);
+      console.log('⚠️ Effects worker failed, falling back to main thread:', error);
       // Fallback to main thread processing
       const data = new Uint8ClampedArray(imageData.data);
       const width = imageData.width;
@@ -619,319 +357,141 @@ export const useImageProcessor = () => {
           b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
         }
 
-      // Apply vibrance (enhance muted colors)
-      if (settings.imageEffects.vibrance !== 0) {
-        const max = Math.max(r, g, b);
-        const avg = (r + g + b) / 3;
-        const amt = ((Math.abs(max - avg) * 2 / 255) * (settings.imageEffects.vibrance / 100));
-        
-        if (r !== max) r += (max - r) * amt;
-        if (g !== max) g += (max - g) * amt;
-        if (b !== max) b += (max - b) * amt;
-        
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
-      }
+        // Apply vibrance (enhance muted colors)
+        if (settings.imageEffects.vibrance !== 0) {
+          const max = Math.max(r, g, b);
+          const avg = (r + g + b) / 3;
+          const amt = ((Math.abs(max - avg) * 2 / 255) * (settings.imageEffects.vibrance / 100));
+          
+          if (r !== max) r += (max - r) * amt;
+          if (g !== max) g += (max - g) * amt;
+          if (b !== max) b += (max - b) * amt;
+          
+          r = Math.max(0, Math.min(255, r));
+          g = Math.max(0, Math.min(255, g));
+          b = Math.max(0, Math.min(255, b));
+        }
 
-      // Apply hue shift
-      if (settings.imageEffects.hue !== 0) {
-        const [h, s, l] = rgbToHsl(r, g, b);
-        const newHue = (h + settings.imageEffects.hue) % 360;
-        [r, g, b] = hslToRgb(newHue, s, l);
-      }
+        // Apply hue shift
+        if (settings.imageEffects.hue !== 0) {
+          const [h, s, l] = rgbToHsl(r, g, b);
+          const newHue = (h + settings.imageEffects.hue) % 360;
+          [r, g, b] = hslToRgb(newHue, s, l);
+        }
 
-      // Apply colorize
-      if (settings.imageEffects.colorize.enabled) {
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-        const [colorR, colorG, colorB] = hslToRgb(
-          settings.imageEffects.colorize.hue,
-          settings.imageEffects.colorize.saturation / 100,
-          settings.imageEffects.colorize.lightness / 100
-        );
-        
-        // Blend with original based on lightness
-        const blend = 0.5;
-        r = Math.max(0, Math.min(255, gray * (1 - blend) + colorR * blend));
-        g = Math.max(0, Math.min(255, gray * (1 - blend) + colorG * blend));
-        b = Math.max(0, Math.min(255, gray * (1 - blend) + colorB * blend));
-      }
+        // Apply colorize
+        if (settings.imageEffects.colorize.enabled) {
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          const [colorR, colorG, colorB] = hslToRgb(
+            settings.imageEffects.colorize.hue,
+            settings.imageEffects.colorize.saturation / 100,
+            settings.imageEffects.colorize.lightness / 100
+          );
+          
+          // Blend with original based on lightness
+          const blend = 0.5;
+          r = Math.max(0, Math.min(255, gray * (1 - blend) + colorR * blend));
+          g = Math.max(0, Math.min(255, gray * (1 - blend) + colorG * blend));
+          b = Math.max(0, Math.min(255, gray * (1 - blend) + colorB * blend));
+        }
 
-      // Apply black and white
-      if (settings.imageEffects.blackAndWhite) {
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-        r = g = b = gray;
-      }
+        // Apply black and white
+        if (settings.imageEffects.blackAndWhite) {
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          r = g = b = gray;
+        }
 
-      // Apply invert
-      if (settings.imageEffects.invert) {
-        r = 255 - r;
-        g = 255 - g;
-        b = 255 - b;
-      }
+        // Apply invert
+        if (settings.imageEffects.invert) {
+          r = 255 - r;
+          g = 255 - g;
+          b = 255 - b;
+        }
 
-      data[i] = Math.round(r);
-      data[i + 1] = Math.round(g);
-      data[i + 2] = Math.round(b);
-    }
+        data[i] = Math.round(r);
+        data[i + 1] = Math.round(g);
+        data[i + 2] = Math.round(b);
+      }
 
       return new ImageData(data, width, height);
     }
   }, [processWithWorker, rgbToHsl, hslToRgb]);
 
-
-  // Apply effects for display only (non-destructive background)
-  const applyDisplayEffects = useCallback(async (imageData: ImageData, settings: EffectSettings): Promise<ImageData> => {
-    let processedData = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height
-    );
-
-    // Apply image effects at the end of the processing chain
-    processedData = await applyImageEffects(processedData, settings);
-
-    const data = processedData.data;
-    const width = processedData.width;
-    const height = processedData.height;
-
-    // Apply background color for preview only (regardless of saveWithBackground setting)
-    if (settings.background.enabled) {
-      const hex = settings.background.color.replace('#', '');
-      const bgR = parseInt(hex.substr(0, 2), 16);
-      const bgG = parseInt(hex.substr(2, 2), 16);
-      const bgB = parseInt(hex.substr(4, 2), 16);
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) {
-          data[i] = bgR;
-          data[i + 1] = bgG;
-          data[i + 2] = bgB;
-          data[i + 3] = 255;
-        }
-      }
-    }
-
-    // Apply ink stamp effect
-    if (settings.inkStamp.enabled) {
-      const hex = settings.inkStamp.color.replace('#', '');
-      const stampR = parseInt(hex.substr(0, 2), 16);
-      const stampG = parseInt(hex.substr(2, 2), 16);
-      const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) { // Only process non-transparent pixels
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          
-          // Convert to luminance (perceived brightness)
-          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-          
-          if (luminance < threshold) {
-            // Dark areas become stamp color
-            data[i] = stampR;
-            data[i + 1] = stampG;
-            data[i + 2] = stampB;
-            data[i + 3] = 255; // Fully opaque
-          } else {
-            // Light areas become transparent
-            data[i + 3] = 0;
-          }
-        }
-      }
-    }
-
-    return new ImageData(data, width, height);
-  }, [applyImageEffects]);
-
-  // Apply effects for download (only applies background if saveWithBackground is true) - Now uses Web Worker
+  // Apply download effects with worker
   const applyDownloadEffects = useCallback(async (imageData: ImageData, settings: EffectSettings): Promise<ImageData> => {
     try {
+      console.log('💾 Using worker for download effects...');
       return await processWithWorker('downloadEffects', imageData, {
         backgroundColor: settings.background.enabled && settings.background.saveWithBackground ? settings.background.color : 'transparent',
         inkStamp: settings.inkStamp.enabled
       });
     } catch (error) {
-      console.warn('Worker failed, falling back to main thread:', error);
+      console.log('⚠️ Download effects worker failed, falling back to main thread:', error);
       // Fallback to main thread processing
-    let processedData = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height
-    );
+      let processedData = new ImageData(
+        new Uint8ClampedArray(imageData.data),
+        imageData.width,
+        imageData.height
+      );
 
       // Apply image effects at the end of the processing chain
       processedData = await applyImageEffects(processedData, settings);
 
-    const data = processedData.data;
-    const width = processedData.width;
-    const height = processedData.height;
+      const data = processedData.data;
+      const width = processedData.width;
+      const height = processedData.height;
 
-    // Only apply background for download if explicitly requested
-    if (settings.background.enabled && settings.background.saveWithBackground) {
-      const hex = settings.background.color.replace('#', '');
-      const bgR = parseInt(hex.substr(0, 2), 16);
-      const bgG = parseInt(hex.substr(2, 2), 16);
-      const bgB = parseInt(hex.substr(4, 2), 16);
+      // Only apply background for download if explicitly requested
+      if (settings.background.enabled && settings.background.saveWithBackground) {
+        const hex = settings.background.color.replace('#', '');
+        const bgR = parseInt(hex.substr(0, 2), 16);
+        const bgG = parseInt(hex.substr(2, 2), 16);
+        const bgB = parseInt(hex.substr(4, 2), 16);
 
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) {
-          data[i] = bgR;
-          data[i + 1] = bgG;
-          data[i + 2] = bgB;
-          data[i + 3] = 255;
-        }
-      }
-    }
-
-    // Apply ink stamp effect
-    if (settings.inkStamp.enabled) {
-      const hex = settings.inkStamp.color.replace('#', '');
-      const stampR = parseInt(hex.substr(0, 2), 16);
-      const stampG = parseInt(hex.substr(2, 2), 16);
-      const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] > 0) { // Only process non-transparent pixels
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          
-          // Convert to luminance (perceived brightness)
-          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-          
-          if (luminance < threshold) {
-            // Dark areas become stamp color
-            data[i] = stampR;
-            data[i + 1] = stampG;
-            data[i + 2] = stampB;
-            data[i + 3] = 255; // Fully opaque
-          } else {
-            // Light areas become transparent
-            data[i + 3] = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] === 0) {
+            data[i] = bgR;
+            data[i + 1] = bgG;
+            data[i + 2] = bgB;
+            data[i + 3] = 255;
           }
         }
       }
+
+      // Apply ink stamp effect
+      if (settings.inkStamp.enabled) {
+        const hex = settings.inkStamp.color.replace('#', '');
+        const stampR = parseInt(hex.substr(0, 2), 16);
+        const stampG = parseInt(hex.substr(2, 2), 16);
+        const stampB = parseInt(hex.substr(4, 2), 16);
+        const threshold = (100 - settings.inkStamp.threshold) * 2.55; // Convert to 0-255 range, invert for intuitive control
+
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 0) { // Only process non-transparent pixels
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            
+            // Convert to luminance (perceived brightness)
+            const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+            
+            if (luminance < threshold) {
+              // Dark areas become stamp color
+              data[i] = stampR;
+              data[i + 1] = stampG;
+              data[i + 2] = stampB;
+              data[i + 3] = 255; // Fully opaque
+            } else {
+              // Light areas become transparent
+              data[i + 3] = 0;
+            }
+          }
+        }
       }
 
       return new ImageData(data, width, height);
     }
   }, [processWithWorker, applyImageEffects]);
-
-  // Alpha feathering function
-  const applyAlphaFeathering = useCallback((imageData: ImageData, radius: number): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    // Create a copy for reading from
-    const originalData = new Uint8ClampedArray(imageData.data);
-    
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const index = (y * width + x) * 4;
-        
-        if (originalData[index + 3] > 0) { // Only process non-transparent pixels
-          let minDistance = radius + 1;
-          
-          // Find distance to nearest transparent pixel
-          for (let dy = -radius; dy <= radius; dy++) {
-            for (let dx = -radius; dx <= radius; dx++) {
-              const nx = x + dx;
-              const ny = y + dy;
-              
-              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                const nIndex = (ny * width + nx) * 4;
-                if (originalData[nIndex + 3] === 0) {
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  minDistance = Math.min(minDistance, distance);
-                }
-              }
-            }
-          }
-          
-          // Apply feathering based on distance
-          if (minDistance <= radius) {
-            const alpha = Math.max(0, Math.min(255, (minDistance / radius) * originalData[index + 3]));
-            data[index + 3] = alpha;
-          }
-        }
-      }
-    }
-    
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Edge softening function
-  const applyEdgeSoftening = useCallback((imageData: ImageData, iterations: number): ImageData => {
-    let data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    for (let iter = 0; iter < iterations; iter++) {
-      const tempData = new Uint8ClampedArray(data);
-      
-      for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-          const index = (y * width + x) * 4;
-          
-          if (tempData[index + 3] > 0) { // Only process non-transparent pixels
-            let avgAlpha = 0;
-            let count = 0;
-            
-            // Sample neighboring pixels
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                const nx = x + dx;
-                const ny = y + dy;
-                const nIndex = (ny * width + nx) * 4;
-                avgAlpha += tempData[nIndex + 3];
-                count++;
-              }
-            }
-            
-            // Apply smoothing to alpha channel
-            const smoothedAlpha = avgAlpha / count;
-            data[index + 3] = Math.round(smoothedAlpha * 0.7 + tempData[index + 3] * 0.3);
-          }
-        }
-      }
-    }
-    
-    return new ImageData(data, width, height);
-  }, []);
-
-  // Trim semi-transparent edge pixels created by feathering
-  const trimSemiTransparentEdges = useCallback((imageData: ImageData, layers: number): ImageData => {
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    
-    for (let layer = 0; layer < layers; layer++) {
-      // Check all edge pixels and remove semi-transparent ones
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          // Only process pixels on the current layer's edge
-          const isEdge = (x <= layer || x >= width - 1 - layer || y <= layer || y >= height - 1 - layer);
-          
-          if (isEdge) {
-            const index = (y * width + x) * 4;
-            const alpha = data[index + 3];
-            
-            // Remove pixels that are semi-transparent (not fully opaque)
-            if (alpha > 0 && alpha < 255) {
-              data[index + 3] = 0; // Make fully transparent
-            }
-          }
-        }
-      }
-    }
-    
-    return new ImageData(data, width, height);
-  }, []);
 
   // Process a single image
   const processImage = useCallback(async (
@@ -1367,7 +927,6 @@ export const useImageProcessor = () => {
 
     // Removed download started toast
   }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified, applyAlphaFeathering, applyEdgeSoftening, trimSemiTransparentEdges]);
-
 
   return {
     processImage,

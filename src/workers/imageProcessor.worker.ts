@@ -4,7 +4,11 @@
 export interface WorkerMessage {
   type: 'processImage' | 'applyEffects' | 'downloadEffects';
   data: {
-    imageData: ImageData;
+    imageData: {
+      data: ArrayBuffer;
+      width: number;
+      height: number;
+    };
     settings?: any;
     effectSettings?: any;
     backgroundColor?: string;
@@ -15,7 +19,11 @@ export interface WorkerMessage {
 
 export interface WorkerResponse {
   type: 'success' | 'error';
-  data: ImageData | null;
+  data: {
+    data: ArrayBuffer;
+    width: number;
+    height: number;
+  } | null;
   error?: string;
   id: string;
 }
@@ -65,86 +73,7 @@ const calculateColorDistance = (
   return Math.sqrt(dl * dl + da * da + db * db);
 };
 
-// Heavy processing functions moved from main thread
-const applyDownloadEffects = (imageData: ImageData, settings: any): ImageData => {
-  const data = new Uint8ClampedArray(imageData.data);
-  const width = imageData.width;
-  const height = imageData.height;
-
-  // Apply background color if specified
-  if (settings.backgroundColor && settings.backgroundColor !== 'transparent') {
-    const hex = settings.backgroundColor.replace('#', '');
-    const bgR = parseInt(hex.substr(0, 2), 16);
-    const bgG = parseInt(hex.substr(2, 2), 16);
-    const bgB = parseInt(hex.substr(4, 2), 16);
-
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] === 0) {
-        data[i] = bgR;
-        data[i + 1] = bgG;
-        data[i + 2] = bgB;
-        data[i + 3] = 255;
-      }
-    }
-  }
-
-  // Apply ink stamp effect if enabled
-  if (settings.inkStamp) {
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] > 0) {
-        const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-        const threshold = 128;
-        const isBlack = gray < threshold;
-        
-        data[i] = isBlack ? 0 : 255;
-        data[i + 1] = isBlack ? 0 : 255;
-        data[i + 2] = isBlack ? 0 : 255;
-      }
-    }
-  }
-
-  return new ImageData(data, width, height);
-};
-
-const applyImageEffects = (imageData: ImageData, settings: any): ImageData => {
-  if (!settings.imageEffects.enabled) return imageData;
-  
-  const data = new Uint8ClampedArray(imageData.data);
-  const width = imageData.width;
-  const height = imageData.height;
-
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) continue; // Skip transparent pixels
-    
-    let r = data[i];
-    let g = data[i + 1];
-    let b = data[i + 2];
-
-    // Apply brightness
-    if (settings.imageEffects.brightness !== 0) {
-      const brightness = settings.imageEffects.brightness * 2.55;
-      r = Math.max(0, Math.min(255, r + brightness));
-      g = Math.max(0, Math.min(255, g + brightness));
-      b = Math.max(0, Math.min(255, b + brightness));
-    }
-
-    // Apply contrast
-    if (settings.imageEffects.contrast !== 0) {
-      const contrast = (settings.imageEffects.contrast + 100) / 100;
-      r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
-      g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
-      b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
-    }
-
-    data[i] = Math.round(r);
-    data[i + 1] = Math.round(g);
-    data[i + 2] = Math.round(b);
-  }
-
-  return new ImageData(data, width, height);
-};
-
-const processColorRemoval = (imageData: ImageData, settings: any): ImageData => {
+const processColorRemoval = (imageData: { data: ArrayBuffer; width: number; height: number }, settings: any): { data: ArrayBuffer; width: number; height: number } => {
   console.log('🔧 Worker: Processing color removal with settings:', { enabled: settings.enabled, mode: settings.mode, contiguous: settings.contiguous });
   
   const data = new Uint8ClampedArray(imageData.data);
@@ -153,7 +82,7 @@ const processColorRemoval = (imageData: ImageData, settings: any): ImageData => 
 
   if (!settings.enabled) {
     console.log('🚫 Worker: Color removal disabled, returning original data');
-    return new ImageData(data, width, height);
+    return { data: data.buffer, width, height };
   }
 
   if (settings.mode === 'auto') {
@@ -248,16 +177,94 @@ const processColorRemoval = (imageData: ImageData, settings: any): ImageData => 
   }
 
   console.log('✅ Worker: Color removal processing complete');
-  return new ImageData(data, width, height);
+  return { data: data.buffer, width, height };
 };
 
-// Main message handler
+const applyImageEffects = (imageData: { data: ArrayBuffer; width: number; height: number }, settings: any): { data: ArrayBuffer; width: number; height: number } => {
+  if (!settings.imageEffects.enabled) return imageData;
+  
+  const data = new Uint8ClampedArray(imageData.data);
+  const width = imageData.width;
+  const height = imageData.height;
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue; // Skip transparent pixels
+    
+    let r = data[i];
+    let g = data[i + 1];
+    let b = data[i + 2];
+
+    // Apply brightness
+    if (settings.imageEffects.brightness !== 0) {
+      const brightness = settings.imageEffects.brightness * 2.55;
+      r = Math.max(0, Math.min(255, r + brightness));
+      g = Math.max(0, Math.min(255, g + brightness));
+      b = Math.max(0, Math.min(255, b + brightness));
+    }
+
+    // Apply contrast
+    if (settings.imageEffects.contrast !== 0) {
+      const contrast = (settings.imageEffects.contrast + 100) / 100;
+      r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
+      g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
+      b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
+    }
+
+    data[i] = Math.round(r);
+    data[i + 1] = Math.round(g);
+    data[i + 2] = Math.round(b);
+  }
+
+  return { data: data.buffer, width, height };
+};
+
+const applyDownloadEffects = (imageData: { data: ArrayBuffer; width: number; height: number }, settings: any): { data: ArrayBuffer; width: number; height: number } => {
+  const data = new Uint8ClampedArray(imageData.data);
+  const width = imageData.width;
+  const height = imageData.height;
+
+  // Apply background color if specified
+  if (settings.backgroundColor && settings.backgroundColor !== 'transparent') {
+    const hex = settings.backgroundColor.replace('#', '');
+    const bgR = parseInt(hex.substr(0, 2), 16);
+    const bgG = parseInt(hex.substr(2, 2), 16);
+    const bgB = parseInt(hex.substr(4, 2), 16);
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] === 0) {
+        data[i] = bgR;
+        data[i + 1] = bgG;
+        data[i + 2] = bgB;
+        data[i + 3] = 255;
+      }
+    }
+  }
+
+  // Apply ink stamp effect if enabled
+  if (settings.inkStamp) {
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 0) {
+        const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+        const threshold = 128;
+        const isBlack = gray < threshold;
+        
+        data[i] = isBlack ? 0 : 255;
+        data[i + 1] = isBlack ? 0 : 255;
+        data[i + 2] = isBlack ? 0 : 255;
+      }
+    }
+  }
+
+  return { data: data.buffer, width, height };
+};
+
+// Main message handler with transferable objects
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const { type, data, id } = event.data;
   console.log(`📨 Worker received message: ${type} with id ${id}`);
   
   try {
-    let result: ImageData;
+    let result: { data: ArrayBuffer; width: number; height: number };
     
     switch (type) {
       case 'processImage':
@@ -274,11 +281,12 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     }
     
     console.log(`📤 Worker sending success response for ${type} with id ${id}`);
+    // Use transferable objects to avoid copying
     self.postMessage({
       type: 'success',
       data: result,
       id
-    } as WorkerResponse);
+    } as WorkerResponse, [result.data]);
   } catch (error) {
     console.log(`💥 Worker error for ${type} with id ${id}:`, error);
     self.postMessage({
