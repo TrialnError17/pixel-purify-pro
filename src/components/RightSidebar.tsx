@@ -1089,7 +1089,7 @@ const ToolSpecificContent: React.FC<{
 
   const selectedBonusTip = React.useMemo(() => {
     return bonusTips[Math.floor(Math.random() * bonusTips.length)];
-  }, [activeDisplayFeature]);
+  }, []); // Remove activeDisplayFeature dependency to prevent constant changes
 
   return (
     <div className="flex-1 p-4 space-y-4 overflow-y-auto min-h-0">

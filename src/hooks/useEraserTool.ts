@@ -67,19 +67,7 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     const dataX = Math.floor((mouseX - options.centerOffset.x - options.pan.x) / Math.max(options.zoom, 0.01));
     const dataY = Math.floor((mouseY - options.centerOffset.y - options.pan.y) / Math.max(options.zoom, 0.01));
     
-    console.log('Coordinate transform:', {
-      screenX: clientX,
-      screenY: clientY,
-      containerLeft: containerRect.left,
-      containerTop: containerRect.top,
-      mouseX,
-      mouseY,
-      centerOffset: options.centerOffset,
-      pan: options.pan,
-      zoom: options.zoom,
-      dataX,
-      dataY
-    });
+    // Removed verbose coordinate logging for performance
     
     // Clamp to image bounds if we have image data
     const imageData = options.manualImageDataRef.current;
@@ -146,7 +134,7 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
       }
     }
     
-    console.log(`Erased ${pixelsModified} pixels at (${centerX}, ${centerY}) with radius ${radius}`);
+    // Removed pixel-by-pixel logging for performance
   }, []);
 
   // Start erasing
@@ -321,13 +309,7 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     // Dynamic stroke width for better visibility
     const strokeWidth = Math.max(1, Math.min(2, options.brushSize / 20));
     
-    console.log('Cursor calculation:', {
-      brushSize: options.brushSize,
-      radius,
-      zoom: options.zoom,
-      size,
-      strokeWidth
-    });
+    // Removed cursor calculation logging for performance
     
     const svg = `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
