@@ -8,6 +8,10 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
+import { createOptimizedImage, createThumbnail } from '@/utils/imageOptimization';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { BookOpen } from 'lucide-react';
 
 console.log('Index.tsx is loading');
 
@@ -88,17 +92,23 @@ export interface ContiguousToolSettings {
   threshold: number;
 }
 
+export interface EraserSettings {
+  brushSize: number;
+}
+
 const Index = () => {
-  console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
-  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
+  const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
   const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  // Add erasingInProgressRef to prevent auto-processing during erasing
+  const erasingInProgressRef = useRef<boolean>(false);
   
   const [colorSettings, setColorSettings] = useState<ColorRemovalSettings>({
     enabled: true,
@@ -114,7 +124,7 @@ const Index = () => {
   });
 
   const [contiguousSettings, setContiguousSettings] = useState<ContiguousToolSettings>({
-    threshold: 10
+    threshold: 30 // Changed from 10 to 30
   });
 
   const [speckleSettings, setSpeckleSettings] = useState<SpeckleSettings>({
@@ -125,6 +135,15 @@ const Index = () => {
   });
 
   const [speckCount, setSpeckCount] = useState<number | undefined>(undefined);
+  const [isProcessingSpeckles, setIsProcessingSpeckles] = useState(false);
+  
+  // Track last interacted feature for Learning Center
+  const [lastInteractedFeature, setLastInteractedFeature] = useState<string | null>(null);
+  
+  // Handle feature interaction for Learning Center
+  const handleFeatureInteraction = useCallback((feature: string) => {
+    setLastInteractedFeature(feature);
+  }, []);
   
   const [effectSettings, setEffectSettings] = useState<EffectSettings>({
     background: {
@@ -159,13 +178,17 @@ const Index = () => {
 
   const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
     enabled: false,
-    trimRadius: 3,
+    trimRadius: 1, // Changed from 3 to 1
     legacyEnabled: false,
     legacyRadius: 2,
     softening: {
       enabled: false,
       iterations: 1,
     },
+  });
+
+  const [eraserSettings, setEraserSettings] = useState<EraserSettings>({
+    brushSize: 10
   });
 
   // Track if edge trim was auto-disabled by ink stamp
@@ -175,8 +198,11 @@ const Index = () => {
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
-  const handleFilesSelected = useCallback((files: FileList) => {
-    const newImages: ImageItem[] = Array.from(files).map(file => ({
+  const handleFilesSelected = useCallback(async (files: FileList) => {
+    const fileArray = Array.from(files);
+    
+    // Create initial image items - no optimization for instant loading
+    const newImages: ImageItem[] = fileArray.map(file => ({
       id: crypto.randomUUID(),
       file,
       name: file.name,
@@ -318,8 +344,9 @@ const Index = () => {
         />
         
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Left Tools Sidebar - Full Height */}
-          <LeftSidebar 
+          {/* Left Tools Sidebar - Hidden on mobile */}
+          <div className="hidden sm:block">
+            <LeftSidebar
             settings={colorSettings}
             onSettingsChange={(newSettings) => {
               const prevSettings = { ...colorSettings };
@@ -342,11 +369,14 @@ const Index = () => {
                 highlight: newSpeckleSettings.highlightSpecks,
                 remove: newSpeckleSettings.removeSpecks,
                 hasProcessedData: !!selectedImage?.processedData,
-                hasOriginalData: !!selectedImage?.originalData 
+                hasOriginalData: !!selectedImage?.originalData,
+                isProcessingSpeckles
               });
               
-              // Process speckles when settings change and image is selected
-              if (selectedImage?.processedData || selectedImage?.originalData) {
+              // Only process speckles if not already processing to prevent feedback loop
+              if (!isProcessingSpeckles && (selectedImage?.processedData || selectedImage?.originalData)) {
+                setIsProcessingSpeckles(true);
+                
                 // Use processedData if available (includes color effects), otherwise fall back to originalData
                 const baseData = selectedImage.processedData || selectedImage.originalData!;
                 
@@ -367,6 +397,9 @@ const Index = () => {
                     ? { ...img, processedData: result.processedData }
                     : img
                 ));
+                
+                // Reset processing flag after a short delay
+                setTimeout(() => setIsProcessingSpeckles(false), 100);
               }
               
               // Add undo action for speckle settings changes
@@ -438,10 +471,14 @@ const Index = () => {
                 undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
               });
             }}
+            eraserSettings={eraserSettings}
+            onEraserSettingsChange={setEraserSettings}
             currentTool={currentTool}
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
+            onFeatureInteraction={handleFeatureInteraction}
           />
+          </div>
           
           {/* Main Content Area - Canvas and Queue */}
           <div className="flex flex-1 min-h-0 flex-col">
@@ -454,6 +491,8 @@ const Index = () => {
               effectSettings={effectSettings}
               speckleSettings={speckleSettings}
               edgeCleanupSettings={edgeCleanupSettings}
+              eraserSettings={eraserSettings}
+              erasingInProgressRef={erasingInProgressRef}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
@@ -483,6 +522,7 @@ const Index = () => {
                   downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
                 }
               }}
+              setSingleImageProgress={setSingleImageProgress}
               addUndoAction={addUndoAction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
@@ -499,12 +539,10 @@ const Index = () => {
                 isProcessing 
                     ? {
                       current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                      total: images.filter(img => img.status !== 'error').length
+                      total: images.length
                     }
                   : undefined
               }
-              isFullscreen={isQueueFullscreen}
-              onSetFullscreen={setIsQueueFullscreen}
               onRemoveImage={(imageId) => {
                 const targetImage = images.find(img => img.id === imageId);
                 if (!targetImage) return;
@@ -583,6 +621,47 @@ const Index = () => {
               onClearAll={handleClearAll}
             />
           </div>
+          
+          {/* Right Learning Sidebar - Responsive */}
+          {/* Desktop: Always visible */}
+          <div className="hidden lg:block">
+            <RightSidebar 
+              currentTool={currentTool}
+              colorSettings={colorSettings}
+              speckleSettings={speckleSettings}
+              effectSettings={effectSettings}
+              edgeCleanupSettings={edgeCleanupSettings}
+              lastInteractedFeature={lastInteractedFeature}
+              onFeatureInteraction={setLastInteractedFeature}
+            />
+          </div>
+          
+          {/* Mobile/Tablet: Sheet overlay */}
+          <div className="lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="fixed top-20 right-4 z-40 bg-gradient-to-r from-accent-purple to-accent-blue text-white border-accent-purple/30 hover:from-accent-purple/80 hover:to-accent-blue/80"
+                >
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Tips
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80 sm:w-96 bg-gradient-panel border-accent-purple/30 overflow-y-auto">
+                <RightSidebar 
+                  currentTool={currentTool}
+                  colorSettings={colorSettings}
+                  speckleSettings={speckleSettings}
+                  effectSettings={effectSettings}
+                  edgeCleanupSettings={edgeCleanupSettings}
+                  lastInteractedFeature={lastInteractedFeature}
+                  onFeatureInteraction={setLastInteractedFeature}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
         
         <input
@@ -594,9 +673,6 @@ const Index = () => {
           className="hidden"
         />
       </div>
-      
-      {/* Independent Advertisement Space */}
-      <RightSidebar />
     </div>
   );
 };

@@ -8,7 +8,7 @@ import { HueSlider } from '@/components/ui/hue-slider';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
+import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 
@@ -24,9 +24,12 @@ interface LeftSidebarProps {
   onContiguousSettingsChange: (settings: ContiguousToolSettings) => void;
   edgeCleanupSettings: EdgeCleanupSettings;
   onEdgeCleanupSettingsChange: (settings: EdgeCleanupSettings) => void;
-  currentTool: 'pan' | 'color-stack' | 'magic-wand';
+  eraserSettings: EraserSettings;
+  onEraserSettingsChange: (settings: EraserSettings) => void;
+  currentTool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
   onAddImages: () => void;
   onAddFolder: () => void;
+  onFeatureInteraction: (feature: string) => void;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -41,15 +44,30 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onContiguousSettingsChange,
   edgeCleanupSettings,
   onEdgeCleanupSettingsChange,
+  eraserSettings,
+  onEraserSettingsChange,
   currentTool,
   onAddImages,
-  onAddFolder
+  onAddFolder,
+  onFeatureInteraction
 }) => {
   const updateSettings = (updates: Partial<ColorRemovalSettings>) => {
     onSettingsChange({ ...settings, ...updates });
   };
 
   const updateSpeckleSettings = (updates: Partial<SpeckleSettings>) => {
+    // Auto-enable highlighting when speckle tools are turned on
+    if (updates.enabled === true && !speckleSettings.highlightSpecks && !speckleSettings.removeSpecks) {
+      updates.highlightSpecks = true;
+    }
+    
+    // Handle mutual exclusivity between highlight and remove
+    if (updates.removeSpecks === true) {
+      updates.highlightSpecks = false;
+    } else if (updates.removeSpecks === false && !speckleSettings.highlightSpecks) {
+      updates.highlightSpecks = true; // Turn highlighting back on when remove is disabled
+    }
+    
     onSpeckleSettingsChange({ ...speckleSettings, ...updates });
   };
 
@@ -110,8 +128,192 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
     onEdgeCleanupSettingsChange({ ...edgeCleanupSettings, ...updates });
   };
 
+  // Random contextual tip components for the bottom of the sidebar
+  const ContextualTips: React.FC = () => {
+    const tipSets = [
+      {
+        icon: "🚀",
+        title: "Get Started",
+        gradient: "from-accent-blue/10 to-accent-cyan/10",
+        border: "border-accent-blue/30",
+        textColor: "text-accent-blue",
+        tips: [
+          "Load an image to begin color removal",
+          "Enable <strong>Color Removal</strong> above to start",
+          "Try <strong>Auto Mode</strong> for simple backgrounds"
+        ]
+      },
+      {
+        icon: "🎯",
+        title: "First Steps",
+        gradient: "from-accent-green/10 to-accent-lime/10",
+        border: "border-accent-green/30",
+        textColor: "text-accent-green",
+        tips: [
+          "Drag an image to the canvas area",
+          "Tools will activate once image is loaded",
+          "Start with <strong>Auto Mode</strong> for easy removal"
+        ]
+      },
+      {
+        icon: "💡",
+        title: "Quick Start",
+        gradient: "from-accent-purple/10 to-accent-pink/10",
+        border: "border-accent-purple/30",
+        textColor: "text-accent-purple",
+        tips: [
+          "Upload images using the header button",
+          "Enable tools above to see options",
+          "Preview changes before downloading"
+        ]
+      }
+    ];
+
+    const selectedTip = React.useMemo(() => {
+      return tipSets[Math.floor(Math.random() * tipSets.length)];
+    }, []);
+
+    return (
+      <Card className={`bg-gradient-to-br ${selectedTip.gradient} border ${selectedTip.border} animate-fade-in`}>
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className={`font-medium ${selectedTip.textColor} mb-2 flex items-center gap-1`}>
+              {selectedTip.icon} <span>{selectedTip.title}</span>
+            </div>
+            {selectedTip.tips.map((tip, index) => (
+              <div key={index} dangerouslySetInnerHTML={{ __html: `• ${tip}` }} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const QuickToolTips: React.FC = () => {
+    const tipSets = [
+      {
+        icon: "💡",
+        title: "Pro Tips",
+        gradient: "from-accent-cyan/10 to-accent-blue/10",
+        border: "border-accent-cyan/30",
+        textColor: "text-accent-cyan",
+        tips: [
+          "Hold <strong>Spacebar</strong> for temporary pan mode",
+          "Use <strong>Speckle Tools</strong> to clean small artifacts",
+          "Enable <strong>Edge Trimming</strong> for cleaner edges"
+        ]
+      },
+      {
+        icon: "🎛️",
+        title: "Tool Tips",
+        gradient: "from-accent-orange/10 to-accent-red/10",
+        border: "border-accent-orange/30",
+        textColor: "text-accent-orange",
+        tips: [
+          "Lower thresholds for <strong>precise</strong> removal",
+          "Higher thresholds for <strong>broader</strong> selection",
+          "Switch to <strong>Manual Mode</strong> for specific colors"
+        ]
+      },
+      {
+        icon: "⚡",
+        title: "Workflow",
+        gradient: "from-accent-lime/10 to-accent-green/10",
+        border: "border-accent-lime/30",
+        textColor: "text-accent-lime",
+        tips: [
+          "Try <strong>Auto Mode</strong> first for speed",
+          "Use <strong>Magic Wand</strong> for connected areas",
+          "Add <strong>Background Colors</strong> for previews"
+        ]
+      }
+    ];
+
+    const selectedTip = React.useMemo(() => {
+      return tipSets[Math.floor(Math.random() * tipSets.length)];
+    }, []);
+
+    return (
+      <Card className={`bg-gradient-to-br ${selectedTip.gradient} border ${selectedTip.border} animate-fade-in`}>
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className={`font-medium ${selectedTip.textColor} mb-2 flex items-center gap-1`}>
+              {selectedTip.icon} <span>{selectedTip.title}</span>
+            </div>
+            {selectedTip.tips.map((tip, index) => (
+              <div key={index} dangerouslySetInnerHTML={{ __html: `• ${tip}` }} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const KeyboardShortcuts: React.FC = () => {
+    const shortcutSets = [
+      {
+        icon: "⌨️",
+        title: "Shortcuts",
+        gradient: "from-accent-purple/10 to-accent-pink/10",
+        border: "border-accent-purple/30",
+        textColor: "text-accent-purple",
+        shortcuts: [
+          { key: "Spacebar:", action: "Pan tool" },
+          { key: "Scroll:", action: "Zoom in/out" },
+          { key: "Shift + Scroll:", action: "Pan up/down" },
+          { key: "Alt + Scroll:", action: "Pan left/right" }
+        ]
+      },
+      {
+        icon: "🖱️",
+        title: "Navigation",
+        gradient: "from-accent-indigo/10 to-accent-blue/10",
+        border: "border-accent-indigo/30",
+        textColor: "text-accent-indigo",
+        shortcuts: [
+          { key: "Triple Click:", action: "Auto-fit image" },
+          { key: "Mouse Wheel:", action: "Zoom smoothly" },
+          { key: "Space + Drag:", action: "Pan around" },
+          { key: "Right Click:", action: "Context menu" }
+        ]
+      },
+      {
+        icon: "🔥",
+        title: "Hotkeys",
+        gradient: "from-accent-yellow/10 to-accent-orange/10",
+        border: "border-accent-yellow/30",
+        textColor: "text-accent-yellow",
+        shortcuts: [
+          { key: "Ctrl + Z:", action: "Undo action" },
+          { key: "Ctrl + Y:", action: "Redo action" },
+          { key: "Escape:", action: "Exit fullscreen" },
+          { key: "Enter:", action: "Apply changes" }
+        ]
+      }
+    ];
+
+    const selectedShortcuts = React.useMemo(() => {
+      return shortcutSets[Math.floor(Math.random() * shortcutSets.length)];
+    }, []);
+
+    return (
+      <Card className={`bg-gradient-to-br ${selectedShortcuts.gradient} border ${selectedShortcuts.border} animate-fade-in`}>
+        <CardContent className="pt-3 pb-3">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className={`font-medium ${selectedShortcuts.textColor} mb-2 flex items-center gap-1`}>
+              {selectedShortcuts.icon} <span>{selectedShortcuts.title}</span>
+            </div>
+            {selectedShortcuts.shortcuts.map((shortcut, index) => (
+              <div key={index}>• <strong>{shortcut.key}</strong> {shortcut.action}</div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
-    <div className="w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
+    <div className="w-80 lg:w-96 bg-gradient-panel border-r border-border flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -123,27 +325,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </h2>
           </div>
           
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddImages}
-              className="flex items-center gap-1"
-            >
-              <ImagePlus className="w-3 h-3" />
-              Images
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddFolder}
-              className="flex items-center gap-1"
-            >
-              <FolderPlus className="w-3 h-3" />
-              Folder
-            </Button>
-          </div>
         </div>
       </div>
       
@@ -178,10 +359,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </CardHeader>
           <CardContent className="pt-0 pb-2 space-y-3">
             <div className="flex items-center gap-3 p-2 bg-gradient-to-r from-accent-yellow/5 to-accent-orange/5 rounded-lg border border-accent-orange/20">
-              <input
-                type="color"
+                <input
+                  type="color"
                     value={effectSettings.background.color}
-                    onChange={(e) => updateBackground({ color: e.target.value })}
+                    onChange={(e) => {
+                      updateBackground({ color: e.target.value });
+                      onFeatureInteraction('background-color');
+                    }}
+                    onClick={() => onFeatureInteraction('background-color')}
                     className="w-12 h-8 rounded-lg border-2 border-accent-orange cursor-pointer shadow-lg"
                   />
                   <span className="text-sm text-accent-orange font-mono font-bold bg-accent-orange/10 px-2 py-1 rounded">
@@ -194,13 +379,53 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <span className="text-sm font-medium text-accent-green">💾 Save with BG</span>
                   <Switch
                     checked={effectSettings.background.saveWithBackground}
-                    onCheckedChange={(saveWithBackground) => updateBackground({ saveWithBackground })}
+                    onCheckedChange={(saveWithBackground) => {
+                      updateBackground({ saveWithBackground });
+                      onFeatureInteraction('save-with-background');
+                    }}
                     className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-green data-[state=checked]:to-accent-lime"
                   />
                 </div>
               </CardContent>
             </Card>
           </>
+        )}
+
+        {/* Eraser Tool Settings - only shown when eraser tool is selected */}
+        {currentTool === 'eraser' && (
+          <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30 shadow-colorful">
+            <CardHeader className="pt-2 pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <span className="bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold flex items-center gap-1">
+                  🎨 Eraser Tool
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent">
+                  Brush Size: {eraserSettings.brushSize}px
+                </Label>
+                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <SliderWithInput
+                    value={[eraserSettings.brushSize]}
+                    onValueChange={([brushSize]) => {
+                      onEraserSettingsChange({ brushSize });
+                      onFeatureInteraction('eraser-size');
+                    }}
+                    min={1}
+                    max={50}
+                    step={1}
+                    buttonStep={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground p-2 bg-accent-red/5 rounded border border-accent-red/20">
+                🖌️ Click and drag to erase pixels. Use smaller brush for precision, larger for broad strokes.
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Magic Wand Tool Settings - only shown when magic wand tool is selected */}
@@ -219,7 +444,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 <Label className="text-xs text-accent-cyan mb-2 block">Threshold: {contiguousSettings.threshold}</Label>
                 <SliderWithInput
                   value={[contiguousSettings.threshold]}
-                  onValueChange={([threshold]) => updateContiguousSettings({ threshold })}
+                  onValueChange={([threshold]) => {
+                    updateContiguousSettings({ threshold });
+                    onFeatureInteraction('threshold-wand');
+                  }}
                   min={1}
                   max={100}
                   step={1}
@@ -261,6 +489,26 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
         {settings.enabled && (
           <>
+            <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
+              <CardHeader className="pt-2 pb-3">
+                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
+                  🎚️ Threshold Sensitivity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
+                  <SliderWithInput
+                    value={[settings.threshold]}
+                    onValueChange={([threshold]) => updateSettings({ threshold })}
+                    min={1}
+                    max={100}
+                    step={1}
+                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="py-1">
               <Label className="text-xs font-medium text-muted-foreground mb-1 block">Mode Selection</Label>
               <RadioGroup
@@ -370,25 +618,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </Card>
             )}
 
-            <Card className="bg-gradient-to-br from-accent-red/10 to-accent-pink/10 border-accent-red/30">
-              <CardHeader className="pt-2 pb-3">
-                <CardTitle className="text-sm font-medium bg-gradient-to-r from-accent-red to-accent-pink bg-clip-text text-transparent font-semibold">
-                  🎚️ Threshold Sensitivity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                  <SliderWithInput
-                    value={[settings.threshold]}
-                    onValueChange={([threshold]) => updateSettings({ threshold })}
-                    min={1}
-                    max={100}
-                    step={1}
-                    sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-red [&_[role=slider]]:to-accent-pink [&_[role=slider]]:border-accent-red"
-                  />
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Min Region Size Widget - only shown when color removal is enabled */}
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-cyan/10 border-accent-blue/30 shadow-colorful">
@@ -431,118 +660,45 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </>
         )}
 
-        {/* Edge Cleanup Section */}
+        {/* Edge Trimming Section */}
             <Card className="bg-gradient-to-br from-accent-purple/10 to-accent-indigo/10 border-accent-purple/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Switch
+                    checked={edgeCleanupSettings.enabled}
+                    onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
+                    className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
+                  />
                   <Scissors className="w-4 h-4 text-accent-purple" />
                   <span className="bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent font-semibold">
-                    Edge Cleanup
+                    Edge Trimming
                   </span>
                 </CardTitle>
               </CardHeader>
               
-              <CardContent className="pt-0 space-y-4">
-                {/* Alpha Feathering */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={edgeCleanupSettings.enabled}
-                      onCheckedChange={(enabled) => updateEdgeCleanupSettings({ enabled })}
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
-                    />
-                    <Label className="text-sm font-medium cursor-pointer">
-                      Alpha Feathering
+              {edgeCleanupSettings.enabled && (
+                <CardContent className="pt-0 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
+                      Trim Radius: {edgeCleanupSettings.trimRadius}px
                     </Label>
-                  </div>
-                  {edgeCleanupSettings.enabled && (
-                    <div className="space-y-2 ml-6">
-                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
-                        Feather Radius: {edgeCleanupSettings.trimRadius}px
-                      </Label>
-                      <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
-                        <SliderWithInput
-                          value={[edgeCleanupSettings.trimRadius]}
-                          onValueChange={([trimRadius]) => updateEdgeCleanupSettings({ trimRadius })}
-                          min={1}
-                          max={10}
-                          step={1}
-                          buttonStep={1}
-                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
-                        />
-                      </div>
+                    <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
+                      <SliderWithInput
+                        value={[edgeCleanupSettings.trimRadius]}
+                        onValueChange={([trimRadius]) => {
+                          updateEdgeCleanupSettings({ trimRadius });
+                          onFeatureInteraction('edge-radius');
+                        }}
+                        min={1}
+                        max={10}
+                        step={1}
+                        buttonStep={1}
+                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
+                      />
                     </div>
-                  )}
-                </div>
-
-                {/* Legacy Edge Smoothing */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={edgeCleanupSettings.legacyEnabled}
-                      onCheckedChange={(legacyEnabled) => updateEdgeCleanupSettings({ legacyEnabled })}
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-purple data-[state=checked]:to-accent-indigo"
-                    />
-                    <Label className="text-sm font-medium cursor-pointer">
-                      Edge Trimming
-                    </Label>
                   </div>
-                  {edgeCleanupSettings.legacyEnabled && (
-                    <div className="space-y-2 ml-6">
-                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-purple to-accent-indigo bg-clip-text text-transparent">
-                        Trim Radius: {edgeCleanupSettings.legacyRadius}px
-                      </Label>
-                      <div className="p-3 bg-gradient-to-r from-accent-purple/5 to-accent-indigo/5 rounded-lg border border-accent-purple/20">
-                        <SliderWithInput
-                          value={[edgeCleanupSettings.legacyRadius]}
-                          onValueChange={([legacyRadius]) => updateEdgeCleanupSettings({ legacyRadius })}
-                          min={1}
-                          max={5}
-                          step={1}
-                          buttonStep={1}
-                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-purple [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-purple"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Edge Softening */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={edgeCleanupSettings.softening.enabled}
-                      onCheckedChange={(enabled) => updateEdgeCleanupSettings({ 
-                        softening: { ...edgeCleanupSettings.softening, enabled }
-                      })}
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-orange data-[state=checked]:to-accent-yellow"
-                    />
-                    <Label className="text-sm font-medium cursor-pointer">
-                      Edge Softening
-                    </Label>
-                  </div>
-                  {edgeCleanupSettings.softening.enabled && (
-                    <div className="space-y-2 ml-6">
-                      <Label className="text-xs font-medium bg-gradient-to-r from-accent-orange to-accent-yellow bg-clip-text text-transparent">
-                        Iterations: {edgeCleanupSettings.softening.iterations}
-                      </Label>
-                      <div className="p-3 bg-gradient-to-r from-accent-orange/5 to-accent-yellow/5 rounded-lg border border-accent-orange/20">
-                        <SliderWithInput
-                          value={[edgeCleanupSettings.softening.iterations]}
-                          onValueChange={([iterations]) => updateEdgeCleanupSettings({ 
-                            softening: { ...edgeCleanupSettings.softening, iterations }
-                          })}
-                          min={1}
-                          max={5}
-                          step={1}
-                          buttonStep={1}
-                          sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-orange [&_[role=slider]]:to-accent-yellow [&_[role=slider]]:border-accent-orange"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
+                </CardContent>
+              )}
             </Card>
             <Card className="bg-gradient-to-br from-accent-blue/10 to-accent-indigo/10 border-accent-blue/30 shadow-colorful">
               <CardHeader className="pt-2 pb-3">
@@ -559,58 +715,57 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 </CardTitle>
               </CardHeader>
               {speckleSettings.enabled && (
-                <CardContent className="pt-0 space-y-4">
+                <CardContent className="pt-0 space-y-3">
+                  {/* Remove Specks + Min Speck Size - Aligned Layout */}
+                  <div className="space-y-2">
+                    {/* Labels Row */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-20">
+                        <Label className="text-sm font-medium text-accent-red flex items-center gap-1">
+                          <EyeOff className="w-4 h-4" />
+                          Remove
+                        </Label>
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
+                          📏 Min Size
+                        </Label>
+                      </div>
+                    </div>
+                    
+                    {/* Controls Row */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-20 flex justify-center">
+                        <Switch
+                          checked={speckleSettings.removeSpecks}
+                          onCheckedChange={(removeSpecks) => {
+                            updateSpeckleSettings({ removeSpecks });
+                            onFeatureInteraction('speckle-remove');
+                          }}
+                          className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="p-2 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded border border-accent-blue/20">
+                          <SliderWithInput
+                            value={[speckleSettings.minSpeckSize]}
+                            onValueChange={([minSpeckSize]) => {
+                              updateSpeckleSettings({ minSpeckSize });
+                              onFeatureInteraction('speckle-size');
+                            }}
+                            min={1}
+                            max={2000}
+                            step={1}
+                            sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Description at bottom */}
                   <div className="text-xs text-muted-foreground p-2 bg-accent-blue/5 rounded border border-accent-blue/20">
                     🔍 Detects and manages isolated pixel clusters (specks) in your image
-                  </div>
-
-                  {/* Highlight Specks Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4 text-accent-blue" />
-                      <span className="text-sm font-medium text-accent-blue">Highlight Specks</span>
-                    </div>
-                    <Switch
-                      checked={speckleSettings.highlightSpecks}
-                      onCheckedChange={(highlightSpecks) => updateSpeckleSettings({ 
-                        highlightSpecks, 
-                        removeSpecks: highlightSpecks ? false : speckleSettings.removeSpecks 
-                      })}
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-blue data-[state=checked]:to-accent-indigo"
-                    />
-                  </div>
-
-                  {/* Remove Specks Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
-                    <div className="flex items-center gap-2">
-                      <EyeOff className="w-4 h-4 text-accent-red" />
-                      <span className="text-sm font-medium text-accent-red">Remove Specks</span>
-                    </div>
-                    <Switch
-                      checked={speckleSettings.removeSpecks}
-                      onCheckedChange={(removeSpecks) => updateSpeckleSettings({ 
-                        removeSpecks, 
-                        highlightSpecks: removeSpecks ? false : speckleSettings.highlightSpecks 
-                      })}
-                      className="data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-accent-red data-[state=checked]:to-accent-pink"
-                    />
-                  </div>
-
-                  {/* Min Speck Size Slider */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium bg-gradient-to-r from-accent-blue to-accent-indigo bg-clip-text text-transparent">
-                      📏 Min Speck Size
-                    </Label>
-                    <div className="p-3 bg-gradient-to-r from-accent-blue/5 to-accent-indigo/5 rounded-lg border border-accent-blue/20">
-                      <SliderWithInput
-                        value={[speckleSettings.minSpeckSize]}
-                        onValueChange={([minSpeckSize]) => updateSpeckleSettings({ minSpeckSize })}
-                        min={1}
-                        max={2000}
-                        step={1}
-                        sliderClassName="[&_[role=slider]]:bg-gradient-to-r [&_[role=slider]]:from-accent-blue [&_[role=slider]]:to-accent-indigo [&_[role=slider]]:border-accent-blue"
-                      />
-                    </div>
                   </div>
 
                   {/* Speck Count Display */}
@@ -654,7 +809,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <input
                     type="color"
                     value={effectSettings.inkStamp.color}
-                    onChange={(e) => updateInkStamp({ color: e.target.value })}
+                    onChange={(e) => {
+                      updateInkStamp({ color: e.target.value });
+                      onFeatureInteraction('ink-stamp-color');
+                    }}
+                    onClick={() => onFeatureInteraction('ink-stamp-color')}
                     className="w-12 h-8 rounded-lg border-2 border-accent-red cursor-pointer shadow-lg"
                   />
                   <span className="text-sm text-accent-red font-mono font-bold bg-accent-red/10 px-2 py-1 rounded">
@@ -670,7 +829,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 <div className="p-3 bg-gradient-to-r from-accent-red/5 to-accent-pink/5 rounded-lg border border-accent-red/20">
                   <SliderWithInput
                     value={[effectSettings.inkStamp.threshold]}
-                    onValueChange={([threshold]) => updateInkStamp({ threshold })}
+                    onValueChange={([threshold]) => {
+                      updateInkStamp({ threshold });
+                      onFeatureInteraction('ink-stamp-intensity');
+                    }}
                     min={1}
                     max={100}
                     step={1}
@@ -704,30 +866,39 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <div className="p-4 bg-gradient-to-br from-accent-purple/5 to-accent-blue/5 rounded-lg border border-accent-purple/30 shadow-lg">
                 <div className="flex items-start justify-center gap-8">
                   {/* Brightness EQ Band */}
-                  <GraphicEQBand
+                   <GraphicEQBand
                     label="☀️ BRIGHT"
                     value={effectSettings.imageEffects.brightness}
-                    onValueChange={(brightness) => updateImageEffects({ brightness })}
+                    onValueChange={(brightness) => {
+                      updateImageEffects({ brightness });
+                      onFeatureInteraction('brightness');
+                    }}
                     min={-100}
                     max={100}
                     step={1}
                   />
 
                   {/* Contrast EQ Band */}
-                  <GraphicEQBand
+                   <GraphicEQBand
                     label="🎛️ CONTRAST"
                     value={effectSettings.imageEffects.contrast}
-                    onValueChange={(contrast) => updateImageEffects({ contrast })}
+                    onValueChange={(contrast) => {
+                      updateImageEffects({ contrast });
+                      onFeatureInteraction('contrast');
+                    }}
                     min={-100}
                     max={100}
                     step={1}
                   />
 
                   {/* Vibrance EQ Band */}
-                  <GraphicEQBand
+                   <GraphicEQBand
                     label="🌈 VIBRANCE"
                     value={-effectSettings.imageEffects.vibrance}
-                    onValueChange={(vibrance) => updateImageEffects({ vibrance: -vibrance })}
+                    onValueChange={(vibrance) => {
+                      updateImageEffects({ vibrance: -vibrance });
+                      onFeatureInteraction('vibrance');
+                    }}
                     min={-100}
                     max={100}
                     step={1}
@@ -744,7 +915,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                   <div className="relative">
                     <HueSlider
                       value={[effectSettings.imageEffects.hue]}
-                      onValueChange={([hue]) => updateImageEffects({ hue })}
+                      onValueChange={([hue]) => {
+                        updateImageEffects({ hue });
+                        onFeatureInteraction('hue-shift');
+                      }}
                       defaultValue={0}
                     />
                   </div>
@@ -756,9 +930,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                 <div className="flex items-center gap-2 mb-2">
                   <Checkbox
                     checked={effectSettings.imageEffects.colorize.enabled}
-                    onCheckedChange={(enabled) => updateImageEffects({ 
-                      colorize: { ...effectSettings.imageEffects.colorize, enabled: !!enabled }
-                    })}
+                    onCheckedChange={(enabled) => {
+                      updateImageEffects({ 
+                        colorize: { ...effectSettings.imageEffects.colorize, enabled: !!enabled }
+                      });
+                      onFeatureInteraction('colorize');
+                    }}
                     className="data-[state=checked]:bg-accent-purple"
                   />
                   <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
@@ -788,15 +965,20 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                               updateImageEffects({ 
                                 colorize: { ...effectSettings.imageEffects.colorize, hue }
                               });
+                              onFeatureInteraction('colorize-hue');
                             }
                           }}
+                          onClick={() => onFeatureInteraction('colorize-hue')}
                           className="w-8 h-6 rounded border border-accent-purple cursor-pointer"
                         />
-                         <HueSlider
+                          <HueSlider
                            value={[effectSettings.imageEffects.colorize.hue]}
-                           onValueChange={([hue]) => updateImageEffects({ 
-                             colorize: { ...effectSettings.imageEffects.colorize, hue }
-                           })}
+                           onValueChange={([hue]) => {
+                             updateImageEffects({ 
+                               colorize: { ...effectSettings.imageEffects.colorize, hue }
+                             });
+                             onFeatureInteraction('colorize-hue');
+                           }}
                            defaultValue={0}
                            className="flex-1"
                          />
@@ -807,9 +989,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <Label className="text-xs text-muted-foreground mb-1 block">Lightness</Label>
                       <SliderWithInput
                         value={[effectSettings.imageEffects.colorize.lightness]}
-                        onValueChange={([lightness]) => updateImageEffects({ 
-                          colorize: { ...effectSettings.imageEffects.colorize, lightness }
-                        })}
+                        onValueChange={([lightness]) => {
+                          updateImageEffects({ 
+                            colorize: { ...effectSettings.imageEffects.colorize, lightness }
+                          });
+                          onFeatureInteraction('colorize-lightness');
+                        }}
                         min={0}
                         max={100}
                         step={1}
@@ -821,9 +1006,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <Label className="text-xs text-muted-foreground mb-1 block">Saturation</Label>
                       <SliderWithInput
                         value={[effectSettings.imageEffects.colorize.saturation]}
-                        onValueChange={([saturation]) => updateImageEffects({ 
-                          colorize: { ...effectSettings.imageEffects.colorize, saturation }
-                        })}
+                        onValueChange={([saturation]) => {
+                          updateImageEffects({ 
+                            colorize: { ...effectSettings.imageEffects.colorize, saturation }
+                          });
+                          onFeatureInteraction('colorize-saturation');
+                        }}
                         min={0}
                         max={100}
                         step={1}
@@ -838,7 +1026,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={effectSettings.imageEffects.blackAndWhite}
-                  onCheckedChange={(enabled) => updateImageEffects({ blackAndWhite: !!enabled })}
+                  onCheckedChange={(enabled) => {
+                    updateImageEffects({ blackAndWhite: !!enabled });
+                    onFeatureInteraction('black-and-white');
+                  }}
                   className="data-[state=checked]:bg-accent-purple"
                 />
                 <Label className="text-sm font-medium bg-gradient-to-r from-accent-purple to-accent-blue bg-clip-text text-transparent">
@@ -860,6 +1051,30 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </CardContent>
           )}
         </Card>
+
+        {/* Contextual Tips - Show when not using advanced features */}
+        {!settings.enabled && 
+         !effectSettings.background.enabled && 
+         !effectSettings.inkStamp.enabled && (
+          <ContextualTips />
+        )}
+
+        {/* Quick Tips - Shows when basic tools are active but advanced aren't */}
+        {settings.enabled && 
+         !effectSettings.background.enabled && 
+         !effectSettings.inkStamp.enabled && 
+         !effectSettings.imageEffects.enabled && 
+         !speckleSettings.enabled && (
+          <QuickToolTips />
+        )}
+
+        {/* Keyboard Shortcuts - Only when most features are inactive */}
+        {!effectSettings.background.enabled && 
+         !effectSettings.inkStamp.enabled && 
+         !effectSettings.imageEffects.enabled && 
+         !speckleSettings.enabled && (
+          <KeyboardShortcuts />
+        )}
 
       </div>
     </div>

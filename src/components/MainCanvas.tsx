@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
+import { useEraserTool } from '@/hooks/useEraserTool';
+import { debounce, throttle, areImageDataEqual } from '@/utils/performance';
 import { 
   Move, 
   Pipette, 
@@ -17,19 +19,227 @@ import {
   Download,
   Wand,
   Undo,
-  Redo
+  Redo,
+  Loader2,
+  Eraser
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Random tip sets for Main Canvas empty state
+const MainCanvasTips: React.FC = () => {
+  const tipSets = [
+    // Set 1: Getting Started & Best Results
+    {
+      tips: [
+        {
+          icon: "🎯",
+          title: "Getting Started",
+          gradient: "from-accent-purple/10 to-accent-pink/10",
+          border: "border-accent-purple/30",
+          textColor: "text-accent-purple",
+          items: [
+            { text: "Drag & Drop:", desc: "Simply drop image files here" },
+            { text: "Upload Button:", desc: "Use \"Add Images\" in the header" },
+            { text: "Batch Processing:", desc: "Add multiple images to the queue" }
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Best Results",
+          gradient: "from-accent-orange/10 to-accent-red/10",
+          border: "border-accent-orange/30",
+          textColor: "text-accent-orange",
+          items: [
+            { text: "High Resolution:", desc: "Better precision for color removal" },
+            { text: "Good Contrast:", desc: "Clear distinction between colors" },
+            { text: "Even Lighting:", desc: "Reduces color variation issues" }
+          ]
+        }
+      ]
+    },
+    // Set 2: Tool Selection & Workflow
+    {
+      tips: [
+        {
+          icon: "🛠️",
+          title: "Choose Your Tool",
+          gradient: "from-accent-cyan/10 to-accent-blue/10",
+          border: "border-accent-cyan/30",
+          textColor: "text-accent-cyan",
+          items: [
+            { text: "Magic Wand:", desc: "For precise, connected selections" },
+            { text: "Color Stack:", desc: "Remove multiple colors at once" },
+            { text: "Pan Tool:", desc: "Navigate and zoom around images" }
+          ]
+        },
+        {
+          icon: "📋",
+          title: "Efficient Workflow",
+          gradient: "from-accent-green/10 to-accent-lime/10",
+          border: "border-accent-green/30",
+          textColor: "text-accent-green",
+          items: [
+            { text: "Start Simple:", desc: "Begin with auto mode for backgrounds" },
+            { text: "Refine Settings:", desc: "Adjust thresholds for precision" },
+            { text: "Apply Effects:", desc: "Add backgrounds or enhance images" }
+          ]
+        }
+      ]
+    },
+    // Set 3: Pro Techniques & Navigation
+    {
+      tips: [
+        {
+          icon: "🎨",
+          title: "Pro Techniques",
+          gradient: "from-accent-indigo/10 to-accent-purple/10",
+          border: "border-accent-indigo/30",
+          textColor: "text-accent-indigo",
+          items: [
+            { text: "Layer Effects:", desc: "Combine color removal with backgrounds" },
+            { text: "Threshold Tuning:", desc: "Lower = precise, higher = broad" },
+            { text: "Edge Cleanup:", desc: "Smooth rough edges automatically" }
+          ]
+        },
+        {
+          icon: "🗺️",
+          title: "Navigation Tips",
+          gradient: "from-accent-rose/10 to-accent-pink/10",
+          border: "border-accent-rose/30",
+          textColor: "text-accent-rose",
+          items: [
+            { text: "Mouse Wheel:", desc: "Zoom in and out smoothly" },
+            { text: "Space + Drag:", desc: "Pan around large images" },
+            { text: "Triple Click:", desc: "Auto-fit image to screen" }
+          ]
+        }
+      ]
+    },
+    // Set 4: File Formats & Quality
+    {
+      tips: [
+        {
+          icon: "📁",
+          title: "File Format Guide",
+          gradient: "from-accent-yellow/10 to-accent-orange/10",
+          border: "border-accent-yellow/30",
+          textColor: "text-accent-yellow",
+          items: [
+            { text: "PNG Files:", desc: "Best for preserving transparency" },
+            { text: "JPEG Files:", desc: "Smaller size, good for solid backgrounds" },
+            { text: "High DPI:", desc: "Better detail preservation" }
+          ]
+        },
+        {
+          icon: "🎛️",
+          title: "Quality Control",
+          gradient: "from-accent-teal/10 to-accent-cyan/10",
+          border: "border-accent-teal/30",
+          textColor: "text-accent-teal",
+          items: [
+            { text: "Preview First:", desc: "Check results before downloading" },
+            { text: "Adjust Settings:", desc: "Fine-tune for perfect results" },
+            { text: "Save Originals:", desc: "Keep backups of source files" }
+          ]
+        }
+      ]
+    },
+    // Set 5: Advanced Features & Shortcuts
+    {
+      tips: [
+        {
+          icon: "🚀",
+          title: "Advanced Features",
+          gradient: "from-accent-violet/10 to-accent-purple/10",
+          border: "border-accent-violet/30",
+          textColor: "text-accent-violet",
+          items: [
+            { text: "Speckle Removal:", desc: "Clean up small unwanted spots" },
+            { text: "Ink Stamp Effect:", desc: "Create stylized silhouettes" },
+            { text: "Image Effects:", desc: "Adjust brightness, contrast, hue" }
+          ]
+        },
+        {
+          icon: "⌨️",
+          title: "Power User Shortcuts",
+          gradient: "from-accent-emerald/10 to-accent-green/10",
+          border: "border-accent-emerald/30",
+          textColor: "text-accent-emerald",
+          items: [
+            { text: "Ctrl+Z:", desc: "Undo last action" },
+            { text: "Ctrl+Y:", desc: "Redo action" },
+            { text: "Escape:", desc: "Exit fullscreen mode" }
+          ]
+        }
+      ]
+    },
+    // Set 6: Troubleshooting & Performance
+    {
+      tips: [
+        {
+          icon: "🔧",
+          title: "Common Issues",
+          gradient: "from-accent-red/10 to-accent-rose/10",
+          border: "border-accent-red/30",
+          textColor: "text-accent-red",
+          items: [
+            { text: "Colors Not Removing:", desc: "Try different color spaces or thresholds" },
+            { text: "Jagged Edges:", desc: "Enable edge cleanup for smoother results" },
+            { text: "Too Much Removed:", desc: "Lower threshold or use manual mode" }
+          ]
+        },
+        {
+          icon: "⚡",
+          title: "Performance Tips",
+          gradient: "from-accent-blue/10 to-accent-indigo/10",
+          border: "border-accent-blue/30",
+          textColor: "text-accent-blue",
+          items: [
+            { text: "Large Images:", desc: "May process slower but with better quality" },
+            { text: "Batch Mode:", desc: "Process multiple similar images efficiently" },
+            { text: "Simple Backgrounds:", desc: "Use auto mode for faster processing" }
+          ]
+        }
+      ]
+    }
+  ];
+
+  // Select random tip set on component mount
+  const selectedTipSet = React.useMemo(() => {
+    return tipSets[Math.floor(Math.random() * tipSets.length)];
+  }, []);
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {selectedTipSet.tips.map((tip, index) => (
+        <div key={index} className={`bg-gradient-to-r ${tip.gradient} border ${tip.border} rounded-lg p-4`}>
+          <div className={`font-medium ${tip.textColor} mb-3`}>
+            {tip.icon} <span>{tip.title}</span>
+          </div>
+          <div className="text-sm text-muted-foreground space-y-2">
+            {tip.items.map((item, itemIndex) => (
+              <div key={itemIndex}>
+                • <strong>{item.text}</strong> {item.desc}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 interface MainCanvasProps {
   image: ImageItem | undefined;
-  tool: 'pan' | 'color-stack' | 'magic-wand';
-  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
+  tool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser';
+  onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand' | 'eraser') => void;
   colorSettings: ColorRemovalSettings;
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   speckleSettings: SpeckleSettings;
   edgeCleanupSettings: EdgeCleanupSettings;
+  eraserSettings: { brushSize: number };
+  erasingInProgressRef: React.MutableRefObject<boolean>;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -39,6 +249,7 @@ interface MainCanvasProps {
   currentImageIndex: number;
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
+  setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void;
   addUndoAction?: (action: { type: string; description: string; undo: () => void; redo?: () => void }) => void;
   
   onSpeckCountUpdate?: (count: number) => void;
@@ -53,6 +264,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   effectSettings,
   speckleSettings,
   edgeCleanupSettings,
+  eraserSettings,
+  erasingInProgressRef,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -62,12 +275,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   currentImageIndex,
   totalImages,
   onDownloadImage,
+  setSingleImageProgress,
   addUndoAction,
   onSpeckCountUpdate
 }) => {
   const { processSpecks } = useSpeckleTools();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [centerOffset, setCenterOffset] = useState({ x: 0, y: 0 });
@@ -76,26 +291,117 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
+  
+  // Get original image data lazily only when needed for processing
+  const getOriginalImageData = useCallback((): ImageData | null => {
+    if (originalImageData) return originalImageData;
+    
+    if (!canvasRef.current) return null;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    setOriginalImageData(imageData);
+    return imageData;
+  }, [originalImageData]);
   const hasManualEditsRef = useRef(false);
   const isProcessingEdgeCleanupRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
+  const manualImageDataRef = useRef<ImageData | null>(null);
+  
+  // Sync manualImageDataRef with manualImageData state
+  useEffect(() => {
+    manualImageDataRef.current = manualImageData;
+  }, [manualImageData]);
+  
+  // Eraser tool integration
+  const eraserTool = useEraserTool(canvasRef.current, {
+    brushSize: eraserSettings.brushSize,
+    zoom,
+    pan,
+    centerOffset,
+    containerRef,
+    manualImageDataRef,
+    hasManualEditsRef,
+    erasingInProgressRef,
+    onImageChange: (imageData) => {
+      if (!canvasRef.current) return;
+      
+      // Save current state to local undo stack before applying eraser change
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx && manualImageData) {
+        setUndoStack(prev => [...prev, manualImageData]);
+        setRedoStack([]); // Clear redo stack when new action is performed
+        
+      }
+      
+      setManualImageData(imageData);
+      
+      // Update the image so changes persist
+      if (image) {
+        const updatedImage = { ...image, processedData: imageData };
+        onImageUpdate(updatedImage);
+      }
+    }
+  });
   const [preEdgeCleanupImageData, setPreEdgeCleanupImageData] = useState<ImageData | null>(null);
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
+  const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
+  const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   
   // Triple-click detection state
   const [clickCount, setClickCount] = useState(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Color processing functions
-  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
-    const dr = r1 - r2;
-    const dg = g1 - g2;
-    const db = b1 - b2;
-    return Math.sqrt(dr * dr + dg * dg + db * db);
+  // Color processing functions with LAB color space support
+  const rgbToLab = useCallback((r: number, g: number, b: number): [number, number, number] => {
+    // Convert RGB to XYZ
+    let x = r / 255;
+    let y = g / 255;
+    let z = b / 255;
+
+    x = x > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92;
+    y = y > 0.04045 ? Math.pow((y + 0.055) / 1.055, 2.4) : y / 12.92;
+    z = z > 0.04045 ? Math.pow((z + 0.055) / 1.055, 2.4) : z / 12.92;
+
+    x *= 100;
+    y *= 100;
+    z *= 100;
+
+    // Observer = 2°, Illuminant = D65
+    x = x / 95.047;
+    y = y / 100.000;
+    z = z / 108.883;
+
+    x = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x) + (16/116);
+    y = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y) + (16/116);
+    z = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z) + (16/116);
+
+    const L = (116 * y) - 16;
+    const A = 500 * (x - y);
+    const B = 200 * (y - z);
+
+    return [L, A, B];
   }, []);
+
+  const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
+    // Use LAB color space for more perceptual color matching
+    const [l1, a1, b1Lab] = rgbToLab(r1, g1, b1);
+    const [l2, a2, b2Lab] = rgbToLab(r2, g2, b2);
+    
+    const dl = l1 - l2;
+    const da = a1 - a2;
+    const db = b1Lab - b2Lab;
+    
+    // Delta E CIE76 formula for perceptual color difference
+    return Math.sqrt(dl * dl + da * da + db * db);
+  }, [rgbToLab]);
 
   // Helper function to compare ImageData objects
   const areImageDataEqual = useCallback((data1: ImageData, data2: ImageData): boolean => {
@@ -116,6 +422,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return true;
   }, []);
 
+
   const processImageData = useCallback((imageData: ImageData, settings: ColorRemovalSettings, effects: EffectSettings): ImageData => {
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
@@ -128,7 +435,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         const targetR = data[0];
         const targetG = data[1];
         const targetB = data[2];
-        const threshold = settings.threshold * 2.55;
+        const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
 
         if (settings.contiguous) {
           // Contiguous removal starting from top-left corner
@@ -207,7 +514,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           // Check against each target color
           for (const targetColor of colorsToRemove) {
             const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-            const threshold = targetColor.threshold * 2.55; // Scale to 0-255 range
+            const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
@@ -270,8 +577,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Apply edge cleanup after color removal but before effects
-    if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
+    // Apply edge trimming only (alpha feathering and edge softening are applied at download)
+    if (edgeCleanupSettings.enabled) {
       const edgeCleanupResult = processEdgeCleanup(new ImageData(data, width, height), edgeCleanupSettings);
       data.set(edgeCleanupResult.data);
     }
@@ -295,42 +602,33 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // Apply ink stamp effect
     if (effects.inkStamp.enabled) {
-      console.log('Applying ink stamp effect', effects.inkStamp);
       const hex = effects.inkStamp.color.replace('#', '');
       const stampR = parseInt(hex.substr(0, 2), 16);
       const stampG = parseInt(hex.substr(2, 2), 16);
       const stampB = parseInt(hex.substr(4, 2), 16);
-      const threshold = effects.inkStamp.threshold === 1 ? 255 : (100 - effects.inkStamp.threshold) * 2.55; // Show all pixels when value is 1
+      const threshold = effects.inkStamp.threshold === 1 ? 255 : (100 - effects.inkStamp.threshold) * 2.55;
 
-      let processedPixels = 0;
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] > 0) { // Only process non-transparent pixels
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          
           // Convert to luminance (perceived brightness)
-          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+          const luminance = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
           
           if (luminance < threshold) {
             // Dark areas become stamp color
             data[i] = stampR;
             data[i + 1] = stampG;
             data[i + 2] = stampB;
-            data[i + 3] = 255; // Fully opaque
-            processedPixels++;
+            data[i + 3] = 255;
           } else {
             // Light areas become transparent
             data[i + 3] = 0;
           }
         }
       }
-      console.log('Ink stamp processed', processedPixels, 'pixels with threshold', threshold);
     }
 
     // Apply image effects at the end of the processing chain
     if (effects.imageEffects.enabled) {
-      console.log('Applying image effects:', effects.imageEffects);
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] === 0) continue; // Skip transparent pixels
         
@@ -469,19 +767,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     return [r, g, b];
   };
 
-  // Edge cleanup processing function
+  // Edge cleanup processing function - only edge trimming for preview
   const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
-    console.log('processEdgeCleanup called:', { 
-      alphaFeathering: settings.enabled, 
-      trimRadius: settings.trimRadius,
-      legacyEnabled: settings.legacyEnabled,
-      legacyRadius: settings.legacyRadius,
-      softeningEnabled: settings.softening.enabled,
-      softeningIterations: settings.softening.iterations
-    });
-    
-    if (!settings.enabled && !settings.legacyEnabled && !settings.softening.enabled) {
-      console.log('All edge cleanup methods disabled, returning original data');
+    if (!settings.enabled) {
       return imageData;
     }
 
@@ -489,10 +777,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
 
-    // Step 1: Legacy edge trimming (if enabled and radius > 0) - removes pixels layer by layer
-    if (settings.legacyEnabled && settings.legacyRadius > 0) {
-      console.log('Processing legacy edge trimming with radius:', settings.legacyRadius);
-      const radius = settings.legacyRadius;
+    // Edge trimming - removes pixels layer by layer
+    if (settings.trimRadius > 0) {
+      const radius = settings.trimRadius;
       
       // Apply trimming layer by layer
       for (let layer = 0; layer < radius; layer++) {
@@ -536,212 +823,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     }
 
-    // Step 2: Alpha feathering (if enabled and radius > 0)
-    if (settings.enabled && settings.trimRadius > 0) {
-      console.log('Processing alpha feathering with radius:', settings.trimRadius);
-      const radius = settings.trimRadius;
-
-      // Helper function to get distance to nearest transparent pixel
-      const getDistanceToTransparent = (x: number, y: number, maxDistance: number): number => {
-        // Check if current pixel is already transparent
-        const currentIndex = (y * width + x) * 4;
-        if (data[currentIndex + 3] === 0) return 0;
-
-        let minDistance = maxDistance + 1;
-        
-        // Search in expanding squares around the pixel
-        for (let searchRadius = 1; searchRadius <= maxDistance; searchRadius++) {
-          let foundTransparent = false;
-          
-          // Check all pixels in the square border at this radius
-          for (let dy = -searchRadius; dy <= searchRadius; dy++) {
-            for (let dx = -searchRadius; dx <= searchRadius; dx++) {
-              // Only check the border of the square, not the interior
-              if (Math.abs(dx) !== searchRadius && Math.abs(dy) !== searchRadius) continue;
-              
-              const checkX = x + dx;
-              const checkY = y + dy;
-              
-              // Bounds check
-              if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
-                // Treat out-of-bounds as transparent
-                foundTransparent = true;
-                minDistance = Math.min(minDistance, searchRadius);
-                continue;
-              }
-              
-              const checkIndex = (checkY * width + checkX) * 4;
-              if (data[checkIndex + 3] === 0) {
-                foundTransparent = true;
-                minDistance = Math.min(minDistance, searchRadius);
-              }
-            }
-          }
-          
-          // If we found transparent pixels at this radius, we can stop searching
-          if (foundTransparent) {
-            break;
-          }
-        }
-        
-        return Math.min(minDistance, maxDistance);
-      };
-
-      // Apply alpha feathering
-      let processedPixels = 0;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const index = (y * width + x) * 4;
-          const alpha = data[index + 3];
-          
-          // Only process pixels that are not fully transparent
-          if (alpha > 0) {
-            const distanceToTransparent = getDistanceToTransparent(x, y, radius);
-            
-            // Apply feathering if we're within the feather radius
-            if (distanceToTransparent <= radius) {
-              // Create smooth falloff - closer to transparent = more faded
-              const featherFactor = distanceToTransparent / radius;
-              
-              // Apply smooth curve for more natural transition
-              const smoothFactor = Math.pow(featherFactor, 0.7); // Gamma correction for natural look
-              
-              // Apply the feathering to alpha channel
-              const newAlpha = alpha * smoothFactor;
-              data[index + 3] = Math.max(0, Math.min(255, newAlpha));
-              
-              if (newAlpha < alpha) {
-                processedPixels++;
-              }
-            }
-          }
-        }
-      }
-
-      console.log('Alpha feathering processed', processedPixels, 'pixels');
-    }
-
-    // Step 3: Edge softening (if enabled and iterations > 0)
-    if (settings.softening.enabled && settings.softening.iterations > 0) {
-      console.log('Processing edge softening with iterations:', settings.softening.iterations);
-      
-      // Helper function to check if a pixel is at an edge (has transparent neighbors)
-      const isEdgePixel = (x: number, y: number): boolean => {
-        const currentIndex = (y * width + x) * 4;
-        const currentAlpha = data[currentIndex + 3];
-        
-        // If current pixel is transparent, it's not an edge we want to soften
-        if (currentAlpha === 0) return false;
-        
-        // Check 3x3 neighborhood for transparency transitions
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue; // Skip center pixel
-            
-            const checkX = x + dx;
-            const checkY = y + dy;
-            
-            // Check bounds - treat out of bounds as transparent
-            if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
-              return true;
-            }
-            
-            const neighborIndex = (checkY * width + checkX) * 4;
-            const neighborAlpha = data[neighborIndex + 3];
-            
-            // If we find a transparent neighbor, this is an edge pixel
-            if (neighborAlpha === 0) {
-              return true;
-            }
-          }
-        }
-        
-        return false;
-      };
-      
-      // Helper function to calculate average color of neighboring opaque pixels
-      const getNeighborAverage = (x: number, y: number): { r: number; g: number; b: number } => {
-        let r = 0, g = 0, b = 0;
-        let count = 0;
-        
-        // 3x3 neighborhood (excluding current pixel)
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue; // Skip center pixel
-            
-            const checkX = x + dx;
-            const checkY = y + dy;
-            
-            // Bounds check
-            if (checkX >= 0 && checkX < width && checkY >= 0 && checkY < height) {
-              const neighborIndex = (checkY * width + checkX) * 4;
-              const neighborAlpha = data[neighborIndex + 3];
-              
-              // Only include opaque neighbors in the average
-              if (neighborAlpha > 0) {
-                r += data[neighborIndex];
-                g += data[neighborIndex + 1];
-                b += data[neighborIndex + 2];
-                count++;
-              }
-            }
-          }
-        }
-        
-        return count > 0 ? {
-          r: r / count,
-          g: g / count,
-          b: b / count
-        } : { r: 0, g: 0, b: 0 };
-      };
-      
-      // Apply edge softening for specified iterations
-      for (let iteration = 0; iteration < settings.softening.iterations; iteration++) {
-        // Create a copy for this iteration
-        const iterationData = new Uint8ClampedArray(data);
-        let edgePixelsProcessed = 0;
-        
-        for (let y = 1; y < height - 1; y++) {
-          for (let x = 1; x < width - 1; x++) {
-            const index = (y * width + x) * 4;
-            
-            // Only process pixels that are at edges and have some opacity
-            if (iterationData[index + 3] > 0 && isEdgePixel(x, y)) {
-              const neighbors = getNeighborAverage(x, y);
-              
-              // Apply averaging to RGB channels only if we have neighbor data
-              if (neighbors.r > 0 || neighbors.g > 0 || neighbors.b > 0) {
-                data[index] = neighbors.r;
-                data[index + 1] = neighbors.g;
-                data[index + 2] = neighbors.b;
-                // Alpha remains unchanged for edge softening
-                edgePixelsProcessed++;
-              }
-            }
-          }
-        }
-        
-        console.log(`Edge softening iteration ${iteration + 1} processed ${edgePixelsProcessed} edge pixels`);
-      }
-      
-      console.log('Edge softening completed with', settings.softening.iterations, 'iterations');
-    }
 
     const result = new ImageData(data, width, height);
-    console.log('processEdgeCleanup completed');
     return result;
   }, []);
 
   // Load original image and store image data
   useEffect(() => {
-    console.log('Image loading effect triggered:', { 
-      hasImage: !!image, 
-      hasCanvas: !!canvasRef.current, 
-      imageId: image?.id, 
-      hasProcessedData: !!image?.processedData,
-      hasManualEdits: hasManualEditsRef.current,
-      hasOriginalData: !!originalImageData 
-    });
     if (!image || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
@@ -750,8 +838,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // If we have manual edits and processedData, use that instead of reloading
     if (hasManualEditsRef.current && image.processedData && manualImageData) {
-      console.log('Preserving manual edits, using processedData');
-      // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
       });
@@ -760,8 +846,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     // If image has processedData and no manual edits, use that
     if (image.processedData && !hasManualEditsRef.current) {
-      console.log('Using existing processedData');
-      // Use requestAnimationFrame to ensure smooth update
       requestAnimationFrame(() => {
         ctx.putImageData(image.processedData!, 0, 0);
       });
@@ -772,45 +856,25 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
       return;
     }
-
-    console.log('Loading image from file');
     const img = new Image();
     img.onload = () => {
-      console.log('Image loaded successfully:', { 
-        naturalWidth: img.naturalWidth, 
-        naturalHeight: img.naturalHeight 
-      });
-      
       // Set canvas size to image size
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
-      
-      console.log('Canvas size set to:', { width: canvas.width, height: canvas.height });
       
       // Clear and draw image
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
       
-      console.log('Image drawn to canvas');
-      
-      // Store original image data
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setOriginalImageData(imageData);
-      
-      console.log('Original image data stored');
-      setOriginalImageData(imageData);
+      // OPTIMIZATION: Don't extract image data on load - only when needed for processing
+      // This makes image loading instant instead of slow
+      setOriginalImageData(null);
       
       // Reset manual edits when new image is loaded
       hasManualEditsRef.current = false;
       setManualImageData(null);
       setUndoStack([]);
       setRedoStack([]);
-      
-      // Update image with original data if not already set
-      if (!image.originalData) {
-        const updatedImage = { ...image, originalData: imageData };
-        onImageUpdate(updatedImage);
-      }
       
       // Calculate center offset for the image
       if (containerRef.current) {
@@ -842,42 +906,30 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, [image]);
 
   // Debounced processing to prevent flashing
-  const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
-    return new Promise<ImageData>((resolve) => {
-      const timeoutId = setTimeout(() => {
-        const result = processImageData(imageData, colorSettings, effectSettings);
-        resolve(result);
-      }, 50); // 50ms debounce
-      
-      // Return cleanup function
-      return () => clearTimeout(timeoutId);
-    });
-  }, [processImageData]);
+  const debouncedProcessImageData = useMemo(
+    () => debounce((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
+      return Promise.resolve(processImageData(imageData, colorSettings, effectSettings));
+    }, 100),
+    [processImageData]
+  );
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    console.log('Processing effect triggered - checking conditions:', {
-      hasOriginalImageData: !!originalImageData,
-      hasCanvas: !!canvasRef.current,
-      hasManualEdits: hasManualEditsRef.current,
-      isProcessing,
-      imageHasProcessedData: !!image?.processedData,
-      colorSettingsEnabled: colorSettings.enabled,
-      backgroundEnabled: effectSettings.background.enabled,
-      inkStampEnabled: effectSettings.inkStamp.enabled,
-      edgeCleanupEnabled: edgeCleanupSettings.enabled
-    });
+    // SKIP ALL AUTOMATIC PROCESSING - images load instantly, user can enable features when needed
+    if (!hasManualEditsRef.current) {
+      return;
+    }
     
-    if (!originalImageData || !canvasRef.current || isProcessing) {
-      console.log('Early return - missing requirements or processing in progress');
+    // Prevent processing if requirements not met or already processing
+    if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
       return;
     }
      
     // Allow speckle and edge cleanup to run even with manual edits, but skip other auto-processing
     if (hasManualEditsRef.current) {
       // If we have manual edits, handle speckle and edge cleanup specially
-      if (isProcessingEdgeCleanupRef.current) {
-        console.log('Early return - already processing');
+      // Add additional guard: don't process during panning/dragging
+      if (isDragging) {
         return;
       }
       
@@ -888,9 +940,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const needsEdgeRestore = edgeCleanupSettings.enabled === false && preEdgeCleanupImageData;
       const needsInkStamp = effectSettings.inkStamp.enabled;
       const needsImageEffects = effectSettings.imageEffects.enabled;
+      const needsImageEffectsRestore = !effectSettings.imageEffects.enabled && preImageEffectsImageData;
       
-      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects) {
-        console.log('Early return - no processing needed');
+      if (!needsSpeckleProcessing && !needsSpeckleRestore && !needsEdgeCleanup && !needsEdgeRestore && !needsInkStamp && !needsImageEffects && !needsImageEffectsRestore) {
         return;
       }
       
@@ -904,13 +956,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         return;
       }
       
-      // Prevent infinite loop by checking if already processing
-      const wasProcessing = isProcessing;
-      if (wasProcessing) {
-        console.log('Already processing, skipping to prevent loop');
-        isProcessingEdgeCleanupRef.current = false;
-        return;
-      }
       
       setIsProcessing(true);
       
@@ -919,48 +964,84 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Handle speckle processing first if needed
       if (needsSpeckleProcessing) {
-        console.log('Manual edits detected, applying speckle processing');
         
-        // Store pre-speckle state if we haven't already
+        // Store pre-speckle state if we haven't already (BEFORE any effects are applied)
         if (!preSpeckleImageData) {
-          setPreSpeckleImageData(currentImageData);
-          console.log('Stored pre-speckle state');
+          // Always use the clean manual data without any speckle effects
+          const cleanData = manualImageData || getOriginalImageData();
+          if (cleanData) {
+            setPreSpeckleImageData(new ImageData(
+              new Uint8ClampedArray(cleanData.data),
+              cleanData.width,
+              cleanData.height
+            ));
+          }
         }
         
-        // Apply speckle processing to the pre-speckle data
-        const baseData = preSpeckleImageData || currentImageData;
-        const speckleResult = processSpecks(baseData, speckleSettings);
-        currentImageData = speckleResult.processedData;
+        // Always apply speckle processing to the clean pre-speckle data (no effects applied)
+        const baseData = preSpeckleImageData || manualImageData || currentImageData;
         
-        // Update speck count
+        // OPTIMIZED: Process specks only once instead of 3 times
+        const speckleResult = processSpecks(baseData, speckleSettings);
+        
+        // Handle speckle removal vs highlighting differently
+        if (speckleSettings.removeSpecks) {
+          // Apply actual speckle removal - this permanently modifies the data
+          currentImageData = speckleResult.processedData;
+          
+          // Update the manual image data to reflect the removal
+          setManualImageData(new ImageData(
+            new Uint8ClampedArray(currentImageData.data),
+            currentImageData.width,
+            currentImageData.height
+          ));
+          hasManualEditsRef.current = true;
+          
+          // Apply to canvas
+          ctx.putImageData(currentImageData, 0, 0);
+        } else if (speckleSettings.highlightSpecks) {
+          // Apply highlighting for display only - don't modify permanent data
+          ctx.putImageData(speckleResult.processedData, 0, 0);
+          
+          // Keep the original data unchanged
+          currentImageData = baseData;
+        }
+        
+        // Update speck count using the already calculated result
         if (onSpeckCountUpdate) {
           onSpeckCountUpdate(speckleResult.speckCount);
         }
-        
-        // Apply speckle result to canvas
-        ctx.putImageData(currentImageData, 0, 0);
-        console.log('Speckle processing applied to manual edits');
       } else if (needsSpeckleRestore) {
-        console.log('Speckle disabled, restoring pre-speckle state');
-        
         // Restore the pre-speckle state if available
         if (preSpeckleImageData) {
           currentImageData = preSpeckleImageData;
           ctx.putImageData(currentImageData, 0, 0);
-          console.log('Restored pre-speckle state');
+          
+          // Clear the pre-speckle state since we're done with it
+          setPreSpeckleImageData(null);
+        }
+      }
+      
+      // Handle image effects restoration
+      if (needsImageEffectsRestore) {
+        // Restore the pre-image-effects state if available
+        if (preImageEffectsImageData) {
+          currentImageData = preImageEffectsImageData;
+          ctx.putImageData(currentImageData, 0, 0);
+          
+          // Clear the pre-image-effects state since we're done with it
+          setPreImageEffectsImageData(null);
         }
       }
       
       // Handle ink stamp and image effects
       if (needsInkStamp || needsImageEffects) {
-        console.log('Manual edits detected, applying ink stamp and/or image effects');
         
         // Get the current canvas data after speckle processing
         currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         
         // Apply ink stamp effect if enabled
         if (needsInkStamp) {
-          console.log('Applying ink stamp effect');
           const data = currentImageData.data;
           const threshold = effectSettings.inkStamp.threshold === 1 ? 255 : (100 - effectSettings.inkStamp.threshold) * 2.55;
           
@@ -974,9 +1055,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           }
         }
         
+        // Store pre-image-effects state if we haven't already and image effects are enabled
+        if (needsImageEffects && !preImageEffectsImageData) {
+          setPreImageEffectsImageData(new ImageData(
+            new Uint8ClampedArray(currentImageData.data),
+            currentImageData.width,
+            currentImageData.height
+          ));
+        }
+        
         // Apply image effects if enabled
         if (needsImageEffects) {
-          console.log('Applying image effects');
           const data = currentImageData.data;
           
           for (let i = 0; i < data.length; i += 4) {
@@ -1055,12 +1144,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         
         // Apply the processed data back to canvas
         ctx.putImageData(currentImageData, 0, 0);
-        console.log('Ink stamp and/or image effects applied to manual edits');
       }
       
       // Handle edge cleanup
       if (needsEdgeCleanup) {
-        console.log('Manual edits detected, applying edge cleanup');
         
         // Get the current canvas data after all previous processing
         currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1095,7 +1182,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     // Skip auto-processing if we already have processed data and no settings changed
     if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !edgeCleanupSettings.enabled) {
-      console.log('Early return - no active settings requiring processing');
       return;
     }
     
@@ -1103,17 +1189,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    console.log('Auto-processing triggered');
     setIsProcessing(true);
 
     // Use manual image data if available, otherwise original
-    const baseImageData = manualImageData || originalImageData;
+    const baseImageData = manualImageData || getOriginalImageData();
 
-    // Use debounced processing to prevent rapid updates
-    debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
-      // Only apply if we're still on the same canvas and no manual edits occurred during processing
-      if (canvasRef.current === canvas && !hasManualEditsRef.current) {
-        console.log('Applying auto-processed data');
+    // Use synchronous processing for now to avoid complexity
+    let processedData = processImageData(baseImageData, colorSettings, effectSettings);
+    
+    // Only apply if we're still on the same canvas and no manual edits occurred during processing
+    if (canvasRef.current === canvas && !hasManualEditsRef.current) {
         
         // Apply speckle processing if enabled
         if (speckleSettings.enabled) {
@@ -1127,17 +1212,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }
         
         // Apply edge cleanup processing if enabled
-        console.log('Edge cleanup check:', { 
-          enabled: edgeCleanupSettings.enabled, 
-          trimRadius: edgeCleanupSettings.trimRadius
-        });
-        
         if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
-          console.log('Calling processEdgeCleanup...');
           processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
-          console.log('processEdgeCleanup completed');
-        } else {
-          console.log('Edge cleanup is disabled, skipping');
         }
         
         // Only update canvas if the processed data is different
@@ -1150,16 +1226,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             ctx.putImageData(processedData, 0, 0);
           });
         }
-      } else {
-        console.log('Skipping auto-processed data application');
       }
       setIsProcessing(false);
-    }).catch((error) => {
-      console.error('Auto-processing error:', error);
-      setIsProcessing(false);
-    });
 
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate]);
+  }, [getOriginalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, debouncedProcessImageData, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -1233,7 +1303,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
+    const origData = getOriginalImageData();
+    if (!canvasRef.current || !image || !origData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -1275,10 +1346,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
     if (tool === 'color-stack') {
       // Get color at clicked position from original image
-      const index = (y * originalImageData.width + x) * 4;
-      const r = originalImageData.data[index];
-      const g = originalImageData.data[index + 1];
-      const b = originalImageData.data[index + 2];
+      const index = (y * origData.width + x) * 4;
+      const r = origData.data[index];
+      const g = origData.data[index + 1];
+      const b = origData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
       // Add to picked colors and immediately remove this color
@@ -1339,7 +1410,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
     } else if (tool === 'magic-wand') {
       // Magic wand tool - removes only connected pixels of clicked color
-      console.log('Magic wand tool clicked at', x, y, 'threshold:', contiguousSettings.threshold);
       
       // Mark that we have manual edits IMMEDIATELY to prevent auto-processing from overriding
       hasManualEditsRef.current = true;
@@ -1349,10 +1419,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setPreSpeckleImageData(null);
       
       // Get color at clicked position from original image
-      const index = (y * originalImageData.width + x) * 4;
-      const r = originalImageData.data[index];
-      const g = originalImageData.data[index + 1];
-      const b = originalImageData.data[index + 2];
+      const index = (y * origData.width + x) * 4;
+      const r = origData.data[index];
+      const g = origData.data[index + 1];
+      const b = origData.data[index + 2];
       const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
       
       // Save current state for undo (both local canvas undo and global undo)
@@ -1398,35 +1468,32 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       // Remove contiguous color at clicked position using independent contiguous threshold
       console.log('Before removeContiguousColorIndependent, manual edits marked');
-      removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
+      const removedPixelsMap = removeContiguousColorIndependentWithTracking(ctx, x, y, contiguousSettings.threshold || 30);
       console.log('After removeContiguousColorIndependent');
       
       // Get the image data after magic wand removal
       let newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // If speckle tools are enabled, apply speckle processing to clean up new speckles
-      if (speckleSettings.enabled && (speckleSettings.removeSpecks || speckleSettings.highlightSpecks)) {
-        console.log('Running speckle processing after magic wand removal');
-        const speckleResult = processSpecks(newImageData, speckleSettings);
-        newImageData = speckleResult.processedData;
-        
-        // Update speck count
-        if (onSpeckCountUpdate) {
-          onSpeckCountUpdate(speckleResult.speckCount);
-        }
-        
-        console.log('Speckle processing completed after magic wand');
+      // Apply edge cleanup only to newly removed areas if enabled
+      if ((edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) && removedPixelsMap.size > 0) {
+        newImageData = processEdgeCleanupSelective(newImageData, edgeCleanupSettings, removedPixelsMap);
+        // Apply the edge-cleaned data back to canvas
+        ctx.putImageData(newImageData, 0, 0);
       }
       
-      // Apply edge cleanup if enabled
-      if (edgeCleanupSettings.enabled || edgeCleanupSettings.legacyEnabled || edgeCleanupSettings.softening.enabled) {
-        console.log('Running edge cleanup after magic wand removal');
-        newImageData = processEdgeCleanup(newImageData, edgeCleanupSettings);
-        console.log('Edge cleanup completed after magic wand');
+      // Store the image data after magic wand removal and reset all effect states
+      setManualImageData(newImageData);
+      
+      // Clear ALL effect states to ensure clean processing with fresh manual edits
+      if (preSpeckleImageData || preEdgeCleanupImageData || preImageEffectsImageData) {
+        setPreSpeckleImageData(null);
+        setPreEdgeCleanupImageData(null);
+        setPreImageEffectsImageData(null);
+        console.log('Cleared all effect states for fresh magic wand processing');
       }
       
-      // Apply the processed data back to canvas
-      ctx.putImageData(newImageData, 0, 0);
+      // DON'T run speckle processing here - let the main effect handle it to avoid threshold corruption
+      console.log('Magic wand removal completed, manual edits stored, all states reset');
       
       // Store the manually edited result as base for future operations
       setManualImageData(newImageData);
@@ -1446,7 +1513,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }, 100);
       }
     }
-  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
+  }, [image, getOriginalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1466,7 +1533,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     const isColorSimilar = (r: number, g: number, b: number) => {
       const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-      return distance <= settings.threshold * 2.55;
+      return distance <= settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     };
     
     while (stack.length > 0) {
@@ -1500,8 +1567,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const width = imageData.width;
     const height = imageData.height;
     
-    console.log(`Starting contiguous removal at (${startX}, ${startY}) with threshold ${threshold}`);
-    console.log(`Canvas dimensions: ${width}x${height}`);
     
     // Get target color
     const index = (startY * width + startX) * 4;
@@ -1523,7 +1588,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const stack = [[startX, startY]];
     let removedPixels = 0;
     
-    const thresholdScaled = threshold * 2.55;
+    const thresholdScaled = threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
     console.log(`Threshold scaled: ${thresholdScaled}`);
     
     const isColorSimilar = (r: number, g: number, b: number) => {
@@ -1568,14 +1633,157 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
   };
 
+  // Enhanced version that tracks which pixels were removed
+  const removeContiguousColorIndependentWithTracking = (ctx: CanvasRenderingContext2D, startX: number, startY: number, threshold: number): Set<number> => {
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+    const removedPixels = new Set<number>();
+    
+    
+    
+    // Get target color
+    const targetIndex = (startY * width + startX) * 4;
+    const targetR = data[targetIndex];
+    const targetG = data[targetIndex + 1];
+    const targetB = data[targetIndex + 2];
+    const targetA = data[targetIndex + 3];
+    
+    if (targetA === 0) return removedPixels; // Already transparent
+    
+    console.log(`Target color: rgba(${targetR}, ${targetG}, ${targetB}, ${targetA})`);
+    
+    const thresholdScaled = threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
+    console.log(`Threshold scaled: ${thresholdScaled}`);
+    
+    const visited = new Set<string>();
+    const stack: [number, number][] = [[startX, startY]];
+    let pixelCount = 0;
+    
+    while (stack.length > 0 && pixelCount < 500000) {
+      const [x, y] = stack.pop()!;
+      pixelCount++;
+      
+      if (x < 0 || x >= width || y < 0 || y >= height) continue;
+      
+      const key = `${x},${y}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      
+      const pixelIndex = (y * width + x) * 4;
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      const a = data[pixelIndex + 3];
+      
+      if (a === 0) continue; // Already transparent
+      
+      const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
+      if (distance > thresholdScaled) continue;
+      
+      // Mark pixel as transparent and track it
+      data[pixelIndex + 3] = 0;
+      removedPixels.add(pixelIndex / 4); // Store pixel index (not byte index)
+      
+      // Add neighbors to stack
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    
+    console.log(`Removed ${removedPixels.size} pixels`);
+    
+    if (removedPixels.size > 0) {
+      ctx.putImageData(imageData, 0, 0);
+      console.log('Applied image data to canvas');
+    }
+    
+    return removedPixels;
+  };
+
+  // Selective edge cleanup that only processes pixels around newly removed areas
+  const processEdgeCleanupSelective = (imageData: ImageData, settings: EdgeCleanupSettings, removedPixels: Set<number>): ImageData => {
+    const { width, height } = imageData;
+    const data = new Uint8ClampedArray(imageData.data);
+    const result = new ImageData(data, width, height);
+    
+    if (!settings.enabled || settings.trimRadius <= 0 || removedPixels.size === 0) {
+      return result;
+    }
+    
+    // Find edge pixels - pixels that are adjacent to removed pixels
+    const edgePixels = new Set<number>();
+    const radius = settings.trimRadius;
+    
+    for (const removedPixelIndex of removedPixels) {
+      const x = removedPixelIndex % width;
+      const y = Math.floor(removedPixelIndex / width);
+      
+      // Check surrounding pixels within trim radius
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const neighborIndex = ny * width + nx;
+            const dataIndex = neighborIndex * 4;
+            
+            // If this pixel is not transparent and not already removed, it's an edge pixel
+            if (result.data[dataIndex + 3] > 0 && !removedPixels.has(neighborIndex)) {
+              edgePixels.add(neighborIndex);
+            }
+          }
+        }
+      }
+    }
+    
+    // Apply edge trimming to edge pixels
+    for (const edgePixelIndex of edgePixels) {
+      const x = edgePixelIndex % width;
+      const y = Math.floor(edgePixelIndex / width);
+      const dataIndex = edgePixelIndex * 4;
+      
+      // Check if this pixel should be trimmed based on proximity to removed areas
+      let shouldTrim = false;
+      
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const neighborIndex = ny * width + nx;
+            
+            // If a neighboring pixel was removed, consider trimming this edge pixel
+            if (removedPixels.has(neighborIndex)) {
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance <= radius) {
+                shouldTrim = true;
+                break;
+              }
+            }
+          }
+        }
+        if (shouldTrim) break;
+      }
+      
+      if (shouldTrim) {
+        result.data[dataIndex + 3] = 0; // Make transparent
+      }
+    }
+    
+    console.log(`Edge cleanup processed ${edgePixels.size} edge pixels around ${removedPixels.size} removed pixels`);
+    return result;
+  };
+
   const removePickedColor = (ctx: CanvasRenderingContext2D, targetR: number, targetG: number, targetB: number, threshold: number) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
 
-    // Convert threshold to proper scale
-    const thresholdScaled = threshold * 2.55;
+    // Convert threshold to proper scale - scale it to make it more sensitive (was too high)
+    const thresholdScaled = threshold * 2.5;
 
     // Remove all similar colors globally (non-contiguous for eyedropper)
     for (let i = 0; i < data.length; i += 4) {
@@ -1594,24 +1802,32 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (tool === 'pan') {
+    if (tool === 'eraser') {
+      eraserTool.startErasing(e.nativeEvent);
+    } else if (tool === 'pan') {
       setIsDragging(true);
       setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [tool]);
+  }, [tool, eraserTool]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging && tool === 'pan') {
+    if (tool === 'eraser') {
+      eraserTool.continueErasing(e.nativeEvent);
+    } else if (isDragging && tool === 'pan') {
       const dx = e.clientX - lastMousePos.x;
       const dy = e.clientY - lastMousePos.y;
       setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
       setLastMousePos({ x: e.clientX, y: e.clientY });
     }
-  }, [isDragging, tool, lastMousePos]);
+  }, [tool, eraserTool, isDragging, lastMousePos]);
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleMouseUp = useCallback((e?: React.MouseEvent) => {
+    if (tool === 'eraser') {
+      eraserTool.stopErasing(e?.nativeEvent);
+    } else {
+      setIsDragging(false);
+    }
+  }, [tool, eraserTool]);
 
   const handleZoom = useCallback((direction: 'in' | 'out', centerX?: number, centerY?: number) => {
     if (!containerRef.current || !canvasRef.current) return;
@@ -1682,8 +1898,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const updatedImage = { ...image, processedData: restoredImageData };
     
-    // Update manual image data to preserve the undo state
+    // Update manual image data and references to preserve the undo state
     hasManualEditsRef.current = true;
+    manualImageDataRef.current = restoredImageData;
     setManualImageData(restoredImageData);
     
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
@@ -1711,8 +1928,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const updatedImage = { ...image, processedData: restoredImageData };
     
-    // Update manual image data to preserve the redo state
+    // Update manual image data and references to preserve the redo state
     hasManualEditsRef.current = true;
+    manualImageDataRef.current = restoredImageData;
     setManualImageData(restoredImageData);
     
     console.log('Local redo completed, redoStack length:', redoStack.length - 1);
@@ -1721,7 +1939,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
 
   const handleReset = useCallback(() => {
-    if (!originalImageData || !canvasRef.current) return;
+    const origData = getOriginalImageData();
+    if (!origData || !canvasRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -1734,21 +1953,34 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setRedoStack([]);
     
     // Reprocess the original image with current settings
-    const processedData = processImageData(originalImageData, colorSettings, effectSettings);
+    const processedData = processImageData(origData, colorSettings, effectSettings);
     ctx.putImageData(processedData, 0, 0);
     
     if (image) {
       const updatedImage = { ...image, processedData };
       onImageUpdate(updatedImage);
     }
-  }, [originalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
+  }, [getOriginalImageData, colorSettings, effectSettings, processImageData, image, onImageUpdate]);
 
   const handleDownload = useCallback(() => {
-    if (!image || !canvasRef.current) return;
+    if (!image || !canvasRef.current || isDownloading) return;
+    
+    // Immediate feedback - start local progress
+    setIsDownloading(true);
+    setDownloadProgress(0);
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setIsDownloading(false);
+      setDownloadProgress(0);
+      return;
+    }
+    
+    // Simulate progress steps for visual feedback
+    setTimeout(() => setDownloadProgress(25), 100);
+    setTimeout(() => setDownloadProgress(50), 200);
+    setTimeout(() => setDownloadProgress(75), 300);
     
     // Get current canvas data to pass to the download handler
     const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1760,8 +1992,22 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       status: 'completed' as const
     };
     
-    onDownloadImage(imageWithCurrentData);
-  }, [image, onDownloadImage]);
+    // Complete the download
+    setTimeout(() => {
+      setDownloadProgress(100);
+      onDownloadImage(imageWithCurrentData);
+      
+      // Reset states after download
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress(0);
+        // Also trigger the queue progress for consistency if it's visible
+        if (setSingleImageProgress) {
+          setSingleImageProgress(null);
+        }
+      }, 1000);
+    }, 400);
+  }, [image, onDownloadImage, setSingleImageProgress, isDownloading]);
 
   return (
     <div className="flex-1 flex flex-col bg-canvas-bg">
@@ -1824,35 +2070,54 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           {/* Tools */}
           <Button
-            variant={tool === 'pan' ? 'default' : 'ghost'}
+            variant={tool === 'pan' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('pan')}
-            className="flex items-center gap-1"
+            className={tool === 'pan' 
+              ? "bg-accent-blue text-white" 
+              : "border-accent-blue text-accent-blue hover:bg-accent-blue/10"}
           >
-            <Move className="w-4 h-4" />
-            Move
+            <Move className="w-4 h-4 mr-1" />
+            Pan
           </Button>
           
           <Button
-            variant={tool === 'color-stack' ? 'default' : 'ghost'}
+            variant={tool === 'color-stack' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
-            className="flex items-center gap-1"
+            className={tool === 'color-stack' 
+              ? "bg-accent-purple text-white" 
+              : "border-accent-purple text-accent-purple hover:bg-accent-purple/10"}
           >
-            <Pipette className="w-4 h-4" />
+            <Pipette className="w-4 h-4 mr-1" />
             Color Stack
           </Button>
           
           
           <Button
-            variant={tool === 'magic-wand' ? 'default' : 'ghost'}
+            variant={tool === 'magic-wand' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
-            className="flex items-center gap-1"
+            className={tool === 'magic-wand' 
+              ? "bg-accent-cyan text-white" 
+              : "border-accent-cyan text-accent-cyan hover:bg-accent-cyan/10"}
             title="Magic Wand - Remove connected pixels"
           >
-            <Wand className="w-4 h-4" />
+            <Wand className="w-4 h-4 mr-1" />
             Magic Wand
+          </Button>
+          
+          <Button
+            variant={tool === 'eraser' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onToolChange('eraser')}
+            className={tool === 'eraser' 
+              ? "bg-accent-red text-white" 
+              : "border-accent-red text-accent-red hover:bg-accent-red/10"}
+            title="Eraser - Remove pixels with brush"
+          >
+            <Eraser className="w-4 h-4 mr-1" />
+            Eraser
           </Button>
         </div>
         
@@ -1906,12 +2171,16 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               variant="default"
               size="sm"
               onClick={handleDownload}
-              disabled={!image}
-              title="Download PNG"
+              disabled={!image || isDownloading}
+              title={isDownloading ? "Preparing download..." : "Download PNG"}
               className="flex items-center gap-2"
             >
-              <Download className="w-4 h-4" />
-              Download
+              {isDownloading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {isDownloading ? "Preparing..." : "Download"}
             </Button>
           )}
         </div>
@@ -1920,12 +2189,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       {/* Canvas Area */}
       <div 
         ref={containerRef}
-        className="flex-1 relative overflow-hidden bg-canvas-bg"
+        className="flex-1 relative overflow-hidden select-none"
         style={{ 
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--grid-lines)) 1px, transparent 0)`,
-          backgroundSize: '20px 20px'
+          backgroundColor: effectSettings.background.enabled ? effectSettings.background.color : 'hsl(var(--canvas-bg))'
         }}
         onWheel={handleWheel}
+        onDoubleClick={handleFitToScreen}
       >
         {image ? (
           <>
@@ -1936,8 +2205,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 style={{
                   transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
                   transformOrigin: '0 0',
-                  width: originalImageData?.width || 0,
-                  height: originalImageData?.height || 0,
+                  width: originalImageData?.width || canvasRef.current?.width || 0,
+                  height: originalImageData?.height || canvasRef.current?.height || 0,
                   backgroundColor: effectSettings.background.color,
                 }}
               />
@@ -1947,35 +2216,64 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             <canvas
               ref={canvasRef}
               className={cn(
-                "absolute cursor-crosshair border border-canvas-border",
+                "absolute cursor-crosshair",
                 tool === 'pan' && (isDragging ? 'cursor-grabbing' : 'cursor-grab'),
                 tool === 'color-stack' && 'cursor-crosshair',
-                tool === 'magic-wand' && 'cursor-crosshair'
+                tool === 'magic-wand' && 'cursor-crosshair',
+                tool === 'eraser' && 'cursor-none'
               )}
               style={{
                 transform: `translate(${centerOffset.x + pan.x}px, ${centerOffset.y + pan.y}px) scale(${zoom})`,
                 transformOrigin: '0 0',
-                imageRendering: zoom > 2 ? 'pixelated' : 'auto'
+                imageRendering: zoom > 2 ? 'pixelated' : 'auto',
+                cursor: tool === 'eraser' ? eraserTool.getBrushCursor() : undefined
               }}
               onClick={handleCanvasClick}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={(e) => tool === 'eraser' && eraserTool.startErasing(e.nativeEvent)}
+              onTouchMove={(e) => tool === 'eraser' && eraserTool.continueErasing(e.nativeEvent)}
+              onTouchEnd={(e) => tool === 'eraser' && eraserTool.stopErasing(e.nativeEvent)}
             />
           </>
         ) : (
           <Card className="absolute inset-4 flex items-center justify-center border-dashed border-2 border-border/50">
-            <div className="text-center">
+            <div className="text-center max-w-lg mx-auto px-6">
               <div className="text-4xl mb-4">🖼️</div>
-              <h3 className="text-lg font-medium text-foreground mb-2">No Image Selected</h3>
-              <p className="text-muted-foreground">
-                Add images or drag & drop files to get started
-              </p>
+              <h3 className="text-lg font-medium text-foreground mb-4">No Image Selected</h3>
+              <MainCanvasTips />
             </div>
           </Card>
+        )}
+        
+        {/* Download Progress Overlay - Always visible regardless of queue state */}
+        {isDownloading && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-card border border-border rounded-lg p-6 shadow-xl min-w-80">
+              <div className="flex items-center gap-3 mb-4">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                <span className="text-lg font-medium">Downloading Image...</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Progress</span>
+                  <span>{downloadProgress}%</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 };
+
+export default MainCanvas;
