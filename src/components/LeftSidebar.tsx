@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, EraserSettings } from '@/pages/Index';
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
+import { useToast } from '@/hooks/use-toast';
 
 interface LeftSidebarProps {
   settings: ColorRemovalSettings;
@@ -68,6 +69,15 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       updates.highlightSpecks = false;
     } else if (updates.removeSpecks === false && !speckleSettings.highlightSpecks) {
       updates.highlightSpecks = true; // Turn highlighting back on when remove is disabled
+    }
+    
+    // Show notification when speckle mode is enabled
+    if (updates.enabled === true && !speckleSettings.enabled) {
+      toast({
+        title: "🔧 Speckle Mode Activated",
+        description: "Speckle tools are designed to remove small artifacts, then turn off before using other tools due to their heavy processing nature.",
+        duration: 5000,
+      });
     }
     
     onSpeckleSettingsChange({ ...speckleSettings, ...updates });
