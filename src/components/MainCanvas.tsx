@@ -1391,16 +1391,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           console.log('Edge cleanup is disabled, skipping');
         }
         
-        // Only update canvas if the processed data is different
-        const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const isDifferent = !areImageDataEqual(currentData, processedData);
-        
-        if (isDifferent) {
-          // Use requestAnimationFrame to ensure smooth canvas update
-          requestAnimationFrame(() => {
-            ctx.putImageData(processedData, 0, 0);
-          });
-        }
+        // Always update canvas when effects are being applied
+        // Use requestAnimationFrame to ensure smooth canvas update
+        requestAnimationFrame(() => {
+          ctx.putImageData(processedData, 0, 0);
+        });
       } else {
         console.log('Skipping auto-processed data application');
       }
