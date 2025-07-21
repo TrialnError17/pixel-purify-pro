@@ -102,6 +102,66 @@ export const useImageProcessor = () => {
     }
   }, []);
 
+  // RGB to HSL conversion
+  const rgbToHsl = useCallback((r: number, g: number, b: number): [number, number, number] => {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+    
+    if (diff !== 0) {
+      s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+      
+      switch (max) {
+        case r:
+          h = ((g - b) / diff + (g < b ? 6 : 0)) * 60;
+          break;
+        case g:
+          h = ((b - r) / diff + 2) * 60;
+          break;
+        case b:
+          h = ((r - g) / diff + 4) * 60;
+          break;
+      }
+    }
+    
+    return [h, s, l];
+  }, []);
+
+  // HSL to RGB conversion
+  const hslToRgb = useCallback((h: number, s: number, l: number): [number, number, number] => {
+    h /= 360;
+    
+    const hue2rgb = (p: number, q: number, t: number): number => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    
+    if (s === 0) {
+      return [l * 255, l * 255, l * 255];
+    }
+    
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    
+    const r = hue2rgb(p, q, h + 1/3);
+    const g = hue2rgb(p, q, h);
+    const b = hue2rgb(p, q, h - 1/3);
+    
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }, []);
+
   // Color space conversion utilities
   const rgbToLab = useCallback((r: number, g: number, b: number): [number, number, number] => {
     // Convert RGB to XYZ
@@ -567,23 +627,7 @@ export const useImageProcessor = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
 
       if (colorSettings.enabled) {
-        if (colorSettings.mode === 'auto') {
-          processedData = autoColorRemoval(processedData, colorSettings);
-        } else {
-          processedData = manualColorRemoval(processedData, colorSettings);
-        }
-
-        // Step 2: Contiguous removal from borders
-        setImages(prev => prev.map(img => 
-          img.id === image.id ? { ...img, progress: 50 } : img
-        ));
-        
-        // Add delay to make progress visible
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        if (colorSettings.contiguous) {
-          processedData = borderFloodFill(processedData, colorSettings);
-        }
+        processedData = await processImageDataUnified(processedData, colorSettings);
 
         // Step 3: Cleanup regions and apply feathering
         setImages(prev => prev.map(img => 
@@ -639,7 +683,7 @@ export const useImageProcessor = () => {
         variant: "destructive"
       });
     }
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, applyDisplayEffects, toast]);
+  }, [processImageDataUnified, toast]);
 
   // Process and download all images one by one sequentially
   const processAllImages = useCallback(async (
@@ -850,14 +894,8 @@ export const useImageProcessor = () => {
     
     let imageDataToDownload = processedData;
     
-    // Apply automatic alpha feathering (radius 2) and edge softening (1 iteration) before download
-    console.log('Applying automatic alpha feathering and edge softening for download...');
-    imageDataToDownload = applyAlphaFeathering(imageDataToDownload, 2); // Reduced from 3 to 2
-    imageDataToDownload = applyEdgeSoftening(imageDataToDownload, 1);    // Reduced from 2 to 1
-    
-    // Trim 1 pixel of semi-transparent edges created by feathering
-    imageDataToDownload = trimSemiTransparentEdges(imageDataToDownload, 1);
-    console.log('Trimmed semi-transparent edge pixels');
+    // Note: Alpha feathering and edge softening have been moved to worker processing
+    console.log('Download processing - effects will be applied by worker');
     
     // Apply download effects if provided
     if (effectSettings) {
@@ -926,7 +964,7 @@ export const useImageProcessor = () => {
     }, 'image/png', 1.0); // Add quality parameter
 
     // Removed download started toast
-  }, [autoColorRemoval, manualColorRemoval, borderFloodFill, cleanupRegions, trimTransparentPixels, applyDownloadEffects, processImageDataUnified, applyAlphaFeathering, applyEdgeSoftening, trimSemiTransparentEdges]);
+  }, [trimTransparentPixels, applyDownloadEffects, processImageDataUnified]);
 
   return {
     processImage,
@@ -934,7 +972,6 @@ export const useImageProcessor = () => {
     downloadImage,
     cancelProcessing,
     cleanup,
-    processImageDataUnified,
-    applyDisplayEffects
+    processImageDataUnified
   };
 };
