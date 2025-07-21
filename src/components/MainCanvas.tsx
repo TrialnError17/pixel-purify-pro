@@ -5,6 +5,7 @@ import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { useEraserTool } from '@/hooks/useEraserTool';
 import { debounce, throttle, areImageDataEqual } from '@/utils/performance';
+import { usePixelProcessor } from '@/hooks/usePixelProcessor';
 import { 
   Move, 
   Pipette, 
@@ -350,6 +351,9 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [preSpeckleImageData, setPreSpeckleImageData] = useState<ImageData | null>(null);
   const [preImageEffectsImageData, setPreImageEffectsImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Initialize pixel processor hook
+  const { processImageData: processWithWorker, cleanup } = usePixelProcessor();
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand' | 'eraser'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -905,19 +909,49 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image]);
 
-  // Debounced processing to prevent flashing
-  const debouncedProcessImageData = useMemo(
-    () => debounce((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
-      return Promise.resolve(processImageData(imageData, colorSettings, effectSettings));
-    }, 100),
-    [processImageData]
-  );
-
-  // Process and display image when settings change (but not if there are manual edits or manual mode is active)
+  // Cleanup worker on unmount
   useEffect(() => {
-    // COMPLETELY DISABLE AUTO-PROCESSING TO PREVENT INFINITE LOOPS
-    console.log('Auto-processing disabled to prevent performance issues');
-    return;
+    return () => cleanup();
+  }, [cleanup]);
+
+  // Process and display image when settings change (debounced with Web Worker)
+  useEffect(() => {
+    if (!image || !canvasRef.current || hasManualEditsRef.current || 
+        isProcessing || colorSettings.mode === 'manual') {
+      return;
+    }
+
+    const canvasEl = canvasRef.current;
+    const context = canvasEl.getContext('2d');
+    if (!context) return;
+
+    const sourceImageData = manualImageData || getOriginalImageData();
+    
+    processWithWorker(
+      sourceImageData,
+      {
+        colorRemoval: colorSettings,
+        effects: effectSettings,
+        minRegionSize: colorSettings.minRegionSize,
+        speckleSettings,
+        edgeCleanupSettings
+      },
+      (processedData) => {
+        // Only apply if we're still on the same canvas and no manual edits occurred
+        if (canvasRef.current === canvasEl && !hasManualEditsRef.current) {
+          requestAnimationFrame(() => {
+            context.putImageData(processedData, 0, 0);
+          });
+        }
+        setIsProcessing(false);
+      },
+      (error) => {
+        console.error('Processing error:', error);
+        setIsProcessing(false);
+      }
+    );
+
+    setIsProcessing(true);
     
     // Prevent processing if requirements not met or already processing
     if (!canvasRef.current || isProcessing || isProcessingEdgeCleanupRef.current) {
