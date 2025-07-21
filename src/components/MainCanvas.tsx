@@ -839,28 +839,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const cachedData = getImageData(image.id);
-    
-    // If we have manual edits and processedData, use that instead of reloading
-    if (hasManualEditsRef.current && cachedData?.processedData && manualImageData) {
-      requestAnimationFrame(() => {
-        ctx.putImageData(cachedData.processedData!, 0, 0);
-      });
-      return;
-    }
-
-    // If image has processedData and no manual edits, use that
-    if (cachedData?.processedData && !hasManualEditsRef.current) {
-      requestAnimationFrame(() => {
-        ctx.putImageData(cachedData.processedData!, 0, 0);
-      });
-      
-      // Store as original data if not set
-      if (!originalImageData) {
-        setOriginalImageData(cachedData.processedData);
-      }
-      return;
-    }
+    // ALWAYS load and display the original image file, never processed data
+    // This eliminates automatic processing and ensures only originals are shown
     const img = new Image();
     img.onload = () => {
       // Set canvas size to image size
@@ -1060,7 +1040,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 const updatedImage = { ...image, processedData: newImageData };
                 hasManualEditsRef.current = true;
                 setManualImageData(newImageData);
-                onImageUpdate(updatedImage);
+                // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
               }
             }
           },
@@ -1071,7 +1051,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               const updatedImage = { ...image, processedData: newImageData };
               hasManualEditsRef.current = true;
               setManualImageData(newImageData);
-              onImageUpdate(updatedImage);
+              // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
             }
           }
         });
@@ -1091,7 +1071,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       if (image) {
         const updatedImage = { ...image, processedData: newImageData };
-        onImageUpdate(updatedImage);
+        // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
       }
     } else if (tool === 'magic-wand') {
       // Magic wand tool - removes only connected pixels of clicked color
@@ -1130,7 +1110,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 const updatedImage = { ...image, processedData: newImageData };
                 hasManualEditsRef.current = true;
                 setManualImageData(newImageData);
-                onImageUpdate(updatedImage);
+                // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
               }
             }
           },
@@ -1144,7 +1124,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 const updatedImage = { ...image, processedData: newImageData };
                 hasManualEditsRef.current = true;
                 setManualImageData(newImageData);
-                onImageUpdate(updatedImage);
+                // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
               }
             }
           }
@@ -1186,16 +1166,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       if (image) {
         const updatedImage = { ...image, processedData: newImageData };
-        console.log('Updating image with manually edited data');
-        onImageUpdate(updatedImage);
+        console.log('Tool interaction completed - visual preview only, no state update');
+        // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
         
-        // Force a small delay to ensure the update sticks
-        setTimeout(() => {
-          console.log('Verifying canvas state after update');
-          const verifyData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const transparentPixels = Array.from(verifyData.data).filter((_, i) => i % 4 === 3 && verifyData.data[i] === 0).length;
-          console.log(`Canvas verification: ${transparentPixels} transparent pixels`);
-        }, 100);
+        // Visual feedback only - no state persistence until "Process All"
+        console.log('Canvas shows preview only, awaiting Process All button');
       }
     }
   }, [image, getOriginalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
@@ -1589,7 +1564,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setManualImageData(restoredImageData);
     
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
-    onImageUpdate(updatedImage);
+    // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
   }, [undoStack, image, onImageUpdate]);
 
   const handleRedo = useCallback(() => {
@@ -1619,7 +1594,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     setManualImageData(restoredImageData);
     
     console.log('Local redo completed, redoStack length:', redoStack.length - 1);
-    onImageUpdate(updatedImage);
+    // onImageUpdate(updatedImage); // DISABLED: No automatic state updates
   }, [redoStack, image, onImageUpdate]);
 
 
@@ -1642,7 +1617,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     if (image) {
       const updatedImage = { ...image, processedData: origData };
-      onImageUpdate(updatedImage);
+      // onImageUpdate(updatedImage); // DISABLED: No automatic state updates - reset is visual only
     }
   }, [getOriginalImageData, image, onImageUpdate]);
 

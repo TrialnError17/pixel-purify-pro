@@ -533,9 +533,11 @@ const Index = () => {
               erasingInProgressRef={erasingInProgressRef}
               
               onImageUpdate={(updatedImage) => {
-                setImages(prev => prev.map(img => 
-                  img.id === updatedImage.id ? updatedImage : img
-                ));
+                // DISABLED: No automatic image state updates
+                // Only Process All button should update image state
+                // setImages(prev => prev.map(img => 
+                //   img.id === updatedImage.id ? updatedImage : img
+                // ));
               }}
               onColorPicked={(color) => {
                 // Add color to picked colors list with default threshold of 30
