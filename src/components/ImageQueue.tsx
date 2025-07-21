@@ -306,11 +306,15 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
       isFullscreen
-        ? "fixed top-14 bottom-0 left-0 right-0 z-40"
+        ? "fixed top-14 bottom-0 z-40 w-full max-w-none"
         : visible 
           ? "h-48" 
           : "h-12"
-    )}>
+    )}
+    style={isFullscreen ? {
+      left: '320px',  // 80 * 4 = 320px (left sidebar width)
+      right: '320px', // 80 * 4 = 320px (right sidebar width)
+    } : undefined}>
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
         <div className="flex items-center gap-3">
