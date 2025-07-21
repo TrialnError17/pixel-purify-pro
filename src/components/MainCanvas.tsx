@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings, SemiTransparencyDetectorSettings } from '@/pages/Index';
-import { SemiTransparencyDetector } from '@/components/SemiTransparencyDetector';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { useEraserTool } from '@/hooks/useEraserTool';
 import { 
@@ -2036,16 +2035,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-canvas-bg">
-            {/* Semi-Transparency Detector */}
-            <div className="absolute bottom-4 right-4 max-w-sm">
-              <SemiTransparencyDetector
-                canvas={canvasRef.current}
-                enabled={semiTransparencySettings.enabled}
-                onEnabledChange={(enabled) => {/* handled in LeftSidebar */}}
-                onFeatureInteraction={onFeatureInteraction}
-              />
-            </div>
-
             {/* Toolbar */}
       <div className="h-12 bg-gradient-header border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-1">
