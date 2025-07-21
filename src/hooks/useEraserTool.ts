@@ -263,30 +263,18 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
     if (e) e.preventDefault();
   }, [options.onImageChange, options.manualImageDataRef, options.erasingInProgressRef]);
 
-  // Get brush cursor style - FIXED to match erasing radius exactly
+  // Get brush cursor style
   const getBrushCursor = useCallback(() => {
-    // Use the same radius calculation as erasing: Math.floor(brushSize / 2)
-    const radius = Math.floor(options.brushSize / 2);
-    const size = Math.max(4, radius * 2); // Minimum 4px for visibility
-    
-    // Dynamic stroke width for better visibility
-    const strokeWidth = Math.max(1, Math.min(2, options.brushSize / 20));
-    
-    console.log('Cursor calculation:', {
-      brushSize: options.brushSize,
-      radius,
-      size,
-      strokeWidth
-    });
-    
+    const size = Math.max(8, Math.min(options.brushSize, 32)); // Clamp cursor size
+    const radius = size / 2;
     const svg = `
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${size/2}" cy="${size/2}" r="${radius - strokeWidth/2}" fill="none" stroke="rgba(255, 0, 0, 0.8)" stroke-width="${strokeWidth}"/>
-        <circle cx="${size/2}" cy="${size/2}" r="1" fill="rgba(255, 0, 0, 0.8)"/>
+        <circle cx="${radius}" cy="${radius}" r="${radius - 1}" fill="none" stroke="red" stroke-width="1"/>
+        <circle cx="${radius}" cy="${radius}" r="1" fill="red"/>
       </svg>
     `;
     const encodedSvg = encodeURIComponent(svg);
-    return `url("data:image/svg+xml,${encodedSvg}") ${size/2} ${size/2}, crosshair`;
+    return `url("data:image/svg+xml,${encodedSvg}") ${radius} ${radius}, crosshair`;
   }, [options.brushSize]);
 
   return {
