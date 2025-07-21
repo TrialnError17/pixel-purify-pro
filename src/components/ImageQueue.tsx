@@ -33,11 +33,14 @@ interface ImageQueueProps {
   onCancelProcessing?: () => void;
   isProcessing?: boolean;
   forceFullscreen?: boolean;
+  singleImageProgress?: { imageId: string; progress: number } | null;
   processingProgress?: {
     current: number;
     total: number;
     currentImage?: string;
   };
+  isFullscreen?: boolean;
+  onSetFullscreen?: (value: boolean) => void;
 }
 
 export const ImageQueue: React.FC<ImageQueueProps> = ({
@@ -53,9 +56,17 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   onCancelProcessing,
   isProcessing = false,
   forceFullscreen = false,
-  processingProgress
+  singleImageProgress,
+  processingProgress,
+  isFullscreen: externalIsFullscreen,
+  onSetFullscreen
 }) => {
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [internalIsFullscreen, setInternalIsFullscreen] = React.useState(false);
+  
+  // Use external fullscreen state if provided, otherwise use internal state
+  const isFullscreen = externalIsFullscreen !== undefined ? externalIsFullscreen : internalIsFullscreen;
+  const setIsFullscreen = onSetFullscreen || setInternalIsFullscreen;
+  
 
   // Auto-switch to fullscreen when processing starts
   React.useEffect(() => {
@@ -77,14 +88,10 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
 
     if (isFullscreen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
     };
   }, [isFullscreen]);
 
@@ -125,67 +132,82 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
   return (
     <div className={cn(
       "bg-gradient-panel border-t border-border transition-all duration-300",
-      isFullscreen 
-        ? "fixed inset-0 z-50 h-screen" 
+      isFullscreen
+        ? "fixed inset-0 z-40 md:top-14 md:left-80 lg:md:left-96 md:right-96" // Responsive fullscreen with sidebar width
         : visible 
-          ? "h-48" 
+          ? "h-32 sm:h-40 md:h-48" 
           : "h-12"
     )}>
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-border">
-        <div className="flex items-center gap-4">
-          {!isFullscreen && (
-            <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          {/* Process & Clear All buttons on the left */}
+          {images.length > 0 && (
+            <>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={onToggleVisible}
+                onClick={onProcessAll}
+                disabled={pendingCount === 0 || isProcessing}
                 className="flex items-center gap-2"
               >
-                {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                Image Queue ({images.length})
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PlayCircle className="w-4 h-4" />
+                )}
+                Process All ({pendingCount})
               </Button>
               
-              {isProcessing && processingProgress && (
-                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm font-medium">
-                    Processing {processingProgress.current}/{processingProgress.total}
-                  </span>
-                </div>
-              )}
-            </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClearAll}
+                disabled={isProcessing}
+                className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All
+              </Button>
+            </>
           )}
           
-          {isFullscreen && (
-            <div className="flex items-center gap-3">
-              <div className="text-lg font-semibold">Image Queue ({images.length})</div>
-              {isProcessing && processingProgress && (
-                <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">
-                      Processing {processingProgress.current}/{processingProgress.total}
-                    </span>
-                  </div>
-                </div>
-              )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleVisible}
+            className="flex items-center gap-2"
+          >
+            {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            Image Queue ({images.length})
+          </Button>
+          
+          {isProcessing && processingProgress && (
+            <div className="flex items-center gap-2 text-accent-cyan animate-fade-in">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm font-medium">
+                Processing {processingProgress.current}/{processingProgress.total}
+              </span>
             </div>
           )}
           
           {images.length > 0 && (!isFullscreen || !isProcessing) && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               {pendingCount > 0 && <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {pendingCount}
+                <Clock className="w-3 h-3" />
+                {pendingCount} pending
               </span>}
               {processingCount > 0 && <span className="flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" /> {processingCount}
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {processingCount} processing
               </span>}
               {completedCount > 0 && <span className="flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> {completedCount}
+                <CheckCircle className="w-3 h-3" />
+                {completedCount} completed
               </span>}
               {errorCount > 0 && <span className="flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> {errorCount}
+                <AlertCircle className="w-3 h-3" />
+                {errorCount} failed
               </span>}
             </div>
           )}
@@ -216,44 +238,36 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             {isFullscreen ? "Exit" : "Fullscreen"}
           </Button>
-          
-          {images.length > 0 && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onProcessAll}
-                disabled={pendingCount === 0 || isProcessing}
-                className="flex items-center gap-2"
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <PlayCircle className="w-4 h-4" />
-                )}
-                Process & Download All ({pendingCount})
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClearAll}
-                disabled={isProcessing}
-                className="flex items-center gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-                Clear All
-              </Button>
-            </>
-          )}
         </div>
       </div>
+
+      {/* Single Image Progress Bar - appears beneath header when downloading from preview */}
+      {singleImageProgress && (
+        <div className="px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-primary">
+                  Downloading image...
+                </span>
+              </div>
+              <Progress 
+                value={singleImageProgress.progress} 
+                className="h-2 bg-background"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Queue Content */}
       {(visible || isFullscreen) && (
         <div className={cn(
           "overflow-y-auto",
-          isFullscreen ? "h-[calc(100vh-3rem)]" : "h-36"
+          isFullscreen 
+            ? "h-[calc(100vh-8rem)] md:h-[calc(100vh-8rem)]" // Full height minus header and queue header
+            : "h-20 sm:h-28 md:h-36"
         )}>
           {images.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -287,9 +301,9 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                   onClick={() => onSelectImage(image.id)}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Thumbnail */}
+                    {/* Thumbnail with Progress Overlay */}
                     <div className={cn(
-                      "bg-muted rounded flex-shrink-0 flex items-center justify-center",
+                      "bg-muted rounded flex-shrink-0 flex items-center justify-center relative",
                       isFullscreen ? "w-16 h-16" : "w-12 h-12"
                     )}>
                       <img
@@ -298,6 +312,20 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                         className="w-full h-full object-cover rounded"
                         onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
                       />
+                      
+                      {/* Progress Overlay for Individual Image Processing */}
+                      {singleImageProgress && singleImageProgress.imageId === image.id && (
+                        <div className="absolute inset-0 bg-gray-800/75 rounded flex items-center justify-center">
+                          <div className="w-full px-1">
+                            <div className="bg-gray-600 h-1 rounded-full overflow-hidden">
+                              <div 
+                                className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                                style={{ width: `${singleImageProgress.progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Info */}
@@ -325,11 +353,6 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                       {image.status === 'processing' && (
                         <div className="space-y-1">
                           <Progress value={image.progress} className="h-2" />
-                          {isFullscreen && (
-                            <div className="text-xs text-muted-foreground text-center">
-                              {image.progress}% complete
-                            </div>
-                          )}
                         </div>
                       )}
                       
