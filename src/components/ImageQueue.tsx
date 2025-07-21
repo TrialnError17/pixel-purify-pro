@@ -348,7 +348,10 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onToggleVisible}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleVisible();
+            }}
             className="flex items-center gap-2"
           >
             {visible ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
