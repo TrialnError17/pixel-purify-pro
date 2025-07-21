@@ -613,7 +613,6 @@ export const MainCanvas = ({
             variant={tool === 'pan' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('pan')}
-            active={tool === 'pan'}
             disabled={isDragging}
           >
             <Move className="w-4 h-4 mr-2" />
@@ -623,7 +622,6 @@ export const MainCanvas = ({
             variant={tool === 'color-stack' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
-            active={tool === 'color-stack'}
             disabled={isDragging}
           >
             <Wand2 className="w-4 h-4 mr-2" />
@@ -633,7 +631,6 @@ export const MainCanvas = ({
             variant={tool === 'magic-wand' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
-            active={tool === 'magic-wand'}
             disabled={isDragging}
           >
             <Wand2 className="w-4 h-4 mr-2" />
@@ -643,7 +640,6 @@ export const MainCanvas = ({
             variant={tool === 'eraser' ? 'default' : 'outline'}
             size="sm"
             onClick={() => onToolChange('eraser')}
-            active={tool === 'eraser'}
             disabled={isDragging}
           >
             <Eraser className="w-4 h-4 mr-2" />
