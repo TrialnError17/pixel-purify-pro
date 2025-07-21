@@ -265,8 +265,8 @@ export const useEraserTool = (canvas: HTMLCanvasElement | null, options: EraserT
 
   // Get brush cursor style - adjust size based on zoom to show true pixel area
   const getBrushCursor = useCallback(() => {
-    // Calculate the display size: eraser size in image pixels divided by zoom
-    const displaySize = options.brushSize / Math.max(options.zoom, 0.01);
+    // Calculate the display size: eraser size in image pixels multiplied by zoom
+    const displaySize = options.brushSize * Math.max(options.zoom, 0.01);
     const clampedSize = Math.max(8, Math.min(displaySize, 64)); // Clamp for usability
     const radius = clampedSize / 2;
     const svg = `
