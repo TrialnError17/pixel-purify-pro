@@ -27,10 +27,16 @@ export const useImageProcessor = () => {
     settings?: any,
     effectSettings?: any
   ): Promise<ImageData> => {
+    console.log(`🔄 Starting worker processing: ${type}`);
+    console.time(`worker-${type}`);
+    
     return new Promise((resolve, reject) => {
       const worker = getWorker();
       const id = (++taskIdRef.current).toString();
-      const timeout = setTimeout(() => reject(new Error('Worker timeout')), 30000);
+      const timeout = setTimeout(() => {
+        console.log(`⏰ Worker timeout for ${type}`);
+        reject(new Error('Worker timeout'));
+      }, 30000);
 
       const handleMessage = (event: MessageEvent<WorkerResponse>) => {
         if (event.data.id !== id) return;
@@ -39,18 +45,41 @@ export const useImageProcessor = () => {
         worker.removeEventListener('message', handleMessage);
         
         if (event.data.type === 'success' && event.data.data) {
+          console.log(`✅ Worker ${type} completed successfully`);
+          console.timeEnd(`worker-${type}`);
           resolve(event.data.data);
         } else {
+          console.log(`❌ Worker ${type} failed:`, event.data.error);
+          console.timeEnd(`worker-${type}`);
           reject(new Error(event.data.error || 'Worker processing failed'));
         }
       };
 
+      const handleError = (error: ErrorEvent) => {
+        console.log(`💥 Worker error for ${type}:`, error);
+        clearTimeout(timeout);
+        worker.removeEventListener('message', handleMessage);
+        worker.removeEventListener('error', handleError);
+        reject(new Error(`Worker error: ${error.message}`));
+      };
+
       worker.addEventListener('message', handleMessage);
-      worker.postMessage({
-        type,
-        data: { imageData, settings, effectSettings },
-        id
-      } as WorkerMessage);
+      worker.addEventListener('error', handleError);
+      
+      try {
+        worker.postMessage({
+          type,
+          data: { imageData, settings, effectSettings },
+          id
+        } as WorkerMessage);
+        console.log(`📤 Posted ${type} message to worker with id ${id}`);
+      } catch (error) {
+        console.log(`🚫 Failed to post message to worker:`, error);
+        clearTimeout(timeout);
+        worker.removeEventListener('message', handleMessage);
+        worker.removeEventListener('error', handleError);
+        reject(error);
+      }
     });
   }, [getWorker]);
 
@@ -255,14 +284,26 @@ export const useImageProcessor = () => {
 
   // Unified processing function that matches MainCanvas logic - Now uses Web Worker
   const processImageDataUnified = useCallback(async (imageData: ImageData, settings: ColorRemovalSettings): Promise<ImageData> => {
+    console.log('🎨 processImageDataUnified called with settings:', { enabled: settings.enabled, mode: settings.mode, contiguous: settings.contiguous });
+    
+    if (!settings.enabled) {
+      console.log('🚫 Color removal disabled, returning original data');
+      return imageData;
+    }
+
     try {
-      return await processWithWorker('processImage', imageData, settings);
+      console.log('🏭 Attempting worker processing for color removal...');
+      const result = await processWithWorker('processImage', imageData, settings);
+      console.log('✅ Worker processing completed successfully');
+      return result;
     } catch (error) {
-      console.warn('Worker failed, falling back to main thread:', error);
-      // Fallback to main thread processing
+      console.warn('⚠️ Worker failed, falling back to main thread:', error);
+      // Fallback to main thread processing with performance optimizations
     const data = new Uint8ClampedArray(imageData.data);
     const width = imageData.width;
     const height = imageData.height;
+
+    console.log('🔧 Fallback: Processing on main thread with performance optimizations');
 
     // Only process if color removal is enabled
     if (settings.enabled) {
@@ -274,9 +315,10 @@ export const useImageProcessor = () => {
         const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
 
         if (settings.contiguous) {
-          // Contiguous removal starting from top-left corner
+          // Contiguous removal starting from top-left corner with performance optimization
           const visited = new Set<string>();
           const stack = [[0, 0]];
+          let processedPixels = 0;
           
           const isColorSimilar = (r: number, g: number, b: number) => {
             const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
@@ -302,9 +344,16 @@ export const useImageProcessor = () => {
             
             // Add neighbors to stack
             stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            
+            // Performance optimization: yield control every 1000 pixels
+            processedPixels++;
+            if (processedPixels % 1000 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 0));
+            }
           }
         } else {
-          // Simple non-contiguous removal for auto mode
+          // Simple non-contiguous removal for auto mode with performance optimization
+          const totalPixels = data.length / 4;
           for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
             const g = data[i + 1];
@@ -314,6 +363,11 @@ export const useImageProcessor = () => {
             
             if (distance <= threshold) {
               data[i + 3] = 0; // Make transparent
+            }
+            
+            // Performance optimization: yield control every 10000 pixels
+            if ((i / 4) % 10000 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 0));
             }
           }
         }
@@ -341,7 +395,8 @@ export const useImageProcessor = () => {
           });
         });
 
-        // Process each pixel against all target colors (always non-contiguous in manual mode)
+        // Process each pixel against all target colors (always non-contiguous in manual mode) with performance optimization
+        const totalPixels = data.length / 4;
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
@@ -356,6 +411,11 @@ export const useImageProcessor = () => {
               data[i + 3] = 0; // Make transparent
               break; // No need to check other colors once removed
             }
+          }
+          
+          // Performance optimization: yield control every 5000 pixels  
+          if ((i / 4) % 5000 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
           }
         }
       }

@@ -145,19 +145,26 @@ const applyImageEffects = (imageData: ImageData, settings: any): ImageData => {
 };
 
 const processColorRemoval = (imageData: ImageData, settings: any): ImageData => {
+  console.log('🔧 Worker: Processing color removal with settings:', { enabled: settings.enabled, mode: settings.mode, contiguous: settings.contiguous });
+  
   const data = new Uint8ClampedArray(imageData.data);
   const width = imageData.width;
   const height = imageData.height;
 
-  if (!settings.enabled) return new ImageData(data, width, height);
+  if (!settings.enabled) {
+    console.log('🚫 Worker: Color removal disabled, returning original data');
+    return new ImageData(data, width, height);
+  }
 
   if (settings.mode === 'auto') {
+    console.log('🎯 Worker: Auto mode processing');
     const targetR = data[0];
     const targetG = data[1];
     const targetB = data[2];
     const threshold = settings.threshold * 2.5;
 
     if (settings.contiguous) {
+      console.log('🌊 Worker: Contiguous flood fill processing');
       // Contiguous removal with flood fill
       const visited = new Set<string>();
       const stack = [[0, 0]];
@@ -186,6 +193,7 @@ const processColorRemoval = (imageData: ImageData, settings: any): ImageData => 
         stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
       }
     } else {
+      console.log('🎨 Worker: Non-contiguous auto removal');
       // Non-contiguous removal
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
@@ -200,6 +208,7 @@ const processColorRemoval = (imageData: ImageData, settings: any): ImageData => 
       }
     }
   } else {
+    console.log('✋ Worker: Manual mode processing');
     // Manual mode
     let colorsToRemove = [];
     
@@ -238,12 +247,14 @@ const processColorRemoval = (imageData: ImageData, settings: any): ImageData => 
     }
   }
 
+  console.log('✅ Worker: Color removal processing complete');
   return new ImageData(data, width, height);
 };
 
 // Main message handler
 self.onmessage = (event: MessageEvent<WorkerMessage>) => {
   const { type, data, id } = event.data;
+  console.log(`📨 Worker received message: ${type} with id ${id}`);
   
   try {
     let result: ImageData;
@@ -262,12 +273,14 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
         throw new Error(`Unknown worker task type: ${type}`);
     }
     
+    console.log(`📤 Worker sending success response for ${type} with id ${id}`);
     self.postMessage({
       type: 'success',
       data: result,
       id
     } as WorkerResponse);
   } catch (error) {
+    console.log(`💥 Worker error for ${type} with id ${id}:`, error);
     self.postMessage({
       type: 'error',
       data: null,
