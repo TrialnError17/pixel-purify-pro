@@ -2,7 +2,7 @@ import React from 'react';
 
 export const RightSidebar: React.FC = () => {
   return (
-    <div className="w-64 lg:w-80 xl:w-96 bg-gradient-panel border-l border-border flex flex-col">
+    <div className="w-96 bg-gradient-panel border-l border-border flex flex-col">
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold text-muted-foreground">
           Advertisement Space

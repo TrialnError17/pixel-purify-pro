@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings, EdgeCleanupSettings } from '@/pages/Index';
+import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings } from '@/pages/Index';
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { 
   Move, 
@@ -16,13 +16,11 @@ import {
   ChevronRight,
   Download,
   Wand,
-  Undo,
-  Redo
+  Undo
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MainCanvasProps {
-  disabled?: boolean;
   image: ImageItem | undefined;
   tool: 'pan' | 'color-stack' | 'magic-wand';
   onToolChange: (tool: 'pan' | 'color-stack' | 'magic-wand') => void;
@@ -30,7 +28,6 @@ interface MainCanvasProps {
   contiguousSettings: ContiguousToolSettings;
   effectSettings: EffectSettings;
   speckleSettings: SpeckleSettings;
-  edgeCleanupSettings: EdgeCleanupSettings;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -40,13 +37,12 @@ interface MainCanvasProps {
   currentImageIndex: number;
   totalImages: number;
   onDownloadImage: (image: ImageItem) => void;
-  addUndoAction?: (action: { type: string; description: string; undo: () => void; redo?: () => void }) => void;
+  addUndoAction?: (action: { type: string; description: string; undo: () => void }) => void;
   
   onSpeckCountUpdate?: (count: number) => void;
 }
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({
-  disabled = false,
   image,
   tool,
   onToolChange,
@@ -54,7 +50,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   contiguousSettings,
   effectSettings,
   speckleSettings,
-  edgeCleanupSettings,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -76,17 +71,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const [undoStack, setUndoStack] = useState<ImageData[]>([]);
-  const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const hasManualEditsRef = useRef(false);
   const [manualImageData, setManualImageData] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previousTool, setPreviousTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isSpacePressed, setIsSpacePressed] = useState(false);
-  
-  // Triple-click detection state
-  const [clickCount, setClickCount] = useState(0);
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Color processing functions
   const calculateColorDistance = useCallback((r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number => {
@@ -94,25 +84,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const dg = g1 - g2;
     const db = b1 - b2;
     return Math.sqrt(dr * dr + dg * dg + db * db);
-  }, []);
-
-  // Helper function to compare ImageData objects
-  const areImageDataEqual = useCallback((data1: ImageData, data2: ImageData): boolean => {
-    if (data1.width !== data2.width || data1.height !== data2.height) {
-      return false;
-    }
-    
-    // Sample comparison - check every 10th pixel for performance
-    const step = 40; // Check every 10th pixel (4 bytes per pixel)
-    for (let i = 0; i < data1.data.length; i += step) {
-      if (data1.data[i] !== data2.data[i] ||
-          data1.data[i + 1] !== data2.data[i + 1] ||
-          data1.data[i + 2] !== data2.data[i + 2] ||
-          data1.data[i + 3] !== data2.data[i + 3]) {
-        return false;
-      }
-    }
-    return true;
   }, []);
 
   const processImageData = useCallback((imageData: ImageData, settings: ColorRemovalSettings, effects: EffectSettings): ImageData => {
@@ -217,7 +188,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       }
 
       // Apply minimum region size filtering
-      if (settings.minRegionEnabled && settings.minRegionSize > 0) {
+      if (settings.minRegionSize > 0) {
         const alphaData = new Uint8ClampedArray(width * height);
         
         // Extract alpha channel
@@ -317,231 +288,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     }
     }
 
-    // Apply image effects at the end of the processing chain
-    if (effects.imageEffects.enabled) {
-      console.log('Applying image effects:', effects.imageEffects);
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) continue; // Skip transparent pixels
-        
-        let r = data[i];
-        let g = data[i + 1];
-        let b = data[i + 2];
-
-        // Apply brightness
-        if (effects.imageEffects.brightness !== 0) {
-          const brightness = effects.imageEffects.brightness * 2.55; // Scale to 0-255
-          r = Math.max(0, Math.min(255, r + brightness));
-          g = Math.max(0, Math.min(255, g + brightness));
-          b = Math.max(0, Math.min(255, b + brightness));
-        }
-
-        // Apply contrast
-        if (effects.imageEffects.contrast !== 0) {
-          const contrast = (effects.imageEffects.contrast + 100) / 100; // Convert to multiplier
-          r = Math.max(0, Math.min(255, ((r - 128) * contrast) + 128));
-          g = Math.max(0, Math.min(255, ((g - 128) * contrast) + 128));
-          b = Math.max(0, Math.min(255, ((b - 128) * contrast) + 128));
-        }
-
-        // Apply vibrance (enhance muted colors)
-        if (effects.imageEffects.vibrance !== 0) {
-          const max = Math.max(r, g, b);
-          const avg = (r + g + b) / 3;
-          const amt = ((Math.abs(max - avg) * 2 / 255) * (effects.imageEffects.vibrance / 100));
-          
-          if (r !== max) r += (max - r) * amt;
-          if (g !== max) g += (max - g) * amt;
-          if (b !== max) b += (max - b) * amt;
-          
-          r = Math.max(0, Math.min(255, r));
-          g = Math.max(0, Math.min(255, g));
-          b = Math.max(0, Math.min(255, b));
-        }
-
-        // Apply hue shift
-        if (effects.imageEffects.hue !== 0) {
-          const [h, s, l] = rgbToHsl(r, g, b);
-          const newHue = (h + effects.imageEffects.hue) % 360;
-          [r, g, b] = hslToRgb(newHue, s, l);
-        }
-
-        // Apply colorize
-        if (effects.imageEffects.colorize.enabled) {
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          const [colorR, colorG, colorB] = hslToRgb(
-            effects.imageEffects.colorize.hue,
-            effects.imageEffects.colorize.saturation / 100,
-            effects.imageEffects.colorize.lightness / 100
-          );
-          
-          // Blend with original based on lightness
-          const blend = 0.5;
-          r = Math.max(0, Math.min(255, gray * (1 - blend) + colorR * blend));
-          g = Math.max(0, Math.min(255, gray * (1 - blend) + colorG * blend));
-          b = Math.max(0, Math.min(255, gray * (1 - blend) + colorB * blend));
-        }
-
-        // Apply black and white
-        if (effects.imageEffects.blackAndWhite) {
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          r = g = b = gray;
-        }
-
-        // Apply invert
-        if (effects.imageEffects.invert) {
-          r = 255 - r;
-          g = 255 - g;
-          b = 255 - b;
-        }
-
-        data[i] = Math.round(r);
-        data[i + 1] = Math.round(g);
-        data[i + 2] = Math.round(b);
-      }
-    }
-
     return new ImageData(data, width, height);
   }, [calculateColorDistance]);
-
-  // Helper functions for HSL conversion
-  const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const diff = max - min;
-    
-    let h = 0;
-    let s = 0;
-    const l = (max + min) / 2;
-    
-    if (diff !== 0) {
-      s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
-      
-      switch (max) {
-        case r: h = (g - b) / diff + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / diff + 2; break;
-        case b: h = (r - g) / diff + 4; break;
-      }
-      h /= 6;
-    }
-    
-    return [h * 360, s, l];
-  };
-
-  const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
-    h /= 360;
-    
-    const hue2rgb = (p: number, q: number, t: number) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    
-    if (s === 0) {
-      const gray = l * 255;
-      return [gray, gray, gray];
-    }
-    
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    
-    const r = hue2rgb(p, q, h + 1/3) * 255;
-    const g = hue2rgb(p, q, h) * 255;
-    const b = hue2rgb(p, q, h - 1/3) * 255;
-    
-    return [r, g, b];
-  };
-
-  // Edge cleanup processing function
-  const processEdgeCleanup = useCallback((imageData: ImageData, settings: EdgeCleanupSettings): ImageData => {
-    if (!settings.enabled || settings.trimRadius === 0) {
-      return imageData;
-    }
-
-    const data = new Uint8ClampedArray(imageData.data);
-    const width = imageData.width;
-    const height = imageData.height;
-    const radius = settings.trimRadius;
-
-    // Create a map of pixels to be made transparent
-    const toTransparent = new Set<number>();
-
-    // Function to check if a pixel is on an edge (next to transparent or border)
-    const isEdgePixel = (x: number, y: number): boolean => {
-      const index = (y * width + x) * 4;
-      
-      // Skip if already transparent
-      if (data[index + 3] === 0) return false;
-      
-      // Check if at image border
-      if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-        return true;
-      }
-      
-      // Check surrounding pixels for transparency
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          
-          const nx = x + dx;
-          const ny = y + dy;
-          
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            const neighborIndex = (ny * width + nx) * 4;
-            if (data[neighborIndex + 3] === 0) {
-              return true;
-            }
-          }
-        }
-      }
-      
-      return false;
-    };
-
-    // Find all edge pixels
-    const edgePixels: Array<{x: number, y: number}> = [];
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (isEdgePixel(x, y)) {
-          edgePixels.push({x, y});
-        }
-      }
-    }
-
-    // For each edge pixel, mark pixels within radius for transparency
-    edgePixels.forEach(({x, y}) => {
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const nx = x + dx;
-          const ny = y + dy;
-          
-          // Check if within image bounds
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            // Check if within circular radius
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance <= radius) {
-              const pixelIndex = ny * width + nx;
-              toTransparent.add(pixelIndex);
-            }
-          }
-        }
-      }
-    });
-
-    // Apply transparency to marked pixels
-    toTransparent.forEach(pixelIndex => {
-      const dataIndex = pixelIndex * 4;
-      data[dataIndex + 3] = 0; // Make transparent
-    });
-
-    return new ImageData(data, width, height);
-  }, []);
 
   // Load original image and store image data
   useEffect(() => {
@@ -562,22 +310,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     // If we have manual edits and processedData, use that instead of reloading
     if (hasManualEditsRef.current && image.processedData && manualImageData) {
       console.log('Preserving manual edits, using processedData');
-      // Use requestAnimationFrame to ensure smooth update
-      requestAnimationFrame(() => {
-        ctx.putImageData(image.processedData!, 0, 0);
-        setLastProcessedImageData(image.processedData!);
-      });
+      ctx.putImageData(image.processedData, 0, 0);
       return;
     }
 
     // If image has processedData and no manual edits, use that
     if (image.processedData && !hasManualEditsRef.current) {
       console.log('Using existing processedData');
-      // Use requestAnimationFrame to ensure smooth update
-      requestAnimationFrame(() => {
-        ctx.putImageData(image.processedData!, 0, 0);
-        setLastProcessedImageData(image.processedData!);
-      });
+      ctx.putImageData(image.processedData, 0, 0);
       
       // Store as original data if not set
       if (!originalImageData) {
@@ -605,7 +345,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       hasManualEditsRef.current = false;
       setManualImageData(null);
       setUndoStack([]);
-      setRedoStack([]);
       
       // Update image with original data if not already set
       if (!image.originalData) {
@@ -638,60 +377,24 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [image]);
 
-  // Debounced processing state to prevent flashing
-  const [debouncedProcessing, setDebouncedProcessing] = useState(false);
-  const [lastProcessedImageData, setLastProcessedImageData] = useState<ImageData | null>(null);
-  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Debounced processing to prevent flashing - increased to 300ms as requested
+  // Debounced processing to prevent flashing
   const debouncedProcessImageData = useCallback((imageData: ImageData, colorSettings: ColorRemovalSettings, effectSettings: EffectSettings) => {
     return new Promise<ImageData>((resolve) => {
-      // Clear any existing timeout
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-      }
-      
-      setDebouncedProcessing(true);
-      
-      processingTimeoutRef.current = setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         const result = processImageData(imageData, colorSettings, effectSettings);
-        setDebouncedProcessing(false);
         resolve(result);
-      }, 300); // 300ms debounce as requested
+      }, 50); // 50ms debounce
+      
+      // Return cleanup function
+      return () => clearTimeout(timeoutId);
     });
   }, [processImageData]);
 
   // Process and display image when settings change (but not if there are manual edits or manual mode is active)
   useEffect(() => {
-    console.log('Processing useEffect triggered:', {
-      hasOriginalImageData: !!originalImageData,
-      hasCanvas: !!canvasRef.current,
-      hasManualEdits: hasManualEditsRef.current,
-      isProcessing,
-      colorSettingsEnabled: colorSettings.enabled,
-      backgroundEnabled: effectSettings.background.enabled,
-      inkStampEnabled: effectSettings.inkStamp.enabled,
-      hasProcessedData: !!image?.processedData
-    });
-    
-    if (!originalImageData || !canvasRef.current) {
-      console.log('Early return due to missing requirements');
+    if (!originalImageData || !canvasRef.current || hasManualEditsRef.current || isProcessing) {
       return;
     }
-    
-    // Skip auto-processing if we already have processed data and no settings changed
-    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !effectSettings.imageEffects.enabled) {
-      console.log('Skipping processing - no effects enabled');
-      return;
-    }
-    
-    console.log('Processing conditions met:', {
-      hasProcessedData: !!image?.processedData,
-      colorRemovalEnabled: colorSettings.enabled,
-      backgroundEnabled: effectSettings.background.enabled,
-      inkStampEnabled: effectSettings.inkStamp.enabled,
-      imageEffectsEnabled: effectSettings.imageEffects.enabled
-    });
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -700,69 +403,26 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     console.log('Auto-processing triggered');
     setIsProcessing(true);
 
-    // Store the current processed image data before starting new processing
-    // This prevents the original image from flashing during processing
-    if (!debouncedProcessing && !lastProcessedImageData) {
-      const currentCanvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setLastProcessedImageData(currentCanvasData);
-    }
-    
-    // During debounced processing, keep the last processed image visible
-    // Don't allow the canvas to revert to original image
-    if (debouncedProcessing && lastProcessedImageData) {
-      requestAnimationFrame(() => {
-        ctx.putImageData(lastProcessedImageData, 0, 0);
-      });
-      setIsProcessing(false);
-      return;
-    }
-
-    // Use manual image data if available and there are manual edits, otherwise original
-    // If color removal or effects are enabled, always process from the base data
-    const baseImageData = (hasManualEditsRef.current && manualImageData) ? manualImageData : originalImageData;
+    // Use manual image data if available, otherwise original
+    const baseImageData = manualImageData || originalImageData;
 
     // Use debounced processing to prevent rapid updates
     debouncedProcessImageData(baseImageData, colorSettings, effectSettings).then((processedData) => {
-      console.log('Debounced processing completed, applying result');
-      console.log('Color settings enabled:', colorSettings.enabled);
-      console.log('Processing result size:', processedData.width, 'x', processedData.height);
-      // Only apply if we're still on the same canvas
-      if (canvasRef.current === canvas) {
+      // Only apply if we're still on the same canvas and no manual edits occurred during processing
+      if (canvasRef.current === canvas && !hasManualEditsRef.current) {
         console.log('Applying auto-processed data');
         
         // Apply speckle processing if enabled
         if (speckleSettings.enabled) {
           const speckleResult = processSpecks(processedData, speckleSettings);
-          processedData = speckleResult.processedData;
+          ctx.putImageData(speckleResult.processedData, 0, 0);
           
           // Update speck count if callback is provided
           if (onSpeckCountUpdate) {
             onSpeckCountUpdate(speckleResult.speckCount);
           }
-        }
-        
-        // Apply edge cleanup processing if enabled
-        if (edgeCleanupSettings.enabled) {
-          processedData = processEdgeCleanup(processedData, edgeCleanupSettings);
-        }
-        
-        // Only update canvas if the processed data is different
-        const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const isDifferent = !areImageDataEqual(currentData, processedData);
-        
-        if (isDifferent) {
-          // Use requestAnimationFrame to ensure smooth canvas update
-          requestAnimationFrame(() => {
-            ctx.putImageData(processedData, 0, 0);
-            // Update our stored processed image data
-            setLastProcessedImageData(processedData);
-          });
-        }
-        
-        // Update the image object with the new processed data
-        if (image) {
-          const updatedImage = { ...image, processedData };
-          onImageUpdate(updatedImage);
+        } else {
+          ctx.putImageData(processedData, 0, 0);
         }
       } else {
         console.log('Skipping auto-processed data application');
@@ -773,14 +433,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       setIsProcessing(false);
     });
 
-    // Cleanup function to clear timeout on unmount or dependency change
-    return () => {
-      if (processingTimeoutRef.current) {
-        clearTimeout(processingTimeoutRef.current);
-        processingTimeoutRef.current = null;
-      }
-    };
-  }, [originalImageData, colorSettings, effectSettings, speckleSettings, edgeCleanupSettings, manualImageData, debouncedProcessImageData, processSpecks, processEdgeCleanup, onSpeckCountUpdate, debouncedProcessing, image, onImageUpdate]);
+  }, [originalImageData, colorSettings, effectSettings, speckleSettings, manualImageData, debouncedProcessImageData, processSpecks, onSpeckCountUpdate]);
 
   // Keyboard shortcut for spacebar (pan tool)
   useEffect(() => {
@@ -812,70 +465,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     };
   }, [tool, isSpacePressed, previousTool, onToolChange]);
 
-  // Keyboard shortcuts for undo/redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+Z for undo
-      if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      }
-      // Ctrl+Shift+Z for redo
-      else if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [undoStack, redoStack]);
-
-  // Define handleFitToScreen before it's used in handleCanvasClick
-  const handleFitToScreen = useCallback(() => {
-    if (!containerRef.current || !canvasRef.current) return;
-    
-    const container = containerRef.current;
-    const canvas = canvasRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const scaleX = (containerRect.width - 40) / canvas.width;
-    const scaleY = (containerRect.height - 40) / canvas.height;
-    const scale = Math.min(scaleX, scaleY, 1);
-    
-    // Calculate center position
-    const centerX = (containerRect.width - canvas.width * scale) / 2;
-    const centerY = (containerRect.height - canvas.height * scale) / 2;
-    
-    setZoom(scale);
-    setPan({ x: 0, y: 0 });
-    setCenterOffset({ x: centerX, y: centerY });
-  }, []);
-
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current || !image || !originalImageData || !containerRef.current) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    // Handle triple-click for fit to screen
-    setClickCount(prev => prev + 1);
-    
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
-    
-    clickTimeoutRef.current = setTimeout(() => {
-      if (clickCount + 1 >= 3) {
-        // Triple-click detected - fit to screen
-        handleFitToScreen();
-        setClickCount(0);
-        return;
-      }
-      setClickCount(0);
-    }, 400); // 400ms timeout for triple-click detection
 
     // Get container bounds for proper coordinate calculation
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -908,7 +503,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
-      setRedoStack([]); // Clear redo stack when new action is performed
       
       // Add global undo action
       if (addUndoAction && image) {
@@ -923,20 +517,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 ctx.putImageData(currentImageData, 0, 0);
                 const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const updatedImage = { ...image, processedData: newImageData };
-                hasManualEditsRef.current = true;
-                setManualImageData(newImageData);
                 onImageUpdate(updatedImage);
               }
-            }
-          },
-          redo: () => {
-            if (canvasRef.current && image) {
-              removePickedColor(ctx, r, g, b, 30);
-              const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const updatedImage = { ...image, processedData: newImageData };
-              hasManualEditsRef.current = true;
-              setManualImageData(newImageData);
-              onImageUpdate(updatedImage);
             }
           }
         });
@@ -971,7 +553,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       // Save current state for undo (both local canvas undo and global undo)
       const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setUndoStack(prev => [...prev, currentImageData]);
-      setRedoStack([]); // Clear redo stack when new action is performed
       
       // Add global undo action
       if (addUndoAction && image) {
@@ -986,23 +567,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 ctx.putImageData(currentImageData, 0, 0);
                 const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const updatedImage = { ...image, processedData: newImageData };
-                hasManualEditsRef.current = true;
-                setManualImageData(newImageData);
                 onImageUpdate(updatedImage);
-              }
-            }
-          },
-          redo: () => {
-            if (canvasRef.current && image) {
-              const canvas = canvasRef.current;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                removeContiguousColorIndependent(ctx, x, y, contiguousSettings.threshold || 30);
-                const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const updatedImage = { ...image, processedData: newImageData };
-                hasManualEditsRef.current = true;
-                setManualImageData(newImageData);
-                onImageUpdate(updatedImage);
+                // Reset manual edits state on undo
+                hasManualEditsRef.current = false;
+                setManualImageData(null);
               }
             }
           }
@@ -1033,7 +601,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
         }, 100);
       }
     }
-  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction, handleFitToScreen, clickCount]);
+  }, [image, originalImageData, tool, zoom, pan, centerOffset, colorSettings, contiguousSettings, onColorPicked, onImageUpdate, addUndoAction]);
 
   const removeContiguousColor = (ctx: CanvasRenderingContext2D, startX: number, startY: number, settings: ColorRemovalSettings) => {
     const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1210,20 +778,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       const factor = direction === 'in' ? 1.2 : 0.8;
       const newZoom = Math.max(0.1, Math.min(5, prev * factor));
       
-      // If no center coordinates provided (from button clicks), use container center
-      const containerRect = container.getBoundingClientRect();
-      const actualCenterX = centerX ?? containerRect.left + containerRect.width / 2;
-      const actualCenterY = centerY ?? containerRect.top + containerRect.height / 2;
-      
-      // Calculate mouse/center position relative to canvas
-      const centerCanvasX = (actualCenterX - containerRect.left - centerOffset.x - pan.x) / prev;
-      const centerCanvasY = (actualCenterY - containerRect.top - centerOffset.y - pan.y) / prev;
-      
-      // Calculate new pan to keep the center point centered
-      const newPanX = pan.x - (centerCanvasX * (newZoom - prev));
-      const newPanY = pan.y - (centerCanvasY * (newZoom - prev));
-      
-      setPan({ x: newPanX, y: newPanY });
+      // If center coordinates are provided (from wheel event), adjust pan to keep that point centered
+      if (centerX !== undefined && centerY !== undefined) {
+        const containerRect = container.getBoundingClientRect();
+        
+        // Calculate mouse position relative to canvas
+        const mouseCanvasX = (centerX - containerRect.left - centerOffset.x - pan.x) / prev;
+        const mouseCanvasY = (centerY - containerRect.top - centerOffset.y - pan.y) / prev;
+        
+        // Calculate new pan to keep the mouse position centered
+        const newPanX = pan.x - (mouseCanvasX * (newZoom - prev));
+        const newPanY = pan.y - (mouseCanvasY * (newZoom - prev));
+        
+        setPan({ x: newPanX, y: newPanY });
+      }
       
       return newZoom;
     });
@@ -1232,20 +800,11 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     
-    // Check for modifier keys
-    if (e.shiftKey) {
-      // Shift + scroll = pan up/down
-      const deltaY = e.deltaY * 0.5; // Adjust sensitivity
-      setPan(prev => ({ x: prev.x, y: prev.y - deltaY }));
-    } else if (e.altKey) {
-      // Alt + scroll = pan left/right
-      const deltaX = e.deltaY * 0.5; // Adjust sensitivity
-      setPan(prev => ({ x: prev.x - deltaX, y: prev.y }));
-    } else {
-      // Normal scroll = zoom
-      const direction = e.deltaY < 0 ? 'in' : 'out';
-      handleZoom(direction, e.clientX, e.clientY);
-    }
+    // Determine zoom direction based on wheel delta
+    const direction = e.deltaY < 0 ? 'in' : 'out';
+    
+    // Use mouse position as zoom center
+    handleZoom(direction, e.clientX, e.clientY);
   }, [handleZoom]);
 
   const handleUndo = useCallback(() => {
@@ -1257,10 +816,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     console.log('Local undo - restoring previous state');
     const previousState = undoStack[undoStack.length - 1];
-    const currentState = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
     setUndoStack(prev => prev.slice(0, -1));
-    setRedoStack(prev => [...prev, currentState]);
     
     // Restore the previous canvas state
     ctx.putImageData(previousState, 0, 0);
@@ -1270,42 +826,30 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const updatedImage = { ...image, processedData: restoredImageData };
     
     // Update manual image data to preserve the undo state
-    hasManualEditsRef.current = true;
     setManualImageData(restoredImageData);
     
     console.log('Local undo completed, undoStack length:', undoStack.length - 1);
     onImageUpdate(updatedImage);
   }, [undoStack, image, onImageUpdate]);
 
-  const handleRedo = useCallback(() => {
-    if (redoStack.length === 0 || !canvasRef.current || !image) return;
+  const handleFitToScreen = useCallback(() => {
+    if (!containerRef.current || !canvasRef.current) return;
     
+    const container = containerRef.current;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const containerRect = container.getBoundingClientRect();
+    const scaleX = (containerRect.width - 40) / canvas.width;
+    const scaleY = (containerRect.height - 40) / canvas.height;
+    const scale = Math.min(scaleX, scaleY, 1);
     
-    console.log('Local redo - restoring next state');
-    const nextState = redoStack[redoStack.length - 1];
-    const currentState = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    // Calculate center position
+    const centerX = (containerRect.width - canvas.width * scale) / 2;
+    const centerY = (containerRect.height - canvas.height * scale) / 2;
     
-    setRedoStack(prev => prev.slice(0, -1));
-    setUndoStack(prev => [...prev, currentState]);
-    
-    // Restore the next canvas state
-    ctx.putImageData(nextState, 0, 0);
-    
-    // Update the image with the restored state
-    const restoredImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const updatedImage = { ...image, processedData: restoredImageData };
-    
-    // Update manual image data to preserve the redo state
-    hasManualEditsRef.current = true;
-    setManualImageData(restoredImageData);
-    
-    console.log('Local redo completed, redoStack length:', redoStack.length - 1);
-    onImageUpdate(updatedImage);
-  }, [redoStack, image, onImageUpdate]);
-
+    setZoom(scale);
+    setPan({ x: 0, y: 0 });
+    setCenterOffset({ x: centerX, y: centerY });
+  }, []);
 
   const handleReset = useCallback(() => {
     if (!originalImageData || !canvasRef.current) return;
@@ -1318,7 +862,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     hasManualEditsRef.current = false;
     setManualImageData(null);
     setUndoStack([]);
-    setRedoStack([]);
     
     // Reprocess the original image with current settings
     const processedData = processImageData(originalImageData, colorSettings, effectSettings);
@@ -1354,13 +897,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     <div className="flex-1 flex flex-col bg-canvas-bg">
       {/* Toolbar */}
       <div className="h-12 bg-gradient-header border-b border-border flex items-center justify-between px-4">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* Navigation */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onPreviousImage}
-            disabled={!canGoPrevious || disabled}
+            disabled={!canGoPrevious}
             title="Previous image"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -1374,7 +917,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={onNextImage}
-            disabled={!canGoNext || disabled}
+            disabled={!canGoNext}
             title="Next image"
           >
             <ChevronRight className="w-4 h-4" />
@@ -1382,40 +925,27 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           
           <div className="w-px h-6 bg-border mx-2" />
           
-          {/* Undo/Redo */}
+          {/* Undo */}
           <Button
             variant="ghost"
             size="sm"
             onClick={handleUndo}
-            disabled={undoStack.length === 0 || disabled}
-            className="flex items-center gap-1"
-            title="Undo (Ctrl+Z)"
+            disabled={undoStack.length === 0}
+            className="flex items-center gap-2"
+            title="Undo last manual edit"
           >
             <Undo className="w-4 h-4" />
             Undo
           </Button>
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRedo}
-            disabled={redoStack.length === 0 || disabled}
-            className="flex items-center gap-1"
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            <Redo className="w-4 h-4" />
-            Redo
-          </Button>
-          
-          <div className="w-px h-6 bg-border mx-1" />
+          <div className="w-px h-6 bg-border mx-2" />
           
           {/* Tools */}
           <Button
             variant={tool === 'pan' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('pan')}
-            disabled={disabled}
-            className="flex items-center gap-1"
+            className="flex items-center gap-2"
           >
             <Move className="w-4 h-4" />
             Move
@@ -1425,8 +955,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'color-stack' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('color-stack')}
-            disabled={disabled}
-            className="flex items-center gap-1"
+            className="flex items-center gap-2"
           >
             <Pipette className="w-4 h-4" />
             Color Stack
@@ -1437,8 +966,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant={tool === 'magic-wand' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onToolChange('magic-wand')}
-            disabled={disabled}
-            className="flex items-center gap-1"
+            className="flex items-center gap-2"
             title="Magic Wand - Remove connected pixels"
           >
             <Wand className="w-4 h-4" />
@@ -1446,21 +974,17 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           </Button>
         </div>
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => handleZoom('out')}
-            disabled={zoom <= 0.1 || disabled}
+            disabled={zoom <= 0.1}
           >
             <ZoomOut className="w-4 h-4" />
           </Button>
           
-          <span 
-            className="text-sm text-muted-foreground min-w-12 text-center cursor-pointer hover:text-primary transition-colors"
-            onDoubleClick={handleFitToScreen}
-            title="Double-click to fit to screen"
-          >
+          <span className="text-sm text-muted-foreground min-w-16 text-center">
             {Math.round(zoom * 100)}%
           </span>
           
@@ -1468,7 +992,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => handleZoom('in')}
-            disabled={zoom >= 5 || disabled}
+            disabled={zoom >= 5}
           >
             <ZoomIn className="w-4 h-4" />
           </Button>
@@ -1477,7 +1001,6 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleFitToScreen}
-            disabled={disabled}
           >
             <Maximize className="w-4 h-4" />
           </Button>
@@ -1485,24 +1008,31 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           <Button
             variant="ghost"
             size="sm"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleReset}
-            disabled={(!hasManualEditsRef.current && !manualImageData) || disabled}
-            title="Reset image"
+            disabled={!hasManualEditsRef.current && !manualImageData}
+            title="Reset to automatic processing"
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
           
           {image && (
             <Button
-              variant="default"
+              variant="ghost"
               size="sm"
               onClick={handleDownload}
-              disabled={!image || disabled}
+              disabled={!image}
               title="Download PNG"
-              className="flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
-              Download
             </Button>
           )}
         </div>

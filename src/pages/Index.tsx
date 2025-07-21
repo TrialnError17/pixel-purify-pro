@@ -9,8 +9,6 @@ import { useUndoManager } from '@/hooks/useUndoManager';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
 
-console.log('Index.tsx is loading');
-
 export interface ImageItem {
   id: string;
   file: File;
@@ -36,7 +34,6 @@ export interface ColorRemovalSettings {
   threshold: number;
   contiguous: boolean;
   minRegionSize: number;
-  minRegionEnabled: boolean;
   pickedColors: PickedColor[];
 }
 
@@ -51,29 +48,9 @@ export interface EffectSettings {
     color: string;
     threshold: number;
   };
-  imageEffects: {
-    enabled: boolean;
-    brightness: number;
-    contrast: number;
-    vibrance: number;
-    hue: number;
-    colorize: {
-      enabled: boolean;
-      hue: number;
-      lightness: number;
-      saturation: number;
-    };
-    blackAndWhite: boolean;
-    invert: boolean;
-  };
   download: {
     trimTransparentPixels: boolean;
   };
-}
-
-export interface EdgeCleanupSettings {
-  enabled: boolean;
-  trimRadius: number;
 }
 
 export interface ContiguousToolSettings {
@@ -81,17 +58,12 @@ export interface ContiguousToolSettings {
 }
 
 const Index = () => {
-  console.log('Index component is rendering');
   const [images, setImages] = useState<ImageItem[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [queueVisible, setQueueVisible] = useState(true);
   const [currentTool, setCurrentTool] = useState<'pan' | 'color-stack' | 'magic-wand'>('pan');
   const [isProcessing, setIsProcessing] = useState(false);
   const [singleImageProgress, setSingleImageProgress] = useState<{ imageId: string; progress: number } | null>(null);
-  const [isQueueFullscreen, setIsQueueFullscreen] = useState(false);
-  
-  // Check if any individual image is being processed (for disabling controls)
-  const isAnyImageProcessing = isProcessing || singleImageProgress !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -102,7 +74,6 @@ const Index = () => {
     threshold: 30,
     contiguous: false,
     minRegionSize: 100,
-    minRegionEnabled: false,
     pickedColors: []
   });
 
@@ -123,36 +94,16 @@ const Index = () => {
     background: {
       enabled: false,
       color: '#ffffff',
-      saveWithBackground: false,
+      saveWithBackground: false
     },
     inkStamp: {
       enabled: false,
       color: '#000000',
-      threshold: 50,
-    },
-    imageEffects: {
-      enabled: false,
-      brightness: 0,
-      contrast: 0,
-      vibrance: 0,
-      hue: 0,
-      colorize: {
-        enabled: false,
-        hue: 0,
-        lightness: 50,
-        saturation: 50,
-      },
-      blackAndWhite: false,
-      invert: false,
+      threshold: 50
     },
     download: {
-      trimTransparentPixels: false,
-    },
-  });
-
-  const [edgeCleanupSettings, setEdgeCleanupSettings] = useState<EdgeCleanupSettings>({
-    enabled: false,
-    trimRadius: 1
+      trimTransparentPixels: false
+    }
   });
 
   const { processImage, processAllImages, cancelProcessing, downloadImage } = useImageProcessor();
@@ -246,165 +197,128 @@ const Index = () => {
   }, [images, selectedImageId, addUndoAction]);
 
   return (
-    <div className="min-h-screen max-h-screen bg-background text-foreground flex overflow-hidden">
-      {/* Main App Content */}
-      <div 
-        className="flex-1 flex flex-col overflow-hidden"
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-      >
-        <Header 
-          onAddImages={handleFileInput}
-          onAddFolder={handleFolderInput}
-          onDownloadPNG={() => {
-            if (selectedImage) {
-              const prevImages = [...images];
-              const wasQueueVisible = queueVisible;
-              
-              // Show queue for progress feedback
-              setQueueVisible(true);
-              
-              // Add undo action before processing
-              addUndoAction({
-                type: 'batch_operation',
-                description: `Download ${selectedImage.name}`,
-                undo: () => {
-                  setImages(prevImages);
-                  setIsProcessing(false);
-                  setQueueVisible(wasQueueVisible);
-                }
-              });
-              
-              setIsProcessing(true);
-              processImage(selectedImage, colorSettings, effectSettings, setImages).finally(() => {
+    <div 
+      className="h-screen bg-background text-foreground flex flex-col overflow-hidden"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+    >
+      <Header 
+        onAddImages={handleFileInput}
+        onAddFolder={handleFolderInput}
+        onDownloadPNG={() => {
+          if (selectedImage) {
+            const prevImages = [...images];
+            const wasQueueVisible = queueVisible;
+            
+            // Show queue for progress feedback
+            setQueueVisible(true);
+            
+            // Add undo action before processing
+            addUndoAction({
+              type: 'batch_operation',
+              description: `Download ${selectedImage.name}`,
+              undo: () => {
+                setImages(prevImages);
                 setIsProcessing(false);
-                // Auto-hide queue after processing if it wasn't visible before
-                if (!wasQueueVisible) {
-                  setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
-                }
-              });
-            }
-          }}
-          canDownload={selectedImage?.status === 'completed'}
-          onUndo={undo}
-          onRedo={redo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          isProcessing={isProcessing}
-          processingProgress={
-            isProcessing 
-                ? {
-                  current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                  total: images.length
-                }
-              : undefined
-          }
-        />
-        
-        <div className="flex flex-1 min-h-0 overflow-hidden relative">
-          {/* Left Tools Sidebar - Full Height with disabled state */}
-          <LeftSidebar 
-            disabled={isAnyImageProcessing}
-            settings={colorSettings}
-            onSettingsChange={(newSettings) => {
-              const prevSettings = { ...colorSettings };
-              setColorSettings(newSettings);
-              
-              // Add undo action for settings changes
-              addUndoAction({
-                type: 'settings',
-                description: 'Change color removal settings',
-                undo: () => setColorSettings(prevSettings)
-              });
-            }}
-            speckleSettings={speckleSettings}
-            onSpeckleSettingsChange={(newSpeckleSettings) => {
-              const prevSpeckleSettings = { ...speckleSettings };
-              setSpeckleSettings(newSpeckleSettings);
-              
-              console.log('Speckle settings changed:', { 
-                enabled: newSpeckleSettings.enabled, 
-                highlight: newSpeckleSettings.highlightSpecks,
-                remove: newSpeckleSettings.removeSpecks,
-                hasProcessedData: !!selectedImage?.processedData,
-                hasOriginalData: !!selectedImage?.originalData 
-              });
-              
-              // Process speckles when settings change and image is selected
-              if (selectedImage?.processedData || selectedImage?.originalData) {
-                // Use processedData if available (includes color effects), otherwise fall back to originalData
-                const baseData = selectedImage.processedData || selectedImage.originalData!;
-                
-                // Create a fresh copy to avoid modifying the original
-                const cleanBaseData = new ImageData(
-                  new Uint8ClampedArray(baseData.data),
-                  baseData.width,
-                  baseData.height
-                );
-                
-                console.log('Processing speckles from', selectedImage.processedData ? 'processed' : 'original', 'data');
-                const result = processSpecks(cleanBaseData, newSpeckleSettings);
-                setSpeckCount(result.speckCount);
-                
-                // Update image with speckle processing result immediately
-                setImages(prev => prev.map(img => 
-                  img.id === selectedImage.id 
-                    ? { ...img, processedData: result.processedData }
-                    : img
-                ));
+                setQueueVisible(wasQueueVisible);
               }
-              
-              // Add undo action for speckle settings changes
-              addUndoAction({
-                type: 'settings',
-                description: 'Change speckle detection settings',
-                undo: () => setSpeckleSettings(prevSpeckleSettings)
-              });
-            }}
-            effectSettings={effectSettings}
-            onEffectSettingsChange={(newEffectSettings) => {
-              const prevEffectSettings = { ...effectSettings };
-              setEffectSettings(newEffectSettings);
-              
-              // Add undo action for effect settings changes
-              addUndoAction({
-                type: 'settings',
-                description: 'Change effect settings',
-                undo: () => setEffectSettings(prevEffectSettings)
-              });
-            }}
-            contiguousSettings={contiguousSettings}
-            onContiguousSettingsChange={(newContiguousSettings) => {
-              const prevContiguousSettings = { ...contiguousSettings };
-              setContiguousSettings(newContiguousSettings);
-              
-              // Add undo action for contiguous tool settings changes
-              addUndoAction({
-                type: 'settings',
-                description: 'Change magic wand tool settings',
-                undo: () => setContiguousSettings(prevContiguousSettings)
-              });
-            }}
-            edgeCleanupSettings={edgeCleanupSettings}
-            onEdgeCleanupSettingsChange={(newEdgeCleanupSettings) => {
-              const prevEdgeCleanupSettings = { ...edgeCleanupSettings };
-              setEdgeCleanupSettings(newEdgeCleanupSettings);
-              
-              // Add undo action for edge cleanup settings changes
-              addUndoAction({
-                type: 'settings',
-                description: 'Change edge cleanup settings',
-                undo: () => setEdgeCleanupSettings(prevEdgeCleanupSettings)
-              });
-            }}
-            onAddImages={handleFileInput}
-            onAddFolder={handleFolderInput}
-          />
-          
-          {/* Main Content Area - Canvas and Queue */}
-          <div className="flex flex-1 min-h-0 flex-col">
+            });
+            
+            setIsProcessing(true);
+            processImage(selectedImage, colorSettings, effectSettings, setImages).finally(() => {
+              setIsProcessing(false);
+              // Auto-hide queue after processing if it wasn't visible before
+              if (!wasQueueVisible) {
+                setTimeout(() => setQueueVisible(false), 1000); // Hide after 1 second
+              }
+            });
+          }
+        }}
+        canDownload={selectedImage?.status === 'completed'}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        isProcessing={isProcessing}
+        processingProgress={
+          isProcessing 
+              ? {
+                current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
+                total: images.length
+              }
+            : undefined
+        }
+      />
+      
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col">
+          <div className="flex flex-1 min-h-0">
+            <LeftSidebar 
+              settings={colorSettings}
+              onSettingsChange={(newSettings) => {
+                const prevSettings = { ...colorSettings };
+                setColorSettings(newSettings);
+                
+                // Add undo action for settings changes
+                addUndoAction({
+                  type: 'settings',
+                  description: 'Change color removal settings',
+                  undo: () => setColorSettings(prevSettings)
+                });
+              }}
+              speckleSettings={speckleSettings}
+              onSpeckleSettingsChange={(newSpeckleSettings) => {
+                const prevSpeckleSettings = { ...speckleSettings };
+                setSpeckleSettings(newSpeckleSettings);
+                
+                // Process speckles when settings change and image is selected
+                if (selectedImage?.processedData) {
+                  const result = processSpecks(selectedImage.processedData, newSpeckleSettings);
+                  setSpeckCount(result.speckCount);
+                  
+                  // Update image with speckle processing result
+                  setImages(prev => prev.map(img => 
+                    img.id === selectedImage.id 
+                      ? { ...img, processedData: result.processedData }
+                      : img
+                  ));
+                }
+                
+                // Add undo action for speckle settings changes
+                addUndoAction({
+                  type: 'settings',
+                  description: 'Change speckle tool settings',
+                  undo: () => setSpeckleSettings(prevSpeckleSettings)
+                });
+              }}
+              speckCount={speckCount}
+              effectSettings={effectSettings}
+              onEffectSettingsChange={(newSettings) => {
+                const prevSettings = { ...effectSettings };
+                setEffectSettings(newSettings);
+                
+                // Add undo action for effect settings changes
+                addUndoAction({
+                  type: 'settings',
+                  description: 'Change effect settings',
+                  undo: () => setEffectSettings(prevSettings)
+                });
+              }}
+              contiguousSettings={contiguousSettings}
+              onContiguousSettingsChange={(newContiguousSettings) => {
+                const prevContiguousSettings = { ...contiguousSettings };
+                setContiguousSettings(newContiguousSettings);
+                
+                // Add undo action for magic wand settings changes
+                addUndoAction({
+                  type: 'settings',
+                  description: 'Change magic wand tool settings',
+                  undo: () => setContiguousSettings(prevContiguousSettings)
+                });
+              }}
+            />
+            
             <MainCanvas 
-              disabled={isAnyImageProcessing}
               image={selectedImage}
               tool={currentTool}
               onToolChange={setCurrentTool}
@@ -412,7 +326,6 @@ const Index = () => {
               contiguousSettings={contiguousSettings}
               effectSettings={effectSettings}
               speckleSettings={speckleSettings}
-              edgeCleanupSettings={edgeCleanupSettings}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 
@@ -439,123 +352,119 @@ const Index = () => {
               totalImages={images.length}
               onDownloadImage={() => {
                 if (selectedImage) {
-                  downloadImage(selectedImage, colorSettings, effectSettings, setSingleImageProgress);
+                  downloadImage(selectedImage, colorSettings, effectSettings);
                 }
               }}
               addUndoAction={addUndoAction}
               onSpeckCountUpdate={(count) => setSpeckCount(count)}
             />
-            
-            {/* Image Queue - At bottom between sidebars */}
-            <ImageQueue 
-              images={images}
-              selectedImageId={selectedImageId}
-              visible={queueVisible}
-              onToggleVisible={() => setQueueVisible(!queueVisible)}
-              onSelectImage={setSelectedImageId}
-              singleImageProgress={singleImageProgress}
-              processingProgress={
-                isProcessing 
-                    ? {
-                      current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
-                      total: images.filter(img => img.status !== 'error').length
-                    }
-                  : undefined
-              }
-              isFullscreen={isQueueFullscreen}
-              onSetFullscreen={setIsQueueFullscreen}
-              onRemoveImage={(imageId) => {
-                const targetImage = images.find(img => img.id === imageId);
-                if (!targetImage) return;
-                
-                const prevImages = [...images];
-                const prevSelectedId = selectedImageId;
-                
-                // Remove the image
-                setImages(prev => prev.filter(img => img.id !== imageId));
-                
-                // If removing selected image, select the next one or previous one
-                if (selectedImageId === imageId) {
-                  const currentIndex = images.findIndex(img => img.id === imageId);
-                  const remainingImages = images.filter(img => img.id !== imageId);
-                  
-                  if (remainingImages.length > 0) {
-                    // Select next image, or previous if we're at the end
-                    const nextIndex = currentIndex < remainingImages.length ? currentIndex : currentIndex - 1;
-                    setSelectedImageId(remainingImages[nextIndex]?.id || null);
-                  } else {
-                    setSelectedImageId(null);
-                  }
-                }
-                
-                // Add undo action
-                addUndoAction({
-                  type: 'canvas_edit',
-                  description: `Remove ${targetImage.name}`,
-                  undo: () => {
-                    setImages(prevImages);
-                    setSelectedImageId(prevSelectedId);
-                  }
-                });
-              }}
-              onProcessAll={() => {
-                const prevImages = [...images];
-                
-                // Add undo action for batch processing
-                addUndoAction({
-                  type: 'batch_operation',
-                  description: `Process ${images.length} image${images.length !== 1 ? 's' : ''}`,
-                  undo: () => {
-                    setImages(prevImages);
-                  }
-                });
-                
-                setIsProcessing(true);
-                processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
-                  setIsProcessing(false);
-                });
-              }}
-              onProcessImage={(image) => {
-                setIsProcessing(true);
-                processImage(image, colorSettings, effectSettings, setImages).then(() => {
-                  // After processing is complete, automatically download the image
-                  // Find the processed image in the updated state
-                  setImages(currentImages => {
-                    const processedImage = currentImages.find(img => img.id === image.id);
-                     if (processedImage && processedImage.status === 'completed') {
-                       // Trigger download
-                       downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
-                     }
-                    return currentImages;
-                  });
-                }).finally(() => {
-                  setIsProcessing(false);
-                });
-              }}
-              onCancelProcessing={() => {
-                cancelProcessing();
-                setIsProcessing(false);
-                // Removed cancel toast
-              }}
-              isProcessing={isProcessing}
-              forceFullscreen={isProcessing}
-              onClearAll={handleClearAll}
-            />
           </div>
+          
+          <ImageQueue 
+            images={images}
+            selectedImageId={selectedImageId}
+            visible={queueVisible}
+            onToggleVisible={() => setQueueVisible(!queueVisible)}
+            onSelectImage={setSelectedImageId}
+            singleImageProgress={singleImageProgress}
+            processingProgress={
+              isProcessing 
+                  ? {
+                    current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
+                    total: images.filter(img => img.status !== 'error').length
+                  }
+                : undefined
+            }
+            onRemoveImage={(imageId) => {
+              const targetImage = images.find(img => img.id === imageId);
+              if (!targetImage) return;
+              
+              const prevImages = [...images];
+              const prevSelectedId = selectedImageId;
+              
+              // Remove the image
+              setImages(prev => prev.filter(img => img.id !== imageId));
+              
+              // If removing selected image, select the next one or previous one
+              if (selectedImageId === imageId) {
+                const currentIndex = images.findIndex(img => img.id === imageId);
+                const remainingImages = images.filter(img => img.id !== imageId);
+                
+                if (remainingImages.length > 0) {
+                  // Select next image, or previous if we're at the end
+                  const nextIndex = currentIndex < remainingImages.length ? currentIndex : currentIndex - 1;
+                  setSelectedImageId(remainingImages[nextIndex]?.id || null);
+                } else {
+                  setSelectedImageId(null);
+                }
+              }
+              
+              // Add undo action
+              addUndoAction({
+                type: 'canvas_edit',
+                description: `Remove ${targetImage.name}`,
+                undo: () => {
+                  setImages(prevImages);
+                  setSelectedImageId(prevSelectedId);
+                }
+              });
+            }}
+            onProcessAll={() => {
+              const prevImages = [...images];
+              
+              // Add undo action for batch processing
+              addUndoAction({
+                type: 'batch_operation',
+                description: `Process ${images.length} image${images.length !== 1 ? 's' : ''}`,
+                undo: () => {
+                  setImages(prevImages);
+                }
+              });
+              
+              setIsProcessing(true);
+              processAllImages(images, colorSettings, effectSettings, setImages).finally(() => {
+                setIsProcessing(false);
+              });
+            }}
+            onProcessImage={(image) => {
+              setIsProcessing(true);
+              processImage(image, colorSettings, effectSettings, setImages).then(() => {
+                // After processing is complete, automatically download the image
+                // Find the processed image in the updated state
+                setImages(currentImages => {
+                  const processedImage = currentImages.find(img => img.id === image.id);
+                  if (processedImage && processedImage.status === 'completed') {
+                    // Trigger download
+                    downloadImage(processedImage, colorSettings, effectSettings);
+                  }
+                  return currentImages;
+                });
+              }).finally(() => {
+                setIsProcessing(false);
+              });
+            }}
+            onCancelProcessing={() => {
+              cancelProcessing();
+              setIsProcessing(false);
+              // Removed cancel toast
+            }}
+            isProcessing={isProcessing}
+            forceFullscreen={isProcessing}
+            onClearAll={handleClearAll}
+          />
         </div>
         
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={(e) => e.target.files && handleFilesSelected(e.target.files)}
-          className="hidden"
-        />
+        <RightSidebar />
       </div>
       
-      {/* Independent Advertisement Space */}
-      <RightSidebar />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={(e) => e.target.files && handleFilesSelected(e.target.files)}
+        className="hidden"
+      />
     </div>
   );
 };
