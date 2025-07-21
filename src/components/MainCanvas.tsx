@@ -128,9 +128,15 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     continueErasing, 
     stopErasing,
     isErasing
-  } = useEraserTool({
-    canvasRef,
+  } = useEraserTool(canvasRef.current, {
     brushSize: eraserSettings.brushSize,
+    zoom,
+    pan,
+    centerOffset: { x: 0, y: 0 },
+    containerRef,
+    manualImageDataRef: useRef(manualImageData),
+    hasManualEditsRef,
+    erasingInProgressRef,
     onImageChange: (newImageData) => {
       console.log('Eraser onImageChange called');
       setManualImageData(newImageData);
@@ -235,10 +241,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       { ...image, originalData: baseImageData },
       colorSettings,
       effectSettings,
-      (updatedImages) => {
-        const updatedImage = updatedImages.find(img => img.id === image.id);
-        if (updatedImage) {
-          onImageUpdate(updatedImage);
+      (images: React.SetStateAction<ImageItem[]>) => {
+        if (typeof images === 'function') {
+          // Handle function form of setState
+          const currentImages = [image];
+          const updatedImages = images(currentImages);
+          const updatedImage = updatedImages.find((img: ImageItem) => img.id === image.id);
+          if (updatedImage) {
+            onImageUpdate(updatedImage);
+          }
+        } else {
+          // Handle direct array form
+          const updatedImage = images.find((img: ImageItem) => img.id === image.id);
+          if (updatedImage) {
+            onImageUpdate(updatedImage);
+          }
         }
       }
     ).finally(() => {
@@ -326,13 +343,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     if (tool === 'eraser') {
       erasingInProgressRef.current = true;
-      startErasing(e);
+      startErasing(e.nativeEvent);
     }
   }, [tool, startErasing, onColorPicked, erasingInProgressRef]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === 'eraser' && isErasing) {
-      continueErasing(e);
+      continueErasing(e.nativeEvent);
     }
   }, [tool, isErasing, continueErasing]);
 
