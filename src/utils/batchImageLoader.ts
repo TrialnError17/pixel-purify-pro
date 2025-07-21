@@ -23,21 +23,25 @@ export const loadImagesBatch = async (
   // Initial progress update
   onProgress?.(results);
 
-  // Load all images in parallel
-  const loadPromises = results.map(async (result, index) => {
+  // Load all images in parallel with actual validation
+  const loadPromises = results.map(async (result) => {
     try {
-      // Simulate loading for progress feedback
-      result.progress = 50;
-      onProgress?.(results);
-      
-      // Validate file type
+      // Validate file type immediately
       if (!result.file.type.startsWith('image/')) {
         throw new Error('Invalid file type');
       }
       
-      // Complete loading
-      result.status = 'completed';
-      result.progress = 100;
+      // Validate that file can be loaded as image
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          result.status = 'completed';
+          result.progress = 100;
+          resolve();
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = URL.createObjectURL(result.file);
+      });
       
       return result;
     } catch (error) {
