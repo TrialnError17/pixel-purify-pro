@@ -10,9 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useSpeckleTools, SpeckleSettings } from '@/hooks/useSpeckleTools';
 import { createOptimizedImage, createThumbnail } from '@/utils/imageOptimization';
 import { loadImagesBatch } from '@/utils/batchImageLoader';
+import { memoryCache, getImageData, setImageData, clearImageData } from '@/utils/memoryCache';
+import { generateThumbnail } from '@/utils/thumbnailGenerator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 console.log('Index.tsx is loading');
 
@@ -22,10 +25,12 @@ export interface ImageItem {
   name: string;
   status: 'pending' | 'processing' | 'completed' | 'error';
   progress: number;
-  originalData?: ImageData;
-  processedData?: ImageData;
-  canvas?: HTMLCanvasElement;
+  // Remove heavy data from React state - use memory cache instead
+  // originalData?: ImageData;
+  // processedData?: ImageData;
+  // canvas?: HTMLCanvasElement;
   error?: string;
+  thumbnailUrl?: string; // For queue display
 }
 
 export interface PickedColor {
@@ -200,31 +205,67 @@ const Index = () => {
   const { processSpecks } = useSpeckleTools();
   const { addUndoAction, undo, redo, canUndo, canRedo } = useUndoManager();
 
-  // OPTIMIZED: Batch image loading with single state update
+  // OPTIMIZED: Batch image loading with thumbnail generation and memory management
   const handleFilesSelected = useCallback(async (files: FileList) => {
     if (files.length === 0) return;
     
     setIsBatchLoading(true);
     
     try {
-      // Load images in parallel
-      const batchResults = await loadImagesBatch(Array.from(files));
-      
-      // Convert batch results to ImageItem format
-      const newImages: ImageItem[] = batchResults.map(result => ({
-        id: result.id,
-        file: result.file,
-        name: result.name,
-        status: result.status as 'pending' | 'processing' | 'completed' | 'error',
-        progress: result.progress,
-        error: result.error,
-      }));
-
-      // SINGLE state update for the entire batch
-      setImages(prev => {
-        const updated = [...prev, ...newImages];
+      // Load images in optimized batches with progress feedback
+      const batchResults = await loadImagesBatch(Array.from(files), (results) => {
+        // Update progress during loading
+        const newImages: ImageItem[] = results.map(result => ({
+          id: result.id,
+          file: result.file,
+          name: result.name,
+          status: result.status as 'pending' | 'processing' | 'completed' | 'error',
+          progress: result.progress,
+          error: result.error,
+        }));
         
-        // Select first image if none selected - only check once
+        // Live update state with current progress
+        setImages(prev => {
+          const existing = prev.filter(img => !newImages.some(newImg => newImg.id === img.id));
+          return [...existing, ...newImages];
+        });
+      });
+      
+      // Generate thumbnails for successful images (in parallel)
+      const thumbnailPromises = batchResults
+        .filter(result => result.status === 'completed')
+        .map(async result => {
+          try {
+            const thumbnailUrl = await generateThumbnail(result.file);
+            return { id: result.id, thumbnailUrl };
+          } catch (error) {
+            console.warn(`Failed to generate thumbnail for ${result.name}:`, error);
+            return { id: result.id, thumbnailUrl: undefined };
+          }
+        });
+      
+      const thumbnails = await Promise.all(thumbnailPromises);
+      
+      // Final update with thumbnails
+      const newImages: ImageItem[] = batchResults.map(result => {
+        const thumbnail = thumbnails.find(t => t.id === result.id);
+        return {
+          id: result.id,
+          file: result.file,
+          name: result.name,
+          status: result.status as 'pending' | 'processing' | 'completed' | 'error',
+          progress: result.progress,
+          error: result.error,
+          thumbnailUrl: thumbnail?.thumbnailUrl,
+        };
+      });
+
+      // FINAL state update with complete data
+      setImages(prev => {
+        const existing = prev.filter(img => !newImages.some(newImg => newImg.id === img.id));
+        const updated = [...existing, ...newImages];
+        
+        // Select first image if none selected
         if (!selectedImageId && updated.length > 0) {
           setSelectedImageId(updated[0].id);
         }
@@ -235,11 +276,23 @@ const Index = () => {
       // Show queue when images are added
       setQueueVisible(true);
       
+      // Cleanup memory cache for removed images
+      const currentImageIds = images.map(img => img.id);
+      memoryCache.cleanup([...currentImageIds, ...newImages.map(img => img.id)]);
+      
       // SINGLE undo action for the entire batch
       addUndoAction({
         type: 'batch_operation',
         description: `Add ${newImages.length} image${newImages.length !== 1 ? 's' : ''}`,
         undo: () => {
+          // Clean up memory cache and thumbnails
+          newImages.forEach(img => {
+            clearImageData(img.id);
+            if (img.thumbnailUrl && img.thumbnailUrl.startsWith('data:')) {
+              // Thumbnail cleanup is automatic for data URLs
+            }
+          });
+          
           setImages(prev => prev.filter(img => !newImages.some(newImg => newImg.id === img.id)));
           if (newImages.some(img => img.id === selectedImageId)) {
             setSelectedImageId(null);
@@ -257,7 +310,7 @@ const Index = () => {
     } finally {
       setIsBatchLoading(false);
     }
-  }, [selectedImageId, addUndoAction, toast]);
+  }, [selectedImageId, addUndoAction, toast, images]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -375,7 +428,11 @@ const Index = () => {
           isProcessing={isProcessing || isBatchLoading}
           processingProgress={
             isBatchLoading 
-              ? { current: 0, total: 1 } // Show loading state
+              ? { 
+                  current: images.filter(img => img.status === 'completed').length, 
+                  total: Math.max(1, images.length),
+                  currentImage: 'Loading images...'
+                }
               : isProcessing 
                 ? {
                   current: images.filter(img => img.status === 'processing' || img.status === 'completed').length,
@@ -406,21 +463,22 @@ const Index = () => {
               const prevSpeckleSettings = { ...speckleSettings };
               setSpeckleSettings(newSpeckleSettings);
               
+              const cachedData = selectedImage ? getImageData(selectedImage.id) : null;
               console.log('Speckle settings changed:', { 
                 enabled: newSpeckleSettings.enabled, 
                 highlight: newSpeckleSettings.highlightSpecks,
                 remove: newSpeckleSettings.removeSpecks,
-                hasProcessedData: !!selectedImage?.processedData,
-                hasOriginalData: !!selectedImage?.originalData,
+                hasProcessedData: !!cachedData?.processedData,
+                hasOriginalData: !!cachedData?.originalData,
                 isProcessingSpeckles
               });
               
               // Only process speckles if not already processing to prevent feedback loop
-              if (!isProcessingSpeckles && (selectedImage?.processedData || selectedImage?.originalData)) {
+              if (!isProcessingSpeckles && selectedImage && cachedData && (cachedData.processedData || cachedData.originalData)) {
                 setIsProcessingSpeckles(true);
                 
                 // Use processedData if available (includes color effects), otherwise fall back to originalData
-                const baseData = selectedImage.processedData || selectedImage.originalData!;
+                const baseData = cachedData.processedData || cachedData.originalData!;
                 
                 // Create a fresh copy to avoid modifying the original
                 const cleanBaseData = new ImageData(
@@ -429,16 +487,12 @@ const Index = () => {
                   baseData.height
                 );
                 
-                console.log('Processing speckles from', selectedImage.processedData ? 'processed' : 'original', 'data');
+                console.log('Processing speckles from', cachedData.processedData ? 'processed' : 'original', 'data');
                 const result = processSpecks(cleanBaseData, newSpeckleSettings);
                 setSpeckCount(result.speckCount);
                 
-                // Update image with speckle processing result immediately
-                setImages(prev => prev.map(img => 
-                  img.id === selectedImage.id 
-                    ? { ...img, processedData: result.processedData }
-                    : img
-                ));
+                // Store result in memory cache
+                setImageData(selectedImage.id, cachedData.originalData, result.processedData);
                 
                 // Reset processing flag after a short delay
                 setTimeout(() => setIsProcessingSpeckles(false), 100);

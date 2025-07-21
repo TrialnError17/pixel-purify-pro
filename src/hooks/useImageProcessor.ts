@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ImageItem, ColorRemovalSettings, EffectSettings } from '@/pages/Index';
 import type { WorkerMessage, WorkerResponse } from '@/workers/imageProcessor.worker';
+import { getImageData, setImageData, clearImageData } from '@/utils/memoryCache';
 
 export const useImageProcessor = () => {
   const { toast } = useToast();
@@ -27,7 +28,7 @@ export const useImageProcessor = () => {
     settings?: any,
     effectSettings?: any
   ): Promise<ImageData> => {
-    console.log(`🔄 Starting worker processing: ${type}`);
+    console.log(`🏭 Using worker for ${type} processing...`);
     console.time(`worker-${type}`);
     
     return new Promise((resolve, reject) => {
@@ -43,11 +44,12 @@ export const useImageProcessor = () => {
         
         clearTimeout(timeout);
         worker.removeEventListener('message', handleMessage);
+        worker.removeEventListener('error', handleError);
         
         if (event.data.type === 'success' && event.data.data) {
           console.log(`✅ Worker ${type} completed successfully`);
           console.timeEnd(`worker-${type}`);
-          // Convert back to ImageData
+          // Use transferred data directly without cloning
           const resultData = new Uint8ClampedArray(event.data.data.data);
           const resultImageData = new ImageData(resultData, event.data.data.width, event.data.data.height);
           resolve(resultImageData);
@@ -70,18 +72,20 @@ export const useImageProcessor = () => {
       worker.addEventListener('error', handleError);
       
       try {
-        // Prepare data for transfer
+        // Create transferable ArrayBuffer from ImageData
+        const buffer = imageData.data.buffer.slice(0); // Create a copy we can transfer
         const transferableData = {
-          data: imageData.data.buffer.slice(0), // Clone the buffer
+          data: buffer,
           width: imageData.width,
           height: imageData.height
         };
         
+        // Send with transferable objects to avoid cloning
         worker.postMessage({
           type,
           data: { imageData: transferableData, settings, effectSettings },
           id
-        } as WorkerMessage, [transferableData.data]);
+        } as WorkerMessage, [buffer]); // Transfer the buffer
         
         console.log(`📤 Posted ${type} message to worker with id ${id} using transferable objects`);
       } catch (error) {
@@ -250,133 +254,9 @@ export const useImageProcessor = () => {
       console.log('✅ Worker processing completed successfully');
       return result;
     } catch (error) {
-      console.log('⚠️ Worker failed, falling back to main thread:', error);
-      console.log('🔄 Falling back to main thread processing...');
-      
-      // Fallback to main thread with performance optimizations
-      const data = new Uint8ClampedArray(imageData.data);
-      const width = imageData.width;
-      const height = imageData.height;
-
-      console.log('🔧 Fallback: Processing on main thread with performance optimizations');
-
-      // Only process if color removal is enabled
-      if (settings.enabled) {
-        if (settings.mode === 'auto') {
-          // Use top-left corner color
-          const targetR = data[0];
-          const targetG = data[1];
-          const targetB = data[2];
-          const threshold = settings.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-
-          if (settings.contiguous) {
-            // Contiguous removal starting from top-left corner with performance optimization
-            const visited = new Set<string>();
-            const stack = [[0, 0]];
-            let processedPixels = 0;
-            
-            const isColorSimilar = (r: number, g: number, b: number) => {
-              const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-              return distance <= threshold;
-            };
-            
-            while (stack.length > 0) {
-              const [x, y] = stack.pop()!;
-              const key = `${x},${y}`;
-              
-              if (visited.has(key) || x < 0 || y < 0 || x >= width || y >= height) continue;
-              visited.add(key);
-              
-              const pixelIndex = (y * width + x) * 4;
-              const r = data[pixelIndex];
-              const g = data[pixelIndex + 1];
-              const b = data[pixelIndex + 2];
-              
-              if (!isColorSimilar(r, g, b)) continue;
-              
-              // Make pixel transparent
-              data[pixelIndex + 3] = 0;
-              
-              // Add neighbors to stack
-              stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-              
-              // Performance optimization: yield control every 1000 pixels
-              processedPixels++;
-              if (processedPixels % 1000 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 0));
-              }
-            }
-          } else {
-            // Simple non-contiguous removal for auto mode with performance optimization
-            const totalPixels = data.length / 4;
-            for (let i = 0; i < data.length; i += 4) {
-              const r = data[i];
-              const g = data[i + 1];
-              const b = data[i + 2];
-
-              const distance = calculateColorDistance(r, g, b, targetR, targetG, targetB);
-              
-              if (distance <= threshold) {
-                data[i + 3] = 0; // Make transparent
-              }
-              
-              // Performance optimization: yield control every 10000 pixels
-              if ((i / 4) % 10000 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 0));
-              }
-            }
-          }
-        } else {
-          // Manual mode - handle both single target color and picked colors
-          let colorsToRemove = [];
-          
-          // Add the main target color
-          const hex = settings.targetColor.replace('#', '');
-          colorsToRemove.push({
-            r: parseInt(hex.substr(0, 2), 16),
-            g: parseInt(hex.substr(2, 2), 16),
-            b: parseInt(hex.substr(4, 2), 16),
-            threshold: settings.threshold
-          });
-          
-          // Add all picked colors with their individual thresholds
-          settings.pickedColors.forEach(pickedColor => {
-            const pickedHex = pickedColor.color.replace('#', '');
-            colorsToRemove.push({
-              r: parseInt(pickedHex.substr(0, 2), 16),
-              g: parseInt(pickedHex.substr(2, 2), 16),
-              b: parseInt(pickedHex.substr(4, 2), 16),
-              threshold: pickedColor.threshold
-            });
-          });
-
-          // Process each pixel against all target colors (always non-contiguous in manual mode) with performance optimization
-          const totalPixels = data.length / 4;
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-
-            // Check against each target color
-            for (const targetColor of colorsToRemove) {
-              const distance = calculateColorDistance(r, g, b, targetColor.r, targetColor.g, targetColor.b);
-              const threshold = targetColor.threshold * 2.5; // Scale threshold to make it more sensitive (was too high)
-              
-              if (distance <= threshold) {
-                data[i + 3] = 0; // Make transparent
-                break; // No need to check other colors once removed
-              }
-            }
-            
-            // Performance optimization: yield control every 5000 pixels  
-            if ((i / 4) % 5000 === 0) {
-              await new Promise(resolve => setTimeout(resolve, 0));
-            }
-          }
-        }
-      }
-
-      return new ImageData(data, width, height);
+      console.error('💥 Worker processing failed completely:', error);
+      // NO FALLBACK - all processing must happen in worker to prevent UI freezing
+      throw new Error(`Worker processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [processWithWorker, calculateColorDistance]);
 
@@ -560,7 +440,8 @@ export const useImageProcessor = () => {
     effectSettings: EffectSettings,
     setImages: React.Dispatch<React.SetStateAction<ImageItem[]>>
   ) => {
-    let originalData = image.originalData;
+    const cachedData = getImageData(image.id);
+    let originalData = cachedData?.originalData;
     
     // If original data is not available, load it from the file
     if (!originalData) {
@@ -591,10 +472,8 @@ export const useImageProcessor = () => {
         // Clean up
         URL.revokeObjectURL(img.src);
         
-        // Update the image with original data for future use
-        setImages(prev => prev.map(img => 
-          img.id === image.id ? { ...img, originalData } : img
-        ));
+        // Store in memory cache instead of React state
+        setImageData(image.id, originalData);
         
       } catch (error) {
         toast({
@@ -654,13 +533,15 @@ export const useImageProcessor = () => {
       // Store the clean processed data (color removal only, no effects)
       // Effects will be applied separately for display and download
 
-      // Complete
+      // Store processed data in memory cache and update status
+      setImageData(image.id, originalData, processedData);
+      
+      // Complete - only update status in React state
       setImages(prev => prev.map(img => 
         img.id === image.id ? { 
           ...img, 
           status: 'completed', 
-          progress: 100, 
-          processedData 
+          progress: 100
         } : img
       ));
 
@@ -743,8 +624,9 @@ export const useImageProcessor = () => {
         });
         
         const processedImage = updatedImages.find(img => img.id === image.id);
+        const processedImageData = getImageData(image.id);
         
-        if (processedImage && processedImage.status === 'completed' && processedImage.processedData) {
+        if (processedImage && processedImage.status === 'completed' && processedImageData?.processedData) {
           // Check if cancelled before downloading
           if (cancelTokenRef.current.cancelled) {
             return;
@@ -836,14 +718,16 @@ export const useImageProcessor = () => {
 
   // Download single image
   const downloadImage = useCallback(async (image: ImageItem, colorSettings: ColorRemovalSettings, effectSettings?: EffectSettings, setSingleImageProgress?: (progress: { imageId: string; progress: number } | null) => void, setIsFullscreen?: (value: boolean) => void) => {
+    const cachedData = getImageData(image.id);
+    
     // Prioritize processedData (includes manual edits) over originalData
-    if (!image.processedData && !image.originalData) {
+    if (!cachedData?.processedData && !cachedData?.originalData) {
       console.error('No image data available for download');
       return;
     }
 
-    const sourceData = image.processedData || image.originalData!;
-    console.log('Downloading image:', image.name, 'Using:', image.processedData ? 'processedData (with manual edits)' : 'originalData');
+    const sourceData = cachedData.processedData || cachedData.originalData!;
+    console.log('Downloading image:', image.name, 'Using:', cachedData.processedData ? 'processedData (with manual edits)' : 'originalData');
     console.log('Download effect settings:', JSON.stringify(effectSettings, null, 2));
 
     // Use the current processed data (includes manual edits) as starting point
@@ -855,7 +739,7 @@ export const useImageProcessor = () => {
 
     // Only reprocess if we're using originalData (no manual edits)
     // If using processedData, it already includes manual edits and should not be reprocessed
-    const hasManualEdits = image.processedData && sourceData === image.processedData;
+    const hasManualEdits = cachedData.processedData && sourceData === cachedData.processedData;
     
     if (hasManualEdits) {
       console.log('Skipping reprocessing - using manual edits as-is');

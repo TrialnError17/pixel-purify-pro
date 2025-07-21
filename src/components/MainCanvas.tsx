@@ -5,6 +5,7 @@ import { ImageItem, ColorRemovalSettings, EffectSettings, ContiguousToolSettings
 import { SpeckleSettings, useSpeckleTools } from '@/hooks/useSpeckleTools';
 import { useEraserTool } from '@/hooks/useEraserTool';
 import { debounce, throttle, areImageDataEqual } from '@/utils/performance';
+import { getImageData, setImageData } from '@/utils/memoryCache';
 import { 
   Move, 
   Pipette, 
@@ -339,10 +340,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       
       setManualImageData(imageData);
       
-      // Update the image so changes persist
+      // Update the memory cache so changes persist
       if (image) {
-        const updatedImage = { ...image, processedData: imageData };
-        onImageUpdate(updatedImage);
+        const cachedData = getImageData(image.id);
+        setImageData(image.id, cachedData?.originalData, imageData);
       }
     }
   });
@@ -838,23 +839,25 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const cachedData = getImageData(image.id);
+    
     // If we have manual edits and processedData, use that instead of reloading
-    if (hasManualEditsRef.current && image.processedData && manualImageData) {
+    if (hasManualEditsRef.current && cachedData?.processedData && manualImageData) {
       requestAnimationFrame(() => {
-        ctx.putImageData(image.processedData!, 0, 0);
+        ctx.putImageData(cachedData.processedData!, 0, 0);
       });
       return;
     }
 
     // If image has processedData and no manual edits, use that
-    if (image.processedData && !hasManualEditsRef.current) {
+    if (cachedData?.processedData && !hasManualEditsRef.current) {
       requestAnimationFrame(() => {
-        ctx.putImageData(image.processedData!, 0, 0);
+        ctx.putImageData(cachedData.processedData!, 0, 0);
       });
       
       // Store as original data if not set
       if (!originalImageData) {
-        setOriginalImageData(image.processedData);
+        setOriginalImageData(cachedData.processedData);
       }
       return;
     }
@@ -1186,8 +1189,10 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       return;
     }
     
+    const cachedData = image ? getImageData(image.id) : null;
+    
     // Skip auto-processing if we already have processed data and no settings changed
-    if (image?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !edgeCleanupSettings.enabled) {
+    if (cachedData?.processedData && !colorSettings.enabled && !effectSettings.background.enabled && !effectSettings.inkStamp.enabled && !edgeCleanupSettings.enabled) {
       return;
     }
     

@@ -479,12 +479,20 @@ export const ImageQueue: React.FC<ImageQueueProps> = ({
                       "bg-muted rounded flex-shrink-0 flex items-center justify-center",
                       isFullscreen ? "w-16 h-16" : "w-12 h-12"
                     )}>
-                      <img
-                        src={URL.createObjectURL(image.file)}
-                        alt={image.name}
-                        className="w-full h-full object-cover rounded"
-                        onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-                      />
+                       {image.thumbnailUrl ? (
+                        <img
+                          src={image.thumbnailUrl}
+                          alt={image.name}
+                          className="w-full h-full object-cover rounded"
+                        />
+                      ) : (
+                        <img
+                          src={URL.createObjectURL(image.file)}
+                          alt={image.name}
+                          className="w-full h-full object-cover rounded"
+                          onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                        />
+                      )}
                     </div>
                     
                     {/* Info */}

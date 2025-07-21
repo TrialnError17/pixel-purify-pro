@@ -281,7 +281,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     }
     
     console.log(`📤 Worker sending success response for ${type} with id ${id}`);
-    // Use transferable objects to avoid cloning
+    // Use transferable objects to avoid cloning - transfer the ArrayBuffer
     (self as any).postMessage({
       type: 'success',
       data: result,
