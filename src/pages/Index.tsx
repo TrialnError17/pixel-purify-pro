@@ -465,41 +465,6 @@ const Index = () => {
               const prevSpeckleSettings = { ...speckleSettings };
               setSpeckleSettings(newSpeckleSettings);
               
-              const cachedData = selectedImage ? getImageData(selectedImage.id) : null;
-              console.log('Speckle settings changed:', { 
-                enabled: newSpeckleSettings.enabled, 
-                highlight: newSpeckleSettings.highlightSpecks,
-                remove: newSpeckleSettings.removeSpecks,
-                hasProcessedData: !!cachedData?.processedData,
-                hasOriginalData: !!cachedData?.originalData,
-                isProcessingSpeckles
-              });
-              
-              // Only process speckles if not already processing to prevent feedback loop
-              if (!isProcessingSpeckles && selectedImage && cachedData && (cachedData.processedData || cachedData.originalData)) {
-                setIsProcessingSpeckles(true);
-                
-                // Use processedData if available (includes color effects), otherwise fall back to originalData
-                const baseData = cachedData.processedData || cachedData.originalData!;
-                
-                // Create a fresh copy to avoid modifying the original
-                const cleanBaseData = new ImageData(
-                  new Uint8ClampedArray(baseData.data),
-                  baseData.width,
-                  baseData.height
-                );
-                
-                console.log('Processing speckles from', cachedData.processedData ? 'processed' : 'original', 'data');
-                const result = processSpecks(cleanBaseData, newSpeckleSettings);
-                setSpeckCount(result.speckCount);
-                
-                // Store result in memory cache
-                setImageData(selectedImage.id, cachedData.originalData, result.processedData);
-                
-                // Reset processing flag after a short delay
-                setTimeout(() => setIsProcessingSpeckles(false), 100);
-              }
-              
               // Add undo action for speckle settings changes
               addUndoAction({
                 type: 'settings',
@@ -705,18 +670,6 @@ const Index = () => {
                 (async () => {
                   try {
                     await processImage(image, colorSettings, effectSettings, setImages);
-                    // After processing is complete, automatically download the image
-                    // Find the processed image in the updated state
-                    setImages(currentImages => {
-                      const processedImage = currentImages.find(img => img.id === image.id);
-                       if (processedImage && processedImage.status === 'completed') {
-                         // Trigger download
-                         (async () => {
-                           await downloadImage(processedImage, colorSettings, effectSettings, setSingleImageProgress, setIsQueueFullscreen);
-                         })();
-                       }
-                      return currentImages;
-                    });
                   } finally {
                     setIsProcessing(false);
                   }
