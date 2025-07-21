@@ -35,6 +35,7 @@ interface LeftSidebarProps {
   onAddImages: () => void;
   onAddFolder: () => void;
   onFeatureInteraction: (feature: string) => void;
+  canvas?: HTMLCanvasElement | null;
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -56,7 +57,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   currentTool,
   onAddImages,
   onAddFolder,
-  onFeatureInteraction
+  onFeatureInteraction,
+  canvas
 }) => {
   const { toast } = useToast();
   
@@ -1094,7 +1096,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
         {/* Semi-Transparency Detector */}
         <SemiTransparencyDetector
-          canvas={null} // Will be connected to the main canvas
+          canvas={canvas}
           enabled={semiTransparencySettings.enabled}
           onEnabledChange={(enabled) => onSemiTransparencySettingsChange({ enabled })}
           onFeatureInteraction={onFeatureInteraction}

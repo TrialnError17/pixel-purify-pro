@@ -199,6 +199,9 @@ const Index = () => {
     enabled: false
   });
 
+  // Canvas ref to be shared between MainCanvas and LeftSidebar
+  const [mainCanvas, setMainCanvas] = useState<HTMLCanvasElement | null>(null);
+
   // Track if edge trim was auto-disabled by ink stamp
   const [edgeTrimAutoDisabled, setEdgeTrimAutoDisabled] = useState(false);
 
@@ -495,6 +498,7 @@ const Index = () => {
             onAddImages={handleFileInput}
             onAddFolder={handleFolderInput}
             onFeatureInteraction={handleFeatureInteraction}
+            canvas={mainCanvas}
           />
           </div>
           
@@ -512,6 +516,7 @@ const Index = () => {
               eraserSettings={eraserSettings}
               erasingInProgressRef={erasingInProgressRef}
               semiTransparencySettings={semiTransparencySettings}
+              onCanvasReady={setMainCanvas}
               
               onImageUpdate={(updatedImage) => {
                 setImages(prev => prev.map(img => 

@@ -240,6 +240,7 @@ interface MainCanvasProps {
   eraserSettings: { brushSize: number };
   erasingInProgressRef: React.MutableRefObject<boolean>;
   semiTransparencySettings: SemiTransparencyDetectorSettings;
+  onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
   onImageUpdate: (image: ImageItem) => void;
   onColorPicked: (color: string) => void;
   onPreviousImage: () => void;
@@ -268,6 +269,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   eraserSettings,
   erasingInProgressRef,
   semiTransparencySettings,
+  onCanvasReady,
   onImageUpdate,
   onColorPicked,
   onPreviousImage,
@@ -303,6 +305,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   useEffect(() => {
     manualImageDataRef.current = manualImageData;
   }, [manualImageData]);
+  
+  // Notify parent when canvas is ready
+  useEffect(() => {
+    if (onCanvasReady) {
+      onCanvasReady(canvasRef.current);
+    }
+  }, [onCanvasReady]);
   
   // Eraser tool integration
   const eraserTool = useEraserTool(canvasRef.current, {
