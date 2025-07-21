@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { fabric } from 'fabric';
+import * as fabric from 'fabric';
 
 interface MainCanvasProps {
   imageFile: File | null;
@@ -77,7 +77,6 @@ const MainCanvas: React.FC<MainCanvasProps> = ({
 
     if (eraserEnabled) {
       fabricCanvas.isDrawingMode = true;
-      fabricCanvas.freeDrawingBrush = new fabric.EraserBrush(fabricCanvas);
       fabricCanvas.freeDrawingBrush.width = eraserSize;
       
       // Track when manual edits are made
