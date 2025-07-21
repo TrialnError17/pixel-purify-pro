@@ -1021,6 +1021,14 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
     
     if (!hasAnyProcessingEnabled) {
       console.log('Early return - no processing needed');
+      // Restore original data to canvas if no processing is enabled
+      if (image?.originalData) {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (ctx) {
+          ctx.putImageData(image.originalData, 0, 0);
+        }
+      }
       return;
     }
      
@@ -1226,15 +1234,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             let b = data[i + 2];
             
             // Apply brightness
-            r += effectSettings.imageEffects.brightness * 2.55;
-            g += effectSettings.imageEffects.brightness * 2.55;
-            b += effectSettings.imageEffects.brightness * 2.55;
+            if (effectSettings.imageEffects.brightness !== 0) {
+              r += effectSettings.imageEffects.brightness * 2.55;
+              g += effectSettings.imageEffects.brightness * 2.55;
+              b += effectSettings.imageEffects.brightness * 2.55;
+            }
             
             // Apply contrast
-            const contrast = (effectSettings.imageEffects.contrast + 100) / 100;
-            r = ((r - 128) * contrast) + 128;
-            g = ((g - 128) * contrast) + 128;
-            b = ((b - 128) * contrast) + 128;
+            if (effectSettings.imageEffects.contrast !== 0) {
+              const contrast = (effectSettings.imageEffects.contrast + 100) / 100;
+              r = ((r - 128) * contrast) + 128;
+              g = ((g - 128) * contrast) + 128;
+              b = ((b - 128) * contrast) + 128;
+            }
             
             // Apply vibrance/saturation
             if (effectSettings.imageEffects.vibrance !== 0) {
