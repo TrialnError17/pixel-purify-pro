@@ -872,7 +872,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       ctx.drawImage(img, 0, 0);
       
       // OPTIMIZATION: Don't extract image data on load - only when needed for processing
-      // This makes image loading instant instead of slow
+      // This prevents the 1-minute delay - ImageData extraction is expensive
       setOriginalImageData(null);
       
       // Reset manual edits when new image is loaded
