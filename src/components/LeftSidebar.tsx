@@ -12,6 +12,7 @@ import { ColorRemovalSettings, PickedColor, EffectSettings, ContiguousToolSettin
 import { Palette, Settings, X, Trash2, Zap, Eye, EyeOff, Paintbrush, Stamp, Wand, ImagePlus, FolderPlus, Scissors } from 'lucide-react';
 import { SpeckleSettings } from '@/hooks/useSpeckleTools';
 import { useToast } from '@/hooks/use-toast';
+import { SemiTransparencyDetector } from '@/components/SemiTransparencyDetector';
 
 
 interface LeftSidebarProps {
@@ -1091,6 +1092,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </Card>
 
+        {/* Semi-Transparency Detector */}
+        <SemiTransparencyDetector
+          canvas={null} // Will be connected to the main canvas
+          enabled={semiTransparencySettings.enabled}
+          onEnabledChange={(enabled) => onSemiTransparencySettingsChange({ enabled })}
+          onFeatureInteraction={onFeatureInteraction}
+        />
 
         {/* Contextual Tips - Show when not using advanced features */}
         {!settings.enabled && 
